@@ -46,16 +46,26 @@ function safeParseJSON(raw) {
     }
 }
 
-async function dispatch(prompt, profileId) {
+async function dispatch(prompt, profileId, label) {
+    console.debug(`[Localyze:${label}] Prompt:\n${prompt}`)
     if (profileId) {
         try {
             const result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null)
-            return result.content ?? result
+            const text = result.content ?? result
+            console.debug(`[Localyze:${label}] Response (ConnectionManager):\n${text}`)
+            return text
         } catch (err) {
-            console.warn('[Localyze] ConnectionManager call failed, falling back to generateQuietPrompt:', err.message)
+            console.warn(`[Localyze:${label}] ConnectionManager failed, falling back:`, err)
         }
     }
-    return generateQuietPrompt({ quietPrompt: prompt, removeReasoning: true })
+    try {
+        const text = await generateQuietPrompt({ quietPrompt: prompt, removeReasoning: true })
+        console.debug(`[Localyze:${label}] Response (generateQuietPrompt):\n${text}`)
+        return text
+    } catch (err) {
+        console.error(`[Localyze:${label}] generateQuietPrompt failed:`, err)
+        throw err
+    }
 }
 
 export async function detectBoolean(messageText, currentLocation, historyText, promptTemplate, profileId) {
@@ -64,8 +74,10 @@ export async function detectBoolean(messageText, currentLocation, historyText, p
         history: historyText,
         message: messageText,
     })
-    const result = await dispatch(prompt, profileId)
-    return String(result).trim().toUpperCase().startsWith('YES')
+    const result = await dispatch(prompt, profileId, 'Boolean')
+    const answer = String(result).trim().toUpperCase().startsWith('YES')
+    console.debug(`[Localyze:Boolean] → ${answer ? 'YES (location changed)' : 'NO (same location)'}`)
+    return answer
 }
 
 export async function detectClassifier(messageText, locationKeys, historyText, promptTemplate, profileId) {
@@ -74,14 +86,25 @@ export async function detectClassifier(messageText, locationKeys, historyText, p
         history: historyText,
         message: messageText,
     })
-    const result = await dispatch(prompt, profileId)
+    const result = await dispatch(prompt, profileId, 'Classifier')
     const cleaned = String(result).trim().replace(/[^a-z0-9_]/gi, '')
-    if (!cleaned || cleaned.toUpperCase() === 'NULL') return null
-    return locationKeys.find(k => k === cleaned) ?? null
+    if (!cleaned || cleaned.toUpperCase() === 'NULL') {
+        console.debug('[Localyze:Classifier] → NULL (no match / unknown location)')
+        return null
+    }
+    const matched = locationKeys.find(k => k === cleaned) ?? null
+    console.debug(`[Localyze:Classifier] → ${matched ?? `no exact match for "${cleaned}"`}`)
+    return matched
 }
 
 export async function detectDescriber(contextText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, { context: contextText })
-    const raw = await dispatch(prompt, profileId)
-    return safeParseJSON(String(raw))
+    const raw = await dispatch(prompt, profileId, 'Describer')
+    const parsed = safeParseJSON(String(raw))
+    if (parsed === null) {
+        console.warn('[Localyze:Describer] JSON parse failed. Raw output was:\n', raw)
+    } else {
+        console.debug('[Localyze:Describer] →', parsed)
+    }
+    return parsed
 }
