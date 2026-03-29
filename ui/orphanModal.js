@@ -22,8 +22,8 @@
  *     external_io: [POST /api/backgrounds/delete, saveSettingsDebounced(),
  *       clearOrphanBadge()]
  */
-import { getRequestHeaders } from '../../../../../script.js'
-import { extension_settings, saveSettingsDebounced } from '../../../../extensions.js'
+import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js'
+import { extension_settings } from '../../../../extensions.js'
 import { clearOrphanBadge } from './toolbar.js'
 
 function escapeHtml(str) {

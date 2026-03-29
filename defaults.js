@@ -30,7 +30,7 @@
  * Identifies Localyze to Pollinations for attribution and rate-limit tier.
  * Not a secret — hardcoded, not user-configurable.
  */
-export const POLLINATIONS_REFERRER = 'localyze'
+export const POLLINATIONS_REFERRER = 'pk_WfuLORZ5RZDfPRZU'
 
 /**
  * Secret key name used with ST's secrets system for the user's personal
