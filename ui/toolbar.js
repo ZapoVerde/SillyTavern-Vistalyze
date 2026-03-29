@@ -27,12 +27,11 @@
  *     external_io: [#extensionsMenu DOM (write), POST /api/backgrounds/all,
  *       runFullAudit(), openPickerModal(), openOrphanModal()]
  */
-import { extension_settings, saveSettingsDebounced } from '../../../../extensions.js'
-import { getRequestHeaders } from '../../../../../script.js'
+import { extension_settings } from '../../../../extensions.js'
+import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js'
 import { openPickerModal } from './pickerModal.js'
 import { openOrphanModal } from './orphanModal.js'
 import { runFullAudit } from '../orphanDetector.js'
-import { state } from '../state.js'
 
 export function injectToolbar() {
     // Remove any existing buttons to avoid duplicates on hot reload
