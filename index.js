@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.2
+ * @version 1.0.3
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
@@ -44,8 +44,8 @@
  *       extension_settings.localyze (read/write),
  *       #bg1 DOM (via background.js)]
  */
-import { eventSource, event_types, saveChatConditional } from '../../../../script.js'
-import { extension_settings, getContext, saveSettingsDebounced } from '../../../extensions.js'
+import { eventSource, event_types, saveChatConditional, saveSettingsDebounced } from '../../../../script.js'
+import { extension_settings, getContext } from '../../../extensions.js'
 import { state, resetState, updateState } from './state.js'
 import { initSession } from './session.js'
 import { reconstruct } from './reconstruction.js'
