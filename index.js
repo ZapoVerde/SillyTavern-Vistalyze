@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.10
+ * @version 1.0.11
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
@@ -44,7 +44,8 @@
  *       extension_settings.localyze (read/write),
  *       #bg1 DOM (via background.js)]
  */
-import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup, writeSecret } from '../../../../script.js'
+import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup } from '../../../../script.js'
+import { writeSecret } from '../../../secrets.js'
 import { extension_settings, getContext } from '../../../extensions.js'
 import { state, resetState, updateState } from './state.js'
 import { initSession } from './session.js'
@@ -79,18 +80,28 @@ function buildHistoryText(chat, beforeIndex, numPairs) {
 }
 
 async function boot() {
+    console.debug('[Localyze] boot() start')
     const context = getContext()
-    if (!context.chatId) return
+    if (!context.chatId) {
+        console.debug('[Localyze] boot() abort — no chatId')
+        return
+    }
 
+    console.debug('[Localyze] initSession()')
     initSession()
+    console.debug('[Localyze] sessionId:', state.sessionId)
 
+    console.debug('[Localyze] reconstruct()')
     const { locations, transitions, currentLocation, currentImage } = reconstruct(context.chat)
     state.locations = locations
     state.currentLocation = currentLocation
     state.currentImage = currentImage
+    console.debug(`[Localyze] reconstructed — locations: ${Object.keys(locations).length}, transitions: ${transitions.length}, currentLocation: ${currentLocation}`)
 
+    console.debug('[Localyze] fetchFileIndex()')
     const { fileIndex, allImages } = await fetchFileIndex(state.sessionId)
     state.fileIndex = fileIndex
+    console.debug(`[Localyze] fileIndex: ${fileIndex.size} localyze files, ${allImages.length} total backgrounds`)
 
     // Build regeneration queue (deduplicated)
     const queue = []
@@ -110,6 +121,8 @@ async function boot() {
         }
     }
 
+    if (queue.length) console.debug('[Localyze] regen queue:', queue)
+
     // Fire all queued keys as silent background generation (non-blocking)
     for (const key of queue) {
         const def = state.locations[key]
@@ -124,8 +137,10 @@ async function boot() {
 
     // Restore background
     if (state.currentImage && state.fileIndex.has(state.currentImage)) {
+        console.debug('[Localyze] restoring background:', state.currentImage)
         setBg(state.currentImage)
     } else {
+        console.debug('[Localyze] no background to restore — clearing')
         clearBg()
     }
 
@@ -198,7 +213,7 @@ async function handleKnownLocation(messageId, key) {
                 setBg(filename)
                 state.currentImage = filename
             })
-            .catch(console.error)
+            .catch(err => console.error('[Localyze] Known location generate failed:', err))
     }
 }
 
@@ -304,8 +319,11 @@ function handleChatChanged() {
 })()
 
 // Module-level init
+console.debug('[Localyze] module loading — injecting toolbar and settings panel')
 injectToolbar()
 injectSettingsPanel()
+console.debug('[Localyze] binding events')
 eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageReceived)
 eventSource.on(event_types.CHAT_CHANGED, handleChatChanged)
+console.debug('[Localyze] firing initial boot()')
 boot().catch(err => console.error('[Localyze] Initial boot error:', err))
