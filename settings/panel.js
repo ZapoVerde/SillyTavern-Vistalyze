@@ -40,6 +40,7 @@ import {
 // ─── Settings accessor ────────────────────────────────────────────────────────
 
 function getSettings() {
+    if (!extension_settings.localyze) extension_settings.localyze = {}
     return extension_settings.localyze
 }
 
@@ -87,28 +88,33 @@ function buildCallRow(id, label, promptKey, profileKey) {
 
 function buildPanelHTML() {
     return `
-    <div id="lz-settings" style="padding:10px 0;">
-        <h4 style="margin:0 0 12px;font-size:1em;border-bottom:1px solid var(--SmartThemeBorderColor,#444);padding-bottom:8px;">
-            <i class="fa-solid fa-location-dot"></i> Localyze
-        </h4>
-        <p style="font-size:0.85em;opacity:0.7;margin:0 0 14px;">
-            Each AI call uses its own prompt template and connection profile.
-            Leave connection blank to use the chat's active API.
-        </p>
-        ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId')}
-        ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId')}
-        ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId')}
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
-            <strong style="font-size:0.95em;">Pollinations User Token</strong>
-            <p style="font-size:0.83em;opacity:0.65;margin:4px 0 8px;">
-                Optional. Your personal Pollinations token unlocks higher rate limits.
-                Stored securely in ST's secrets — never written to settings.
-            </p>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <input type="password" id="lz-pollinations-key" class="text_pole"
-                    placeholder="Paste token here…" autocomplete="off"
-                    style="flex:1;" />
-                <span id="lz-pollinations-status" style="font-size:0.8em;opacity:0.6;white-space:nowrap;"></span>
+    <div id="lz-settings" class="extension_settings">
+        <div class="inline-drawer">
+            <div class="inline-drawer-toggle inline-drawer-header">
+                <b><i class="fa-solid fa-location-dot"></i> Localyze</b>
+                <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+            </div>
+            <div class="inline-drawer-content">
+                <p style="font-size:0.85em;opacity:0.7;margin:0 0 14px;">
+                    Each AI call uses its own prompt template and connection profile.
+                    Leave connection blank to use the chat's active API.
+                </p>
+                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId')}
+                ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId')}
+                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId')}
+                <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
+                    <strong style="font-size:0.95em;">Pollinations User Token</strong>
+                    <p style="font-size:0.83em;opacity:0.65;margin:4px 0 8px;">
+                        Optional. Your personal Pollinations token unlocks higher rate limits.
+                        Stored securely in ST's secrets — never written to settings.
+                    </p>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="password" id="lz-pollinations-key" class="text_pole"
+                            placeholder="Paste token here…" autocomplete="off"
+                            style="flex:1;" />
+                        <span id="lz-pollinations-status" style="font-size:0.8em;opacity:0.6;white-space:nowrap;"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>`
