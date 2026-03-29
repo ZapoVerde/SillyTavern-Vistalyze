@@ -50,7 +50,7 @@ export const DEFAULT_IMAGE_MODEL = 'flux'
  *   {{name}}          — human-readable location name
  *   {{description}}   — location description
  */
-export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{image_prompt}}'
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{description}}, landscape, cinematic lighting, detailed environment'
 
 /**
  * Dev mode — generates tiny placeholder images (64×36) instead of full 1920×1080.
@@ -82,10 +82,21 @@ Keys: {{key_list}}
 {{message}}`
 
 export const DEFAULT_DESCRIBER_PROMPT =
-`Describe the location in this scene.
-Reply as JSON only, no markdown fences:
-{"name":"","key":"","description":"","imagePrompt":""}
-key must be lowercase_slug. imagePrompt must be landscape orientation.
+`[SYSTEM: TASK — LOCATION IDENTIFIER]
+You are reading a roleplay transcript and identifying the physical location of the current scene.
+Your job is to name the location, assign it a stable key, and write a vivid atmospheric description
+suitable for generating a background image.
 
-Context:
-{{context}}`
+TRANSCRIPT:
+{{context}}
+
+INSTRUCTIONS:
+- Identify the single most specific location active at the end of the transcript.
+- name: A short human-readable label (e.g. "Throne Room", "Rainy Dockside Street").
+- key: A lowercase_slug version of the name, unique and stable (e.g. "throne_room", "rainy_dockside_street").
+- description: 2–3 sentences. Capture the visual atmosphere — lighting, mood, key architectural or
+  environmental details. Write as if directing a scene painter, not narrating plot.
+- If the location cannot be determined from the transcript, output exactly: NULL
+
+### OUTPUT FORMAT — JSON only, no markdown fences, no other text:
+{"name":"","key":"","description":""}`
