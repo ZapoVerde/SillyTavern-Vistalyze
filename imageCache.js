@@ -50,19 +50,33 @@ function interpolateImagePrompt(template, locationDef) {
 async function buildPollinationsRequest(finalPrompt) {
     const s = extension_settings.localyze ?? {}
     const devMode = s.devMode ?? false
+
+    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
+    if (!userKey) {
+        throw new Error('No Pollinations account connected. Use the Connect Account button in Localyze settings.')
+    }
+
     const params = new URLSearchParams({
         width:  devMode ? String(DEV_IMAGE_WIDTH)  : '1920',
         height: devMode ? String(DEV_IMAGE_HEIGHT) : '1080',
         model:  s.imageModel ?? DEFAULT_IMAGE_MODEL,
         key:    POLLINATIONS_APP_KEY,
     })
-    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`
+    return {
+        url: `https://gen.pollinations.ai/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`,
+        headers: { 'Authorization': `Bearer ${userKey}` },
+    }
+}
 
-    const headers = {}
-    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY)
-    if (userKey) headers['Authorization'] = `Bearer ${userKey}`
-
-    return { url, headers }
+export async function checkPollinationsBalance() {
+    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
+    if (!userKey) return { connected: false }
+    const res = await fetch('https://gen.pollinations.ai/account/balance', {
+        headers: { 'Authorization': `Bearer ${userKey}` },
+    })
+    if (!res.ok) throw new Error(`Balance check failed: ${res.status}`)
+    const data = await res.json()
+    return { connected: true, balance: data.balance }
 }
 
 export async function fetchFileIndex(sessionId) {

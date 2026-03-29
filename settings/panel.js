@@ -27,7 +27,7 @@
  *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { secret_state, findSecret } from '../../../../secrets.js'
+import { secret_state } from '../../../../secrets.js'
 import { extension_settings } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
@@ -39,8 +39,8 @@ import {
     POLLINATIONS_MODELS,
     POLLINATIONS_APP_KEY,
     POLLINATIONS_AUTHORIZE_URL,
-    POLLINATIONS_USER_SECRET_KEY,
 } from '../defaults.js'
+import { checkPollinationsBalance } from '../imageCache.js'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
 
@@ -126,10 +126,11 @@ function buildPanelHTML() {
                         image prompt template.
                     </p>
 
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <button class="menu_button" id="lz-pollinations-connect">Connect Account</button>
-                        <span id="lz-pollinations-status" style="font-size:0.82em;opacity:0.65;"></span>
+                        <button class="menu_button" id="lz-pollinations-check">Check Balance</button>
                     </div>
+                    <div id="lz-pollinations-status" style="font-size:0.82em;opacity:0.65;margin-bottom:8px;"></div>
 
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Model:</label>
@@ -227,6 +228,24 @@ function bindHandlers() {
         window.location.href = `${POLLINATIONS_AUTHORIZE_URL}?${params.toString()}`
     })
 
+    $('#lz-settings').on('click', '#lz-pollinations-check', async function () {
+        const btn = $(this)
+        btn.prop('disabled', true).text('Checking...')
+        try {
+            const { connected, balance } = await checkPollinationsBalance()
+            if (!connected) {
+                $('#lz-pollinations-status').text('Not connected — click Connect Account')
+            } else {
+                $('#lz-pollinations-status').text(`Connected — balance: ${balance} pollen`)
+            }
+        } catch (err) {
+            $('#lz-pollinations-status').text(`Error: ${err.message}`)
+            console.error('[Localyze] Balance check failed:', err)
+        } finally {
+            btn.prop('disabled', false).text('Check Balance')
+        }
+    })
+
     $('#lz-settings').on('change', '#lz-image-model', function () {
         getSettings().imageModel = $(this).val() || DEFAULT_IMAGE_MODEL
         saveSettingsDebounced()
@@ -240,18 +259,11 @@ function bindHandlers() {
 
 // ─── Image settings population ────────────────────────────────────────────────
 
-async function populateImageSettings() {
-    // Connection status — check if user sk_ key is stored
-    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY)
-    $('#lz-pollinations-status').text(userKey ? 'Connected — using your account' : 'Not connected — using app key')
-    $('#lz-pollinations-connect').text(userKey ? 'Reconnect' : 'Connect Account')
-
-    // Model
+function populateImageSettings() {
     const s = getSettings()
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL)
-
-    // Dev mode
     $('#lz-dev-mode').prop('checked', s.devMode ?? false)
+    $('#lz-pollinations-status').text('Click Check Balance to verify connection')
 }
 
 // ─── Refresh ──────────────────────────────────────────────────────────────────
