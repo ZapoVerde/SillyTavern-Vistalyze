@@ -25,6 +25,7 @@
  *     external_io: [image.pollinations.ai (browser img src, no fetch())]
  */
 import { callPopup } from '../../../../../script.js'
+import { fetchPreviewBlob } from '../imageCache.js'
 
 function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -35,7 +36,7 @@ function buildPollinationsPreviewUrl(imagePrompt) {
 }
 
 export async function openAddModal(def) {
-    const confirmed = await callPopup(
+    const popupPromise = callPopup(
         `<h3>Add Location to Library</h3>
 
         <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Name</label>
@@ -49,6 +50,7 @@ export async function openAddModal(def) {
 
         <div style="margin-top:10px;">
             <button class="menu_button" id="lz-add-preview-btn">Generate Preview</button>
+            <span id="lz-preview-status" style="font-size:0.82em;opacity:0.65;margin-left:8px;"></span>
         </div>
         <div id="lz-preview-container" style="display:none;margin-top:8px;">
             <img id="lz-preview-img" src="" alt="Preview" style="width:100%;border-radius:4px;" />
@@ -56,25 +58,37 @@ export async function openAddModal(def) {
         'confirm',
     )
 
-    // Bind handlers immediately after popup renders
+    // Bind handlers immediately — callPopup renders synchronously before awaiting
     $('#lz-add-name').on('input', function () {
         $('#lz-add-key').val(
             this.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
         )
     })
 
-    $('#lz-add-preview-btn').on('click', function () {
+    $('#lz-add-preview-btn').on('click', async function () {
         const desc = $('#lz-add-description').val().trim()
         if (!desc) { toastr.warning('Enter a description first.', 'Localyze'); return }
         const btn = $(this)
-        btn.prop('disabled', true).text('Loading...')
-        const url = buildPollinationsPreviewUrl(desc)
-        $('#lz-preview-container').show()
-        $('#lz-preview-img').attr('src', url)
-            .off('load error')
-            .on('load', () => btn.prop('disabled', false).text('Generate Preview'))
-            .on('error', () => { btn.prop('disabled', false).text('Generate Preview'); toastr.warning('Preview failed.', 'Localyze') })
+        const status = $('#lz-preview-status')
+        btn.prop('disabled', true).text('Fetching...')
+        status.text('')
+        console.debug('[Localyze:Preview] requesting preview for:', desc)
+        try {
+            const objectUrl = await fetchPreviewBlob(desc)
+            $('#lz-preview-container').show()
+            $('#lz-preview-img').attr('src', objectUrl)
+            status.text('320×180 preview')
+            console.debug('[Localyze:Preview] preview loaded OK')
+        } catch (err) {
+            console.error('[Localyze:Preview] failed:', err)
+            status.text(`Failed: ${err.message}`)
+            toastr.warning(err.message, 'Localyze Preview')
+        } finally {
+            btn.prop('disabled', false).text('Generate Preview')
+        }
     })
+
+    const confirmed = await popupPromise
 
     if (!confirmed) return null
 

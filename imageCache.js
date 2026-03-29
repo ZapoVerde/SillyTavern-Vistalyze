@@ -79,6 +79,26 @@ export async function checkPollinationsBalance() {
     return { connected: true, balance: data.balance }
 }
 
+/**
+ * Fetches a tiny 64×36 test image and returns an object URL for preview.
+ * Used by the settings test button and addModal preview.
+ */
+export async function fetchPreviewBlob(prompt) {
+    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
+    if (!userKey) throw new Error('No Pollinations account connected.')
+    const s = extension_settings.localyze ?? {}
+    const params = new URLSearchParams({
+        width: '320', height: '180',
+        model: s.imageModel ?? DEFAULT_IMAGE_MODEL,
+        key: POLLINATIONS_APP_KEY,
+    })
+    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${params.toString()}`
+    console.debug('[Localyze:Preview] GET', url)
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${userKey}` } })
+    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status}`)
+    return URL.createObjectURL(await res.blob())
+}
+
 export async function fetchFileIndex(sessionId) {
     const res = await fetch('/api/backgrounds/all', {
         method: 'POST',

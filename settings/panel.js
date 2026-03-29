@@ -40,7 +40,7 @@ import {
     POLLINATIONS_APP_KEY,
     POLLINATIONS_AUTHORIZE_URL,
 } from '../defaults.js'
-import { checkPollinationsBalance } from '../imageCache.js'
+import { fetchPreviewBlob } from '../imageCache.js'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ function buildPanelHTML() {
 
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <button class="menu_button" id="lz-pollinations-connect">Connect Account</button>
-                        <button class="menu_button" id="lz-pollinations-check">Check Balance</button>
+                        <button class="menu_button" id="lz-pollinations-check">Test Connection</button>
                     </div>
                     <div id="lz-pollinations-status" style="font-size:0.82em;opacity:0.65;margin-bottom:8px;"></div>
 
@@ -230,19 +230,26 @@ function bindHandlers() {
 
     $('#lz-settings').on('click', '#lz-pollinations-check', async function () {
         const btn = $(this)
-        btn.prop('disabled', true).text('Checking...')
+        const status = $('#lz-pollinations-status')
+        btn.prop('disabled', true).text('Generating...')
+        status.text('Fetching test image...')
+        console.debug('[Localyze] Test connection: generating 320×180 test image')
         try {
-            const { connected, balance } = await checkPollinationsBalance()
-            if (!connected) {
-                $('#lz-pollinations-status').text('Not connected — click Connect Account')
-            } else {
-                $('#lz-pollinations-status').text(`Connected — balance: ${balance} pollen`)
-            }
+            const objectUrl = await fetchPreviewBlob('a glowing lantern on a wooden tavern table, cinematic lighting')
+            status.text('Connected!')
+            console.debug('[Localyze] Test connection: success')
+            await callPopup(
+                `<h3>Localyze — Connection OK</h3>
+                <p style="opacity:0.65;font-size:0.88em;">Pollinations responded successfully. Your account is connected.</p>
+                <img src="${objectUrl}" style="width:100%;border-radius:6px;margin-top:8px;" />`,
+                'text',
+            )
         } catch (err) {
-            $('#lz-pollinations-status').text(`Error: ${err.message}`)
-            console.error('[Localyze] Balance check failed:', err)
+            status.text(`Failed: ${err.message}`)
+            console.error('[Localyze] Test connection failed:', err)
+            toastr.error(err.message, 'Localyze')
         } finally {
-            btn.prop('disabled', false).text('Check Balance')
+            btn.prop('disabled', false).text('Test Connection')
         }
     })
 
