@@ -64,11 +64,15 @@ export const DEV_IMAGE_HEIGHT = 36
 export const DEFAULT_BOOLEAN_HISTORY = 3
 
 export const DEFAULT_BOOLEAN_PROMPT =
-`Current location: {{current_location}}.
-Has the location changed in this message? Reply YES or NO only.
+`Current scene: {{current_location}}
 
-{{history}}Message:
-{{message}}`
+Previous turns:
+{{history}}
+
+Latest message:
+{{message}}
+
+Has the scene moved to a new named location since the previous turns? YES or NO.`
 
 /** Default number of turn-pairs passed as history to the classifier call. */
 export const DEFAULT_CLASSIFIER_HISTORY = 3

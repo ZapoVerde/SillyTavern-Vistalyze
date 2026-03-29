@@ -51,19 +51,21 @@ function getSettings() {
 async function openPromptPopup(settingsKey, title, defaultValue) {
     const s = getSettings()
     const current = s[settingsKey] ?? defaultValue
-    const result = await callPopup(
+    const popupPromise = callPopup(
         `<div style="display:flex;flex-direction:column;gap:8px;">
             <strong>${title}</strong>
             <small style="opacity:0.65;">Use {{placeholders}} as shown in the default prompt.</small>
             <textarea id="lz-prompt-editor" class="text_pole" rows="16" style="width:100%;font-family:monospace;font-size:0.88em;">${escapeHtml(current)}</textarea>
             <button id="lz-prompt-reset" class="menu_button" style="align-self:flex-start;">Reset to Default</button>
         </div>`,
-        'input',
-        current,
+        'text',
     )
-    // callPopup 'input' type returns the textarea value on confirm, null on cancel
-    if (result === null || result === false) return
-    s[settingsKey] = result.trim() || defaultValue
+    // Bind reset after callPopup renders the DOM synchronously
+    $('#lz-prompt-reset').on('click', () => $('#lz-prompt-editor').val(defaultValue))
+    const confirmed = await popupPromise
+    if (!confirmed) return
+    const value = $('#lz-prompt-editor').val()
+    s[settingsKey] = (value ?? '').trim() || defaultValue
     saveSettingsDebounced()
     refreshPanel()
 }
