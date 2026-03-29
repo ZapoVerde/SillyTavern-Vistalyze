@@ -1,0 +1,15 @@
+# OS junk
+.DS_Store
+Thumbs.db
+slicer
+slicer-config.yaml
+
+# SillyTavern User Data (CRITICAL: Do not push your chat history)
+vault/
+ledger_*.json
+chz_ledger_*.json
+
+# Node/Build junk (if applicable)
+node_modules/
+dist/
+docs/

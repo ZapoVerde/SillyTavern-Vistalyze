@@ -1,0 +1,122 @@
+/* ── Localyze — background fade ─────────────────────────────────────── */
+#bg1 {
+    transition: opacity 0.3s ease;
+}
+
+#bg1.localyze-fade-out {
+    opacity: 0;
+}
+
+#bg1.localyze-fade-in {
+    opacity: 1;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────────────── */
+.localyze-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Modal container ─────────────────────────────────────────────────── */
+.localyze-modal {
+    background: var(--SmartThemeBlurTintColor, rgba(30,30,30,0.97));
+    border: 1px solid var(--SmartThemeBorderColor, #555);
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 9999;
+    min-width: 420px;
+    max-width: 620px;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: var(--SmartThemeBodyColor, #eee);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+.localyze-modal h3 {
+    margin: 0 0 14px;
+    font-size: 1.05em;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    padding-bottom: 10px;
+}
+
+.localyze-modal p {
+    margin: 0 0 10px;
+}
+
+.localyze-modal .localyze-dim {
+    font-size: 0.88em;
+    opacity: 0.65;
+}
+
+.localyze-modal label {
+    display: block;
+    margin: 10px 0 3px;
+    font-size: 0.88em;
+    opacity: 0.75;
+}
+
+.localyze-modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+/* ── Orphan badge ────────────────────────────────────────────────────── */
+#lz-orphan-badge {
+    display: inline-block;
+    background: #e74c3c;
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.72em;
+    margin-left: 5px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+/* ── Picker modal specifics ──────────────────────────────────────────── */
+#lz-picker-select {
+    width: 100%;
+    margin-top: 6px;
+    min-height: 180px;
+}
+
+/* ── Orphan table ────────────────────────────────────────────────────── */
+.localyze-modal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+    margin-top: 8px;
+}
+
+.localyze-modal th,
+.localyze-modal td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    text-align: left;
+}
+
+.localyze-modal th {
+    opacity: 0.7;
+    font-weight: normal;
+}
+
+/* ── Preview image ───────────────────────────────────────────────────── */
+#lz-preview-container {
+    margin-top: 10px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#lz-preview-img {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+}
