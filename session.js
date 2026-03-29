@@ -64,6 +64,8 @@ function ensureSettings() {
     }
     // Backfill any missing keys added in later versions
     const s = extension_settings.localyze
+    if (!Array.isArray(s.knownSessions)) s.knownSessions = []
+    if (!s.auditCache) s.auditCache = { suspects: [], lastAudit: null, orphans: [] }
     if (s.booleanPrompt        === undefined) s.booleanPrompt        = DEFAULT_BOOLEAN_PROMPT
     if (s.booleanProfileId     === undefined) s.booleanProfileId     = null
     if (s.booleanHistory       === undefined) s.booleanHistory       = DEFAULT_BOOLEAN_HISTORY
