@@ -27,7 +27,7 @@
  *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { secret_state } from '../../../../secrets.js'
+import { writeSecret } from '../../../../secrets.js'
 import { extension_settings } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
@@ -37,8 +37,7 @@ import {
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_IMAGE_MODEL,
     POLLINATIONS_MODELS,
-    POLLINATIONS_APP_KEY,
-    POLLINATIONS_AUTHORIZE_URL,
+    POLLINATIONS_USER_SECRET_KEY,
 } from '../defaults.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 
@@ -127,7 +126,11 @@ function buildPanelHTML() {
                     </p>
 
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <button class="menu_button" id="lz-pollinations-connect">Connect Account</button>
+                        <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">API Key:</label>
+                        <input type="password" id="lz-pollinations-key" class="text_pole" placeholder="sk_..." style="flex:1;" />
+                        <button class="menu_button" id="lz-pollinations-save" style="white-space:nowrap;">Save Key</button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <button class="menu_button" id="lz-pollinations-check">Test Connection</button>
                     </div>
                     <div id="lz-pollinations-status" style="font-size:0.82em;opacity:0.65;margin-bottom:8px;"></div>
@@ -220,12 +223,19 @@ function bindHandlers() {
         saveSettingsDebounced()
     })
 
-    $('#lz-settings').on('click', '#lz-pollinations-connect', function () {
-        const params = new URLSearchParams({
-            redirect_url: window.location.href,
-            app_key: POLLINATIONS_APP_KEY,
-        })
-        window.location.href = `${POLLINATIONS_AUTHORIZE_URL}?${params.toString()}`
+    $('#lz-settings').on('click', '#lz-pollinations-save', async function () {
+        const key = $('#lz-pollinations-key').val().trim()
+        if (!key) { toastr.warning('Paste your Pollinations sk_ key first.', 'Localyze'); return }
+        if (!key.startsWith('sk_')) { toastr.warning('Key should start with sk_', 'Localyze'); return }
+        try {
+            await writeSecret(POLLINATIONS_USER_SECRET_KEY, key)
+            $('#lz-pollinations-key').val('')
+            $('#lz-pollinations-status').text('Key saved.')
+            toastr.success('Pollinations key saved.', 'Localyze')
+        } catch (err) {
+            console.error('[Localyze] Failed to save Pollinations key:', err)
+            toastr.error('Failed to save key.', 'Localyze')
+        }
     })
 
     $('#lz-settings').on('click', '#lz-pollinations-check', async function () {
@@ -270,7 +280,7 @@ function populateImageSettings() {
     const s = getSettings()
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL)
     $('#lz-dev-mode').prop('checked', s.devMode ?? false)
-    $('#lz-pollinations-status').text('Click Check Balance to verify connection')
+    $('#lz-pollinations-status').text('')
 }
 
 // ─── Refresh ──────────────────────────────────────────────────────────────────

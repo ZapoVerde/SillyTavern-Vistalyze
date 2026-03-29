@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.13
+ * @version 1.0.14
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
@@ -45,7 +45,6 @@
  *       #bg1 DOM (via background.js)]
  */
 import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup } from '../../../../script.js'
-import { writeSecret } from '../../../secrets.js'
 import { extension_settings, getContext } from '../../../extensions.js'
 import { state, resetState, updateState } from './state.js'
 import { initSession } from './session.js'
@@ -299,24 +298,6 @@ function handleChatChanged() {
     resetState()
     boot().catch(err => console.error('[Localyze] Boot error:', err))
 }
-
-// ─── BYOP redirect handler ────────────────────────────────────────────────────
-// Pollinations returns the user's sk_ key in the URL fragment after OAuth.
-// Extract it, store it in ST secrets, then clear the fragment.
-;(async function handleByopRedirect() {
-    const fragment = new URLSearchParams(window.location.hash.slice(1))
-    const apiKey = fragment.get('api_key')
-    if (!apiKey?.startsWith('sk_')) return
-    try {
-        await writeSecret('localyze_pollinations_user_key', apiKey)
-        window.location.hash = ''
-        toastr.success('Pollinations account connected.', 'Localyze')
-        console.info('[Localyze] BYOP key stored successfully.')
-    } catch (err) {
-        console.error('[Localyze] Failed to store BYOP key:', err)
-        toastr.error('Failed to save Pollinations key.', 'Localyze')
-    }
-})()
 
 // Module-level init
 console.debug('[Localyze] module loading — injecting toolbar and settings panel')
