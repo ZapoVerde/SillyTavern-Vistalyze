@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/imageCache.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @version 1.0.1
  * @architectural-role Image IO
  * @description
  * Owns all image-related IO: building the file index from the backgrounds
@@ -14,12 +14,13 @@
  * generate() is always called fire-and-forget from index.js. Errors are
  * caught at the call site and logged; they do not surface to the user.
  *
- * Pollinations API is a plain GET request returning raw image binary.
+ * Pollinations auth: sk_ user key is passed as ?key= query param (CORS-safe
+ * GET, no Authorization header). Endpoint: image.pollinations.ai/prompt/{prompt}
  * Filename convention: localyze_{{sessionId}}_{{key}}.png
  *
  * @api-declaration
  * fetchFileIndex(sessionId) → Promise<{ fileIndex: Set, allImages: string[] }>
- * generate(key, imagePrompt, sessionId) → Promise<filename: string>
+ * generate(key, locationDef, sessionId) → Promise<filename: string>
  *
  * @contract
  *   assertions:
@@ -32,7 +33,6 @@ import { getRequestHeaders } from '../../../../script.js'
 import { extension_settings } from '../../../extensions.js'
 import { findSecret } from '../../../secrets.js'
 import {
-    POLLINATIONS_APP_KEY,
     POLLINATIONS_USER_SECRET_KEY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
@@ -47,55 +47,35 @@ function interpolateImagePrompt(template, locationDef) {
         .replace(/\{\{description\}\}/g,  locationDef.description ?? '')
 }
 
-async function buildPollinationsRequest(finalPrompt) {
+function buildPollinationsUrl(finalPrompt, userKey, overrides = {}) {
     const s = extension_settings.localyze ?? {}
     const devMode = s.devMode ?? false
-
-    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
-    if (!userKey) {
-        throw new Error('No Pollinations account connected. Use the Connect Account button in Localyze settings.')
-    }
-
     const params = new URLSearchParams({
-        width:  devMode ? String(DEV_IMAGE_WIDTH)  : '1920',
-        height: devMode ? String(DEV_IMAGE_HEIGHT) : '1080',
+        width:  overrides.width  ?? (devMode ? String(DEV_IMAGE_WIDTH)  : '1920'),
+        height: overrides.height ?? (devMode ? String(DEV_IMAGE_HEIGHT) : '1080'),
         model:  s.imageModel ?? DEFAULT_IMAGE_MODEL,
-        key:    POLLINATIONS_APP_KEY,
+        key:    userKey,
+        nologo: 'true',
     })
-    return {
-        url: `https://gen.pollinations.ai/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`,
-        headers: { 'Authorization': `Bearer ${userKey}` },
-    }
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?${params.toString()}`
 }
 
-export async function checkPollinationsBalance() {
+async function getUserKey() {
     const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
-    if (!userKey) return { connected: false }
-    const res = await fetch('https://gen.pollinations.ai/account/balance', {
-        headers: { 'Authorization': `Bearer ${userKey}` },
-    })
-    if (!res.ok) throw new Error(`Balance check failed: ${res.status}`)
-    const data = await res.json()
-    return { connected: true, balance: data.balance }
+    if (!userKey) throw new Error('No Pollinations key saved. Paste your sk_ key in Localyze settings.')
+    return userKey
 }
 
 /**
- * Fetches a tiny 64×36 test image and returns an object URL for preview.
+ * Fetches a 320×180 test image and returns an object URL for preview.
  * Used by the settings test button and addModal preview.
  */
 export async function fetchPreviewBlob(prompt) {
-    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
-    if (!userKey) throw new Error('No Pollinations account connected.')
-    const s = extension_settings.localyze ?? {}
-    const params = new URLSearchParams({
-        width: '320', height: '180',
-        model: s.imageModel ?? DEFAULT_IMAGE_MODEL,
-        key: POLLINATIONS_APP_KEY,
-    })
-    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${params.toString()}`
+    const userKey = await getUserKey()
+    const url = buildPollinationsUrl(prompt, userKey, { width: '320', height: '180' })
     console.debug('[Localyze:Preview] GET', url)
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${userKey}` } })
-    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status} ${res.statusText} — URL: ${url}`)
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status} ${res.statusText} — ${url}`)
     return URL.createObjectURL(await res.blob())
 }
 
@@ -115,11 +95,12 @@ export async function generate(key, locationDef, sessionId) {
     const filename = `localyze_${sessionId}_${key}.png`
     const template = extension_settings.localyze?.imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
-    const { url, headers } = await buildPollinationsRequest(finalPrompt)
-    console.debug(`[Localyze:Image] GET ${url}`, headers['Authorization'] ? '(authenticated)' : '(app key only)')
+    const userKey = await getUserKey()
+    const url = buildPollinationsUrl(finalPrompt, userKey)
+    console.debug(`[Localyze:Image] GET ${url}`)
 
-    const imgRes = await fetch(url, { headers })
-    if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status} ${imgRes.statusText} — URL: ${url}`)
+    const imgRes = await fetch(url)
+    if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status} ${imgRes.statusText} — ${url}`)
     const blob = await imgRes.blob()
 
     const formData = new FormData()
