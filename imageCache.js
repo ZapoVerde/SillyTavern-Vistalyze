@@ -95,7 +95,7 @@ export async function fetchPreviewBlob(prompt) {
     const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${params.toString()}`
     console.debug('[Localyze:Preview] GET', url)
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${userKey}` } })
-    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status}`)
+    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status} ${res.statusText} — URL: ${url}`)
     return URL.createObjectURL(await res.blob())
 }
 
@@ -118,7 +118,9 @@ export async function generate(key, locationDef, sessionId) {
     const { url, headers } = await buildPollinationsRequest(finalPrompt)
     console.debug(`[Localyze:Image] GET ${url}`, headers['Authorization'] ? '(authenticated)' : '(app key only)')
 
-    const blob = await fetch(url, { headers }).then(r => r.blob())
+    const imgRes = await fetch(url, { headers })
+    if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status} ${imgRes.statusText} — URL: ${url}`)
+    const blob = await imgRes.blob()
 
     const formData = new FormData()
     formData.append('avatar', blob, filename)
@@ -129,7 +131,7 @@ export async function generate(key, locationDef, sessionId) {
         body: formData,
     })
 
-    if (!res.ok) throw new Error(`Background upload failed: ${res.status}`)
+    if (!res.ok) throw new Error(`Background upload failed: ${res.status} ${res.statusText}`)
 
     return filename
 }
