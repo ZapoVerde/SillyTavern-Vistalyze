@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.9
+ * @version 1.0.10
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
@@ -44,7 +44,7 @@
  *       extension_settings.localyze (read/write),
  *       #bg1 DOM (via background.js)]
  */
-import { eventSource, event_types, saveChatConditional, saveSettingsDebounced } from '../../../../script.js'
+import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup, writeSecret } from '../../../../script.js'
 import { extension_settings, getContext } from '../../../extensions.js'
 import { state, resetState, updateState } from './state.js'
 import { initSession } from './session.js'
@@ -219,21 +219,11 @@ async function handleUnknownLocation(messageId, context) {
     }
 
     // Show confirmation modal
-    const confirmed = await new Promise(resolve => {
-        const overlay = $(`<div class="localyze-confirm-overlay">
-            <div class="localyze-modal">
-                <p><strong>New location detected:</strong> ${escapeHtml(def.name)}</p>
-                <p class="localyze-dim">${escapeHtml(def.description)}</p>
-                <div class="localyze-modal-actions">
-                    <button class="menu_button lz-confirm-no">Dismiss</button>
-                    <button class="menu_button lz-confirm-yes">Add to Library</button>
-                </div>
-            </div>
-        </div>`)
-        overlay.find('.lz-confirm-yes').on('click', () => { overlay.remove(); resolve(true) })
-        overlay.find('.lz-confirm-no').on('click', () => { overlay.remove(); resolve(false) })
-        $('body').append(overlay)
-    })
+    const confirmed = await callPopup(
+        `<h3>New location detected: ${escapeHtml(def.name)}</h3>
+        <p>${escapeHtml(def.description)}</p>`,
+        'confirm',
+    )
 
     if (!confirmed) {
         clearBg()
@@ -294,6 +284,24 @@ function handleChatChanged() {
     resetState()
     boot().catch(err => console.error('[Localyze] Boot error:', err))
 }
+
+// ─── BYOP redirect handler ────────────────────────────────────────────────────
+// Pollinations returns the user's sk_ key in the URL fragment after OAuth.
+// Extract it, store it in ST secrets, then clear the fragment.
+;(async function handleByopRedirect() {
+    const fragment = new URLSearchParams(window.location.hash.slice(1))
+    const apiKey = fragment.get('api_key')
+    if (!apiKey?.startsWith('sk_')) return
+    try {
+        await writeSecret('localyze_pollinations_user_key', apiKey)
+        window.location.hash = ''
+        toastr.success('Pollinations account connected.', 'Localyze')
+        console.info('[Localyze] BYOP key stored successfully.')
+    } catch (err) {
+        console.error('[Localyze] Failed to store BYOP key:', err)
+        toastr.error('Failed to save Pollinations key.', 'Localyze')
+    }
+})()
 
 // Module-level init
 injectToolbar()

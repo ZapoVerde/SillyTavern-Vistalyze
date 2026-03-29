@@ -27,7 +27,7 @@
  *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { secret_state } from '../../../../secrets.js'
+import { secret_state, findSecret } from '../../../../secrets.js'
 import { extension_settings } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
@@ -37,6 +37,9 @@ import {
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_IMAGE_MODEL,
     POLLINATIONS_MODELS,
+    POLLINATIONS_APP_KEY,
+    POLLINATIONS_AUTHORIZE_URL,
+    POLLINATIONS_USER_SECRET_KEY,
 } from '../defaults.js'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
@@ -123,11 +126,9 @@ function buildPanelHTML() {
                         image prompt template.
                     </p>
 
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Token secret:</label>
-                        <select id="lz-pollinations-secret" class="text_pole" style="flex:1;">
-                            <option value="">— None —</option>
-                        </select>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <button class="menu_button" id="lz-pollinations-connect">Connect Account</button>
+                        <span id="lz-pollinations-status" style="font-size:0.82em;opacity:0.65;"></span>
                     </div>
 
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -218,9 +219,12 @@ function bindHandlers() {
         saveSettingsDebounced()
     })
 
-    $('#lz-settings').on('change', '#lz-pollinations-secret', function () {
-        getSettings().pollinationsSecretKey = $(this).val() || null
-        saveSettingsDebounced()
+    $('#lz-settings').on('click', '#lz-pollinations-connect', function () {
+        const params = new URLSearchParams({
+            redirect_url: window.location.href,
+            app_key: POLLINATIONS_APP_KEY,
+        })
+        window.location.href = `${POLLINATIONS_AUTHORIZE_URL}?${params.toString()}`
     })
 
     $('#lz-settings').on('change', '#lz-image-model', function () {
@@ -236,21 +240,14 @@ function bindHandlers() {
 
 // ─── Image settings population ────────────────────────────────────────────────
 
-function populateImageSettings() {
-    const s = getSettings()
-
-    // Secret key dropdown — populate from secret_state keys that are truthy
-    const $secretSelect = $('#lz-pollinations-secret')
-    $secretSelect.find('option:not([value=""])').remove()
-    const setKeys = Object.keys(secret_state).filter(k => secret_state[k])
-    for (const key of setKeys) {
-        $secretSelect.append(`<option value="${key}"${s.pollinationsSecretKey === key ? ' selected' : ''}>${key}</option>`)
-    }
-    if (!setKeys.length) {
-        $secretSelect.append('<option value="" disabled>No secrets stored in ST</option>')
-    }
+async function populateImageSettings() {
+    // Connection status — check if user sk_ key is stored
+    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY)
+    $('#lz-pollinations-status').text(userKey ? 'Connected — using your account' : 'Not connected — using app key')
+    $('#lz-pollinations-connect').text(userKey ? 'Reconnect' : 'Connect Account')
 
     // Model
+    const s = getSettings()
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL)
 
     // Dev mode

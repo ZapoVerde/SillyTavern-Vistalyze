@@ -23,7 +23,7 @@
  *     external_io: [message.extra.localyze (write), saveChatConditional(),
  *       generate() (via imageCache), set/clear (via background)]
  */
-import { saveChatConditional } from '../../../../../script.js'
+import { saveChatConditional, callPopup } from '../../../../../script.js'
 import { getContext } from '../../../../extensions.js'
 import { state, updateState } from '../state.js'
 import { set as setBg, clear as clearBg } from '../background.js'
@@ -79,7 +79,7 @@ async function applyLocation(key) {
     }
 }
 
-export function openPickerModal() {
+export async function openPickerModal() {
     if (Object.keys(state.locations).length === 0) {
         toastr.info('No locations in library for this chat.', 'Localyze')
         return
@@ -90,48 +90,37 @@ export function openPickerModal() {
         .map(([key, loc]) => `<option value="${escapeHtml(key)}">${escapeHtml(loc.name)}</option>`)
         .join('')
 
-    const modal = $(`<div class="localyze-confirm-overlay" id="lz-picker-overlay">
-        <div class="localyze-modal">
-            <h3>Select Location</h3>
-            <input type="text" id="lz-picker-search" class="text_pole" placeholder="Search locations..." style="width:100%; margin-bottom:6px;" />
-            <select id="lz-picker-select" size="8">
-                ${optionsHtml}
-            </select>
-            <div class="localyze-modal-actions">
-                <button class="menu_button" id="lz-picker-cancel">Cancel</button>
-                <button class="menu_button" id="lz-picker-apply">Set Background</button>
-            </div>
-        </div>
-    </div>`)
+    const confirmed = await callPopup(
+        `<h3>Select Location</h3>
+        <input type="text" id="lz-picker-search" class="text_pole" placeholder="Search locations..." style="width:100%; margin-bottom:6px;" />
+        <select id="lz-picker-select" class="text_pole" size="8" style="width:100%;">
+            ${optionsHtml}
+        </select>`,
+        'confirm',
+    )
 
-    // Search filter
-    modal.find('#lz-picker-search').on('input', function () {
+    // Bind search filter immediately after popup renders
+    $('#lz-picker-search').on('input', function () {
         const query = this.value.toLowerCase()
-        modal.find('#lz-picker-select option').each(function () {
-            const text = $(this).text().toLowerCase()
-            const val = $(this).val().toLowerCase()
-            $(this).toggle(text.includes(query) || val.includes(query))
+        $('#lz-picker-select option').each(function () {
+            $(this).toggle(
+                $(this).text().toLowerCase().includes(query) ||
+                $(this).val().toLowerCase().includes(query)
+            )
         })
     })
 
-    modal.find('#lz-picker-cancel').on('click', () => {
-        modal.remove()
-    })
-
-    modal.find('#lz-picker-apply').on('click', async () => {
-        const selected = modal.find('#lz-picker-select').val()
-        if (!selected) {
-            toastr.warning('Please select a location.', 'Localyze')
-            return
-        }
-        modal.remove()
-        await applyLocation(selected)
-    })
-
-    $('body').append(modal)
-
-    // Auto-select current location if present
+    // Auto-select current location
     if (state.currentLocation) {
-        modal.find(`#lz-picker-select option[value="${escapeHtml(state.currentLocation)}"]`).prop('selected', true)
+        $(`#lz-picker-select option[value="${escapeHtml(state.currentLocation)}"]`).prop('selected', true)
     }
+
+    if (!confirmed) return
+
+    const selected = $('#lz-picker-select').val()
+    if (!selected) {
+        toastr.warning('Please select a location.', 'Localyze')
+        return
+    }
+    await applyLocation(selected)
 }

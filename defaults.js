@@ -26,17 +26,37 @@
  */
 
 /**
- * Referrer string sent with every Pollinations request.
- * Identifies Localyze to Pollinations for attribution and rate-limit tier.
- * Not a secret — hardcoded, not user-configurable.
+ * Publishable app key — identifies Localyze to Pollinations for attribution.
+ * Always sent as ?key= for app-level tracking.
  */
-export const POLLINATIONS_REFERRER = 'pk_WfuLORZ5RZDfPRZU'
+export const POLLINATIONS_APP_KEY = 'pk_WfuLORZ5RZDfPRZU'
+
+/**
+ * OAuth authorize endpoint for the BYOP (Bring Your Own Pollen) flow.
+ * User is redirected here to connect their Pollinations account.
+ * On return, the sk_ key arrives in the URL fragment as #api_key=sk_...
+ */
+export const POLLINATIONS_AUTHORIZE_URL = 'https://enter.pollinations.ai/authorize'
+
+/**
+ * ST secrets key name where the user's sk_ key is stored after BYOP auth.
+ * Never written to extension_settings.
+ */
+export const POLLINATIONS_USER_SECRET_KEY = 'localyze_pollinations_user_key'
 
 /**
  * Available Pollinations image models.
  * The user selects one in settings; stored in extension_settings.localyze.imageModel.
  */
-export const POLLINATIONS_MODELS = ['flux', 'turbo', 'flux-realism', 'flux-anime', 'flux-3d', 'flux-cablyai']
+export const POLLINATIONS_MODELS = [
+    'flux',         // Flux Schnell — 0.001/img, fastest
+    'zimage',       // Z-Image Turbo — 0.002/img
+    'klein',        // FLUX.2 Klein 4B — 0.01/img
+    'gptimage',     // GPT Image 1 Mini — paid
+    'grok-imagine', // Grok Imagine — 0.02/img
+    'seedream',     // Seedream 4.0 — paid, 0.03/img
+    'qwen-image',   // Qwen Image Plus — 0.03/img
+]
 
 /** Default Pollinations model. */
 export const DEFAULT_IMAGE_MODEL = 'flux'

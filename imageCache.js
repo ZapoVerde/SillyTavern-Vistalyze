@@ -32,7 +32,8 @@ import { getRequestHeaders } from '../../../../script.js'
 import { extension_settings } from '../../../extensions.js'
 import { findSecret } from '../../../secrets.js'
 import {
-    POLLINATIONS_REFERRER,
+    POLLINATIONS_APP_KEY,
+    POLLINATIONS_USER_SECRET_KEY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEV_IMAGE_WIDTH,
@@ -46,22 +47,22 @@ function interpolateImagePrompt(template, locationDef) {
         .replace(/\{\{description\}\}/g,  locationDef.description ?? '')
 }
 
-async function buildPollinationsUrl(finalPrompt) {
+async function buildPollinationsRequest(finalPrompt) {
     const s = extension_settings.localyze ?? {}
     const devMode = s.devMode ?? false
     const params = new URLSearchParams({
-        width:    devMode ? String(DEV_IMAGE_WIDTH)  : '1920',
-        height:   devMode ? String(DEV_IMAGE_HEIGHT) : '1080',
-        model:    s.imageModel ?? DEFAULT_IMAGE_MODEL,
-        nologo:   'true',
-        referrer: POLLINATIONS_REFERRER,
+        width:  devMode ? String(DEV_IMAGE_WIDTH)  : '1920',
+        height: devMode ? String(DEV_IMAGE_HEIGHT) : '1080',
+        model:  s.imageModel ?? DEFAULT_IMAGE_MODEL,
+        key:    POLLINATIONS_APP_KEY,
     })
-    const secretKey = s.pollinationsSecretKey
-    if (secretKey) {
-        const userToken = await findSecret(secretKey)
-        if (userToken) params.set('token', userToken)
-    }
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?${params.toString()}`
+    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`
+
+    const headers = {}
+    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY)
+    if (userKey) headers['Authorization'] = `Bearer ${userKey}`
+
+    return { url, headers }
 }
 
 export async function fetchFileIndex(sessionId) {
@@ -80,9 +81,10 @@ export async function generate(key, locationDef, sessionId) {
     const filename = `localyze_${sessionId}_${key}.png`
     const template = extension_settings.localyze?.imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
-    const url = await buildPollinationsUrl(finalPrompt)
+    const { url, headers } = await buildPollinationsRequest(finalPrompt)
+    console.debug(`[Localyze:Image] GET ${url}`, headers['Authorization'] ? '(authenticated)' : '(app key only)')
 
-    const blob = await fetch(url).then(r => r.blob())
+    const blob = await fetch(url, { headers }).then(r => r.blob())
 
     const formData = new FormData()
     formData.append('avatar', blob, filename)

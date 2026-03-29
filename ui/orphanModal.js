@@ -22,7 +22,7 @@
  *     external_io: [POST /api/backgrounds/delete, saveSettingsDebounced(),
  *       clearOrphanBadge()]
  */
-import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js'
+import { getRequestHeaders, saveSettingsDebounced, callPopup } from '../../../../../script.js'
 import { extension_settings } from '../../../../extensions.js'
 import { clearOrphanBadge } from './toolbar.js'
 
@@ -30,7 +30,7 @@ function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function openOrphanModal(orphans) {
+export async function openOrphanModal(orphans) {
     if (!orphans || orphans.length === 0) {
         toastr.success('No orphaned images found.', 'Localyze')
         return
@@ -39,93 +39,64 @@ export function openOrphanModal(orphans) {
     const rowsHtml = orphans.map(filename => `
         <tr>
             <td style="width:32px; text-align:center;">
-                <input type="checkbox" class="lz-orphan-check" value="${escapeHtml(filename)}" />
+                <input type="checkbox" class="lz-orphan-check" value="${escapeHtml(filename)}" checked />
             </td>
-            <td>${escapeHtml(filename)}</td>
+            <td style="font-size:0.85em;">${escapeHtml(filename)}</td>
         </tr>
     `).join('')
 
-    const modal = $(`<div class="localyze-confirm-overlay" id="lz-orphan-overlay">
-        <div class="localyze-modal" style="min-width:520px; max-width:720px;">
-            <h3>Orphaned Localyze Images (${orphans.length})</h3>
-            <p class="localyze-dim">These files belong to sessions not found in any known chat.</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:32px; text-align:center;">
-                            <input type="checkbox" id="lz-orphan-select-all" title="Select All" />
-                        </th>
-                        <th>Filename</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
-            <div class="localyze-modal-actions">
-                <button class="menu_button" id="lz-orphan-close">Close</button>
-                <button class="menu_button" id="lz-orphan-delete">Delete Selected</button>
-            </div>
-        </div>
-    </div>`)
+    const confirmed = await callPopup(
+        `<h3>Orphaned Localyze Images (${orphans.length})</h3>
+        <p style="opacity:0.65;font-size:0.88em;">These files belong to sessions not found in any known chat.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88em;">
+            <thead>
+                <tr>
+                    <th style="width:32px;text-align:center;">
+                        <input type="checkbox" id="lz-orphan-select-all" title="Select All" checked />
+                    </th>
+                    <th style="text-align:left;">Filename</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>`,
+        'confirm',
+    )
 
-    // Select all toggle
-    modal.find('#lz-orphan-select-all').on('change', function () {
-        modal.find('.lz-orphan-check').prop('checked', this.checked)
+    $('#lz-orphan-select-all').on('change', function () {
+        $('.lz-orphan-check').prop('checked', this.checked)
     })
 
-    // Close
-    modal.find('#lz-orphan-close').on('click', () => {
-        modal.remove()
-    })
+    if (!confirmed) return
 
-    // Delete selected
-    modal.find('#lz-orphan-delete').on('click', async () => {
-        const selected = modal.find('.lz-orphan-check:checked').map(function () {
-            return this.value
-        }).get()
+    const selected = $('.lz-orphan-check:checked').map(function () { return this.value }).get()
+    if (selected.length === 0) {
+        toastr.warning('No files selected.', 'Localyze')
+        return
+    }
 
-        if (selected.length === 0) {
-            toastr.warning('No files selected.', 'Localyze')
-            return
+    let failed = 0
+    for (const file of selected) {
+        try {
+            const res = await fetch('/api/backgrounds/delete', {
+                method: 'POST',
+                headers: getRequestHeaders(),
+                body: JSON.stringify({ bg: file }),
+            })
+            if (!res.ok) failed++
+        } catch {
+            failed++
         }
+    }
 
-        const deleteBtn = modal.find('#lz-orphan-delete')
-        deleteBtn.prop('disabled', true).text('Deleting...')
+    if (extension_settings.localyze) {
+        extension_settings.localyze.auditCache = { suspects: [], lastAudit: null, orphans: [] }
+        saveSettingsDebounced()
+    }
+    clearOrphanBadge()
 
-        let failed = 0
-        for (const file of selected) {
-            try {
-                const res = await fetch('/api/backgrounds/delete', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify({ bg: file }),
-                })
-                if (!res.ok) failed++
-            } catch {
-                failed++
-            }
-        }
-
-        // Clear auditCache
-        if (extension_settings.localyze) {
-            extension_settings.localyze.auditCache = {
-                suspects: [],
-                lastAudit: null,
-                orphans: [],
-            }
-            saveSettingsDebounced()
-        }
-
-        clearOrphanBadge()
-        modal.remove()
-
-        if (failed > 0) {
-            toastr.warning(`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
-        } else {
-            toastr.success(`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
-        }
-    })
-
-    $('body').append(modal)
+    if (failed > 0) {
+        toastr.warning(`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
+    } else {
+        toastr.success(`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
+    }
 }

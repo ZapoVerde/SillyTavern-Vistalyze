@@ -55,10 +55,9 @@ function ensureSettings() {
             classifierHistory:    DEFAULT_CLASSIFIER_HISTORY,
             describerPrompt:      DEFAULT_DESCRIBER_PROMPT,
             describerProfileId:   null,
-            imageModel:           DEFAULT_IMAGE_MODEL,
-            imagePromptTemplate:  DEFAULT_IMAGE_PROMPT_TEMPLATE,
-            pollinationsSecretKey: null,
-            devMode:              DEFAULT_DEV_MODE,
+            imageModel:          DEFAULT_IMAGE_MODEL,
+            imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
+            devMode:             DEFAULT_DEV_MODE,
         }
         return
     }
@@ -74,10 +73,11 @@ function ensureSettings() {
     if (s.classifierHistory    === undefined) s.classifierHistory    = DEFAULT_CLASSIFIER_HISTORY
     if (s.describerPrompt      === undefined) s.describerPrompt      = DEFAULT_DESCRIBER_PROMPT
     if (s.describerProfileId   === undefined) s.describerProfileId   = null
-    if (s.imageModel           === undefined) s.imageModel           = DEFAULT_IMAGE_MODEL
-    if (s.imagePromptTemplate  === undefined) s.imagePromptTemplate  = DEFAULT_IMAGE_PROMPT_TEMPLATE
-    if (s.pollinationsSecretKey === undefined) s.pollinationsSecretKey = null
-    if (s.devMode              === undefined) s.devMode              = DEFAULT_DEV_MODE
+    if (s.imageModel          === undefined) s.imageModel          = DEFAULT_IMAGE_MODEL
+    if (s.imagePromptTemplate === undefined) s.imagePromptTemplate = DEFAULT_IMAGE_PROMPT_TEMPLATE
+    if (s.devMode             === undefined) s.devMode             = DEFAULT_DEV_MODE
+    // Remove legacy key if present from earlier builds
+    delete s.pollinationsSecretKey
 }
 
 function generateSessionId() {
