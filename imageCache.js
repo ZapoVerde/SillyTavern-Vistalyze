@@ -1,21 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/imageCache.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.1
+ * @version 1.0.2
  * @architectural-role Image IO
  * @description
  * Owns all image-related IO: building the file index from the backgrounds
  * endpoint, fetching images from Pollinations, and uploading them to ST's
  * backgrounds folder. No state mutation, no UI, no LLM calls.
  *
- * fetchFileIndex is called once per boot to build state.fileIndex in a single
- * POST /api/backgrounds/all request (no per-file HEAD requests).
- *
- * generate() is always called fire-and-forget from index.js. Errors are
- * caught at the call site and logged; they do not surface to the user.
- *
- * Pollinations auth: sk_ user key is passed as ?key= query param (CORS-safe
- * GET, no Authorization header). Endpoint: image.pollinations.ai/prompt/{prompt}
+ * Pollinations auth: sk_ user key stored in extension_settings.localyze.pollinationsKey
+ * and passed as ?key= query param (CORS-safe GET, no Authorization header needed).
+ * Endpoint: image.pollinations.ai/prompt/{prompt}
  * Filename convention: localyze_{{sessionId}}_{{key}}.png
  *
  * @api-declaration
@@ -27,13 +22,11 @@
  *     purity: IO
  *     state_ownership: []
  *     external_io: [POST /api/backgrounds/all, GET image.pollinations.ai,
- *       POST /api/backgrounds/upload, findSecret (ST secrets)]
+ *       POST /api/backgrounds/upload]
  */
 import { getRequestHeaders } from '../../../../script.js'
 import { extension_settings } from '../../../extensions.js'
-import { findSecret } from '../../../secrets.js'
 import {
-    POLLINATIONS_USER_SECRET_KEY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEV_IMAGE_WIDTH,
@@ -60,10 +53,10 @@ function buildPollinationsUrl(finalPrompt, userKey, overrides = {}) {
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?${params.toString()}`
 }
 
-async function getUserKey() {
-    const userKey = await findSecret(POLLINATIONS_USER_SECRET_KEY).catch(() => null)
-    if (!userKey) throw new Error('No Pollinations key saved. Paste your sk_ key in Localyze settings.')
-    return userKey
+function getUserKey() {
+    const key = extension_settings.localyze?.pollinationsKey ?? ''
+    if (!key) throw new Error('No Pollinations key saved. Paste your sk_ key in Localyze settings.')
+    return key
 }
 
 /**
@@ -71,7 +64,7 @@ async function getUserKey() {
  * Used by the settings test button and addModal preview.
  */
 export async function fetchPreviewBlob(prompt) {
-    const userKey = await getUserKey()
+    const userKey = getUserKey()
     const url = buildPollinationsUrl(prompt, userKey, { width: '320', height: '180' })
     console.debug('[Localyze:Preview] GET', url)
     const res = await fetch(url)
@@ -95,7 +88,7 @@ export async function generate(key, locationDef, sessionId) {
     const filename = `localyze_${sessionId}_${key}.png`
     const template = extension_settings.localyze?.imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
-    const userKey = await getUserKey()
+    const userKey = getUserKey()
     const url = buildPollinationsUrl(finalPrompt, userKey)
     console.debug(`[Localyze:Image] GET ${url}`)
 

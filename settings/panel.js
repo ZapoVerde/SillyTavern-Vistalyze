@@ -27,7 +27,6 @@
  *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { writeSecret } from '../../../../secrets.js'
 import { extension_settings } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
@@ -37,7 +36,6 @@ import {
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_IMAGE_MODEL,
     POLLINATIONS_MODELS,
-    POLLINATIONS_USER_SECRET_KEY,
 } from '../defaults.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 
@@ -223,19 +221,15 @@ function bindHandlers() {
         saveSettingsDebounced()
     })
 
-    $('#lz-settings').on('click', '#lz-pollinations-save', async function () {
+    $('#lz-settings').on('click', '#lz-pollinations-save', function () {
         const key = $('#lz-pollinations-key').val().trim()
         if (!key) { toastr.warning('Paste your Pollinations sk_ key first.', 'Localyze'); return }
         if (!key.startsWith('sk_')) { toastr.warning('Key should start with sk_', 'Localyze'); return }
-        try {
-            await writeSecret(POLLINATIONS_USER_SECRET_KEY, key)
-            $('#lz-pollinations-key').val('')
-            $('#lz-pollinations-status').text('Key saved.')
-            toastr.success('Pollinations key saved.', 'Localyze')
-        } catch (err) {
-            console.error('[Localyze] Failed to save Pollinations key:', err)
-            toastr.error('Failed to save key.', 'Localyze')
-        }
+        getSettings().pollinationsKey = key
+        saveSettingsDebounced()
+        $('#lz-pollinations-key').val('')
+        $('#lz-pollinations-status').text('Key saved.')
+        toastr.success('Pollinations key saved.', 'Localyze')
     })
 
     $('#lz-settings').on('click', '#lz-pollinations-check', async function () {

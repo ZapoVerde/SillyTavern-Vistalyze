@@ -58,6 +58,7 @@ function ensureSettings() {
             imageModel:          DEFAULT_IMAGE_MODEL,
             imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
             devMode:             DEFAULT_DEV_MODE,
+            pollinationsKey:     '',
         }
         return
     }
@@ -76,6 +77,7 @@ function ensureSettings() {
     if (s.imageModel          === undefined) s.imageModel          = DEFAULT_IMAGE_MODEL
     if (s.imagePromptTemplate === undefined) s.imagePromptTemplate = DEFAULT_IMAGE_PROMPT_TEMPLATE
     if (s.devMode             === undefined) s.devMode             = DEFAULT_DEV_MODE
+    if (s.pollinationsKey     === undefined) s.pollinationsKey     = ''
     // Remove legacy key if present from earlier builds
     delete s.pollinationsSecretKey
 }
