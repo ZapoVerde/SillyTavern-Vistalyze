@@ -29,8 +29,13 @@ import { extension_settings, saveMetadataDebounced } from '../../../extensions.j
 import { state } from './state.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,
+    DEFAULT_BOOLEAN_HISTORY,
     DEFAULT_CLASSIFIER_PROMPT,
+    DEFAULT_CLASSIFIER_HISTORY,
     DEFAULT_DESCRIBER_PROMPT,
+    DEFAULT_IMAGE_MODEL,
+    DEFAULT_IMAGE_PROMPT_TEMPLATE,
+    DEFAULT_DEV_MODE,
 } from './defaults.js'
 
 function ensureSettings() {
@@ -42,23 +47,35 @@ function ensureSettings() {
                 lastAudit: null,
                 orphans: [],
             },
-            booleanPrompt:       DEFAULT_BOOLEAN_PROMPT,
-            booleanProfileId:    null,
-            classifierPrompt:    DEFAULT_CLASSIFIER_PROMPT,
-            classifierProfileId: null,
-            describerPrompt:     DEFAULT_DESCRIBER_PROMPT,
-            describerProfileId:  null,
+            booleanPrompt:        DEFAULT_BOOLEAN_PROMPT,
+            booleanProfileId:     null,
+            booleanHistory:       DEFAULT_BOOLEAN_HISTORY,
+            classifierPrompt:     DEFAULT_CLASSIFIER_PROMPT,
+            classifierProfileId:  null,
+            classifierHistory:    DEFAULT_CLASSIFIER_HISTORY,
+            describerPrompt:      DEFAULT_DESCRIBER_PROMPT,
+            describerProfileId:   null,
+            imageModel:           DEFAULT_IMAGE_MODEL,
+            imagePromptTemplate:  DEFAULT_IMAGE_PROMPT_TEMPLATE,
+            pollinationsSecretKey: null,
+            devMode:              DEFAULT_DEV_MODE,
         }
         return
     }
     // Backfill any missing keys added in later versions
     const s = extension_settings.localyze
-    if (s.booleanPrompt    === undefined) s.booleanPrompt    = DEFAULT_BOOLEAN_PROMPT
-    if (s.booleanProfileId === undefined) s.booleanProfileId = null
-    if (s.classifierPrompt    === undefined) s.classifierPrompt    = DEFAULT_CLASSIFIER_PROMPT
-    if (s.classifierProfileId === undefined) s.classifierProfileId = null
-    if (s.describerPrompt    === undefined) s.describerPrompt    = DEFAULT_DESCRIBER_PROMPT
-    if (s.describerProfileId === undefined) s.describerProfileId = null
+    if (s.booleanPrompt        === undefined) s.booleanPrompt        = DEFAULT_BOOLEAN_PROMPT
+    if (s.booleanProfileId     === undefined) s.booleanProfileId     = null
+    if (s.booleanHistory       === undefined) s.booleanHistory       = DEFAULT_BOOLEAN_HISTORY
+    if (s.classifierPrompt     === undefined) s.classifierPrompt     = DEFAULT_CLASSIFIER_PROMPT
+    if (s.classifierProfileId  === undefined) s.classifierProfileId  = null
+    if (s.classifierHistory    === undefined) s.classifierHistory    = DEFAULT_CLASSIFIER_HISTORY
+    if (s.describerPrompt      === undefined) s.describerPrompt      = DEFAULT_DESCRIBER_PROMPT
+    if (s.describerProfileId   === undefined) s.describerProfileId   = null
+    if (s.imageModel           === undefined) s.imageModel           = DEFAULT_IMAGE_MODEL
+    if (s.imagePromptTemplate  === undefined) s.imagePromptTemplate  = DEFAULT_IMAGE_PROMPT_TEMPLATE
+    if (s.pollinationsSecretKey === undefined) s.pollinationsSecretKey = null
+    if (s.devMode              === undefined) s.devMode              = DEFAULT_DEV_MODE
 }
 
 function generateSessionId() {

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.4
+ * @version 1.0.5
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
@@ -63,6 +63,21 @@ function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/**
+ * Builds a formatted history block from N turn-pairs (user+AI = 1 pair)
+ * immediately before `beforeIndex`. Returns an empty string when numPairs <= 0.
+ * The returned string includes a trailing newline so {{history}} slots cleanly
+ * into prompts with no extra spacing logic needed.
+ */
+function buildHistoryText(chat, beforeIndex, numPairs) {
+    if (numPairs <= 0) return ''
+    const start = Math.max(0, beforeIndex - numPairs * 2)
+    const slice = chat.slice(start, beforeIndex)
+    if (!slice.length) return ''
+    const transcript = slice.map(m => `${m.name ?? ''}: ${m.mes ?? ''}`).join('\n\n')
+    return `Preceding turns:\n${transcript}\n\n`
+}
+
 async function boot() {
     const context = getContext()
     if (!context.chatId) return
@@ -99,7 +114,7 @@ async function boot() {
     for (const key of queue) {
         const def = state.locations[key]
         if (!def) continue
-        generate(key, def.imagePrompt, state.sessionId)
+        generate(key, def, state.sessionId)
             .then(filename => {
                 state.fileIndex.add(filename)
                 if (filename === state.currentImage) setBg(filename)
@@ -136,8 +151,9 @@ async function handleMessageReceived(messageId) {
 
     // Step 1: Boolean gate — only if we have a current location
     if (state.currentLocation !== null) {
+        const historyText = buildHistoryText(context.chat, messageId, s.booleanHistory ?? 0)
         const changed = await detectBoolean(
-            message.mes, state.currentLocation,
+            message.mes, state.currentLocation, historyText,
             s.booleanPrompt, s.booleanProfileId,
         )
         if (!changed) return
@@ -145,8 +161,9 @@ async function handleMessageReceived(messageId) {
 
     // Step 2: Classifier
     if (locationKeys.length > 0) {
+        const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0)
         const key = await detectClassifier(
-            message.mes, locationKeys,
+            message.mes, locationKeys, historyText,
             s.classifierPrompt, s.classifierProfileId,
         )
         if (key !== null) {
@@ -174,7 +191,7 @@ async function handleKnownLocation(messageId, key) {
         updateState(key, null)
 
         const capturedId = messageId
-        generate(key, def.imagePrompt, state.sessionId)
+        generate(key, def, state.sessionId)
             .then(filename => {
                 state.fileIndex.add(filename)
                 patchSceneImage(capturedId, filename)
@@ -244,7 +261,7 @@ async function handleUnknownLocation(messageId, context) {
     updateState(approved.key, null)
 
     const capturedId = messageId
-    generate(approved.key, approved.imagePrompt, state.sessionId)
+    generate(approved.key, approved, state.sessionId)
         .then(filename => {
             state.fileIndex.add(filename)
             patchSceneImage(capturedId, filename)

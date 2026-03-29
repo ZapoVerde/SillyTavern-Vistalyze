@@ -68,7 +68,7 @@ async function applyLocation(key) {
         updateState(key, null)
 
         const capturedId = lastMsgId
-        generate(key, def.imagePrompt, state.sessionId)
+        generate(key, def, state.sessionId)
             .then(filename => {
                 state.fileIndex.add(filename)
                 patchScene(capturedId, filename)

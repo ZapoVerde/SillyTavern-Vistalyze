@@ -27,14 +27,16 @@
  *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { writeSecret, findSecret, secret_state } from '../../../../secrets.js'
+import { secret_state } from '../../../../secrets.js'
 import { extension_settings } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_CLASSIFIER_PROMPT,
     DEFAULT_DESCRIBER_PROMPT,
-    POLLINATIONS_SECRET_KEY,
+    DEFAULT_IMAGE_PROMPT_TEMPLATE,
+    DEFAULT_IMAGE_MODEL,
+    POLLINATIONS_MODELS,
 } from '../defaults.js'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
@@ -72,7 +74,15 @@ function escapeHtml(str) {
 
 // ─── HTML builder ─────────────────────────────────────────────────────────────
 
-function buildCallRow(id, label, promptKey, profileKey) {
+function buildCallRow(id, label, promptKey, profileKey, historyKey = null) {
+    const historyRow = historyKey ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+            <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;">History:</label>
+            <input id="lz-history-${id}" type="number" min="0" step="1"
+                class="text_pole lz-history-input" data-history-key="${historyKey}"
+                style="width:60px;" />
+            <span style="font-size:0.83em;opacity:0.6;">pairs (0 = off)</span>
+        </div>` : ''
     return `
     <div class="lz-call-row" style="margin-bottom:16px;padding:12px;border:1px solid var(--SmartThemeBorderColor,#555);border-radius:6px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -83,6 +93,7 @@ function buildCallRow(id, label, promptKey, profileKey) {
             <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;">Connection:</label>
             <select id="lz-profile-${id}" class="text_pole lz-profile-select" data-profile-key="${profileKey}" style="flex:1;"></select>
         </div>
+        ${historyRow}
     </div>`
 }
 
@@ -99,20 +110,44 @@ function buildPanelHTML() {
                     Each AI call uses its own prompt template and connection profile.
                     Leave connection blank to use the chat's active API.
                 </p>
-                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId')}
-                ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId')}
+                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory')}
+                ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory')}
                 ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId')}
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
-                    <strong style="font-size:0.95em;">Pollinations User Token</strong>
-                    <p style="font-size:0.83em;opacity:0.65;margin:4px 0 8px;">
-                        Optional. Your personal Pollinations token unlocks higher rate limits.
-                        Stored securely in ST's secrets — never written to settings.
+                    <strong style="font-size:0.95em;">Image Generation</strong>
+                    <p style="font-size:0.83em;opacity:0.65;margin:4px 0 12px;">
+                        Images are generated via Pollinations. Select a stored secret as your
+                        user token for higher rate limits, pick a model, and customise the
+                        image prompt template.
                     </p>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Token secret:</label>
+                        <select id="lz-pollinations-secret" class="text_pole" style="flex:1;">
+                            <option value="">— None —</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Model:</label>
+                        <select id="lz-image-model" class="text_pole" style="flex:1;">
+                            ${POLLINATIONS_MODELS.map(m => `<option value="${m}">${m}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Prompt:</label>
+                        <button class="menu_button lz-open-prompt" data-prompt-key="imagePromptTemplate"
+                            style="font-size:0.8em;padding:2px 8px;">Edit Template</button>
+                        <span style="font-size:0.78em;opacity:0.55;">{{image_prompt}} {{name}} {{description}}</span>
+                    </div>
+
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <input type="password" id="lz-pollinations-key" class="text_pole"
-                            placeholder="Paste token here…" autocomplete="off"
-                            style="flex:1;" />
-                        <span id="lz-pollinations-status" style="font-size:0.8em;opacity:0.6;white-space:nowrap;"></span>
+                        <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
+                            <input type="checkbox" id="lz-dev-mode" />
+                            <span>Dev mode</span>
+                        </label>
+                        <span style="font-size:0.78em;opacity:0.55;">Generates 64×36 placeholder images to save credits</span>
                     </div>
                 </div>
             </div>
@@ -148,16 +183,26 @@ function initDropdowns() {
 
 // ─── Event bindings ───────────────────────────────────────────────────────────
 
+function populateHistoryInputs() {
+    const s = getSettings()
+    $('#lz-settings').find('.lz-history-input').each(function () {
+        const key = $(this).data('history-key')
+        $(this).val(s[key] ?? 0)
+    })
+}
+
 function bindHandlers() {
     const promptDefaults = {
-        booleanPrompt:    DEFAULT_BOOLEAN_PROMPT,
-        classifierPrompt: DEFAULT_CLASSIFIER_PROMPT,
-        describerPrompt:  DEFAULT_DESCRIBER_PROMPT,
+        booleanPrompt:       DEFAULT_BOOLEAN_PROMPT,
+        classifierPrompt:    DEFAULT_CLASSIFIER_PROMPT,
+        describerPrompt:     DEFAULT_DESCRIBER_PROMPT,
+        imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
     }
     const promptTitles = {
-        booleanPrompt:    'Boolean Prompt — Has Location Changed?',
-        classifierPrompt: 'Classifier Prompt — Which Location Key?',
-        describerPrompt:  'Describer Prompt — Describe New Location',
+        booleanPrompt:       'Boolean Prompt — Has Location Changed?',
+        classifierPrompt:    'Classifier Prompt — Which Location Key?',
+        describerPrompt:     'Describer Prompt — Describe New Location',
+        imagePromptTemplate: 'Image Prompt Template — {{image_prompt}} {{name}} {{description}}',
     }
 
     $('#lz-settings').on('click', '.lz-open-prompt', function () {
@@ -165,24 +210,56 @@ function bindHandlers() {
         openPromptPopup(key, promptTitles[key], promptDefaults[key])
     })
 
-    // Pollinations token — write to ST secrets on input, clear on empty
-    $('#lz-settings').on('input', '#lz-pollinations-key', async function () {
-        const val = this.value.trim()
-        await writeSecret(POLLINATIONS_SECRET_KEY, val)
-        updateKeyStatus()
+    $('#lz-settings').on('input', '.lz-history-input', function () {
+        const key = $(this).data('history-key')
+        getSettings()[key] = Math.max(0, parseInt($(this).val()) || 0)
+        saveSettingsDebounced()
+    })
+
+    $('#lz-settings').on('change', '#lz-pollinations-secret', function () {
+        getSettings().pollinationsSecretKey = $(this).val() || null
+        saveSettingsDebounced()
+    })
+
+    $('#lz-settings').on('change', '#lz-image-model', function () {
+        getSettings().imageModel = $(this).val() || DEFAULT_IMAGE_MODEL
+        saveSettingsDebounced()
+    })
+
+    $('#lz-settings').on('change', '#lz-dev-mode', function () {
+        getSettings().devMode = $(this).prop('checked')
+        saveSettingsDebounced()
     })
 }
 
-function updateKeyStatus() {
-    const isSet = !!(secret_state[POLLINATIONS_SECRET_KEY]?.length)
-    $('#lz-pollinations-status').text(isSet ? 'Token saved' : 'No token set')
+// ─── Image settings population ────────────────────────────────────────────────
+
+function populateImageSettings() {
+    const s = getSettings()
+
+    // Secret key dropdown — populate from secret_state keys that are truthy
+    const $secretSelect = $('#lz-pollinations-secret')
+    $secretSelect.find('option:not([value=""])').remove()
+    const setKeys = Object.keys(secret_state).filter(k => secret_state[k])
+    for (const key of setKeys) {
+        $secretSelect.append(`<option value="${key}"${s.pollinationsSecretKey === key ? ' selected' : ''}>${key}</option>`)
+    }
+    if (!setKeys.length) {
+        $secretSelect.append('<option value="" disabled>No secrets stored in ST</option>')
+    }
+
+    // Model
+    $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL)
+
+    // Dev mode
+    $('#lz-dev-mode').prop('checked', s.devMode ?? false)
 }
 
 // ─── Refresh ──────────────────────────────────────────────────────────────────
 
 function refreshPanel() {
-    // Re-init dropdowns with current saved values after a prompt save
     initDropdowns()
+    populateImageSettings()
 }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
@@ -199,5 +276,6 @@ export function injectSettingsPanel() {
     $parent.append(buildPanelHTML())
     bindHandlers()
     initDropdowns()
-    updateKeyStatus()
+    populateHistoryInputs()
+    populateImageSettings()
 }

@@ -33,24 +33,52 @@
 export const POLLINATIONS_REFERRER = 'pk_WfuLORZ5RZDfPRZU'
 
 /**
- * Secret key name used with ST's secrets system for the user's personal
- * Pollinations token. Never stored in extension_settings.
+ * Available Pollinations image models.
+ * The user selects one in settings; stored in extension_settings.localyze.imageModel.
  */
-export const POLLINATIONS_SECRET_KEY = 'localyze_pollinations_key'
+export const POLLINATIONS_MODELS = ['flux', 'turbo', 'flux-realism', 'flux-anime', 'flux-3d', 'flux-cablyai']
+
+/** Default Pollinations model. */
+export const DEFAULT_IMAGE_MODEL = 'flux'
+
+/**
+ * Image prompt template. Interpolated by imageCache.js before the Pollinations
+ * request is sent.
+ *
+ * Placeholders:
+ *   {{image_prompt}}  — the raw imagePrompt from the location definition
+ *   {{name}}          — human-readable location name
+ *   {{description}}   — location description
+ */
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{image_prompt}}'
+
+/**
+ * Dev mode — generates tiny placeholder images (64×36) instead of full 1920×1080.
+ * Prevents burning through Pollinations credits during development.
+ */
+export const DEFAULT_DEV_MODE = false
+export const DEV_IMAGE_WIDTH  = 64
+export const DEV_IMAGE_HEIGHT = 36
+
+/** Default number of turn-pairs (user + AI = 1 pair) passed as history to the boolean call. */
+export const DEFAULT_BOOLEAN_HISTORY = 3
 
 export const DEFAULT_BOOLEAN_PROMPT =
 `Current location: {{current_location}}.
 Has the location changed in this message? Reply YES or NO only.
 
-Message:
+{{history}}Message:
 {{message}}`
+
+/** Default number of turn-pairs passed as history to the classifier call. */
+export const DEFAULT_CLASSIFIER_HISTORY = 3
 
 export const DEFAULT_CLASSIFIER_PROMPT =
 `Which of these location keys does this message take place in?
 Reply with the exact key or NULL if none match.
 Keys: {{key_list}}
 
-Message:
+{{history}}Message:
 {{message}}`
 
 export const DEFAULT_DESCRIBER_PROMPT =

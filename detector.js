@@ -58,18 +58,20 @@ async function dispatch(prompt, profileId) {
     return generateQuietPrompt({ quietPrompt: prompt, removeReasoning: true })
 }
 
-export async function detectBoolean(messageText, currentLocation, promptTemplate, profileId) {
+export async function detectBoolean(messageText, currentLocation, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         current_location: currentLocation,
+        history: historyText,
         message: messageText,
     })
     const result = await dispatch(prompt, profileId)
     return String(result).trim().toUpperCase().startsWith('YES')
 }
 
-export async function detectClassifier(messageText, locationKeys, promptTemplate, profileId) {
+export async function detectClassifier(messageText, locationKeys, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         key_list: locationKeys.join(', '),
+        history: historyText,
         message: messageText,
     })
     const result = await dispatch(prompt, profileId)
