@@ -1,17 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/session.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Session Identity
  * @description
- * Manages the per-chat sessionId: reads it from chat_metadata.localyze,
- * generates one if absent, and registers it in extension_settings.localyze
- * .knownSessions for orphan detection. Called once per boot sequence.
- *
- * SessionId is a short random slug (8 chars) generated once per chat lifetime
- * and never regenerated. It namespaces generated background filenames so files
- * from different chats cannot collide, and ties each file back to its source
- * chat for orphan detection.
+ * Manages the per-chat sessionId and initializes extension settings.
+ * 
+ * Version 1.1.0 Updates:
+ * - Removed pollinationsKey from extension_settings (migrated to Secrets).
+ * - Hardened ensureSettings to prevent accidental data loss during boot.
  *
  * @api-declaration
  * initSession() — idempotent; reads or generates sessionId, registers it
@@ -38,6 +35,10 @@ import {
     DEFAULT_DEV_MODE,
 } from './defaults.js'
 
+/**
+ * Ensures the extension settings object exists and contains all required keys.
+ * Note: Sensitive API keys are no longer stored here.
+ */
 function ensureSettings() {
     if (!extension_settings.localyze) {
         extension_settings.localyze = {
@@ -58,14 +59,17 @@ function ensureSettings() {
             imageModel:          DEFAULT_IMAGE_MODEL,
             imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
             devMode:             DEFAULT_DEV_MODE,
-            pollinationsKey:     '',
         }
         return
     }
-    // Backfill any missing keys added in later versions
+
     const s = extension_settings.localyze
+    
+    // Backfill any missing structural keys
     if (!Array.isArray(s.knownSessions)) s.knownSessions = []
     if (!s.auditCache) s.auditCache = { suspects: [], lastAudit: null, orphans: [] }
+    
+    // Backfill prompts and configs
     if (s.booleanPrompt        === undefined) s.booleanPrompt        = DEFAULT_BOOLEAN_PROMPT
     if (s.booleanProfileId     === undefined) s.booleanProfileId     = null
     if (s.booleanHistory       === undefined) s.booleanHistory       = DEFAULT_BOOLEAN_HISTORY
@@ -77,8 +81,9 @@ function ensureSettings() {
     if (s.imageModel          === undefined) s.imageModel          = DEFAULT_IMAGE_MODEL
     if (s.imagePromptTemplate === undefined) s.imagePromptTemplate = DEFAULT_IMAGE_PROMPT_TEMPLATE
     if (s.devMode             === undefined) s.devMode             = DEFAULT_DEV_MODE
-    if (s.pollinationsKey     === undefined) s.pollinationsKey     = ''
-    // Remove legacy key if present from earlier builds
+
+    // Clean up legacy keys from previous versions to ensure purity
+    delete s.pollinationsKey
     delete s.pollinationsSecretKey
 }
 
@@ -86,6 +91,10 @@ function generateSessionId() {
     return Math.random().toString(36).slice(2, 10)
 }
 
+/**
+ * Initializes the current chat session.
+ * Generates a sessionId if missing and registers it for orphan detection.
+ */
 export function initSession() {
     ensureSettings()
 

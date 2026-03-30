@@ -1,20 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Settings UI
  * @description
- * Injects the Localyze settings panel into ST's extensions drawer
- * (#extensions_settings). Renders one prompt + connection profile pair for
- * each of the three LLM calls: Boolean, Classifier, Describer.
+ * Injects the Localyze settings panel into ST's extensions drawer.
  *
- * Prompt editing opens a full-screen popup (same pattern as canonize) so the
- * user can comfortably edit multi-line prompts. Changes are saved live.
- *
- * Connection profile dropdowns are managed by ConnectionManagerRequestService
- * .handleDropdown(). If the connection-manager extension is disabled or
- * unavailable, the dropdown row is hidden and the call falls back to
- * generateQuietPrompt.
+ * Version 1.1.0 Updates:
+ * - Migrated key storage to ST's async Secret Service.
+ * - Added visual status indicator for the encrypted key.
+ * - Removed plaintext key population to prevent leakage.
  *
  * @api-declaration
  * injectSettingsPanel() — idempotent; appends panel to #extensions_settings
@@ -22,12 +17,13 @@
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [extension_settings.localyze (write via save handlers)]
- *     external_io: [#extensions_settings DOM (write), saveSettingsDebounced(),
- *       ConnectionManagerRequestService.handleDropdown(), callPopup()]
+ *     state_ownership:[extension_settings.localyze (write via save handlers)]
+ *     external_io:[#extensions_settings DOM (write), saveSettingsDebounced(),
+ *       ConnectionManagerRequestService.handleDropdown(), callPopup(),
+ *       getSecret(), setSecret()]
  */
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { extension_settings } from '../../../../extensions.js'
+import { extension_settings, getSecret, setSecret } from '../../../../extensions.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,
@@ -38,6 +34,8 @@ import {
     POLLINATIONS_MODELS,
 } from '../defaults.js'
 import { fetchPreviewBlob } from '../imageCache.js'
+
+const SECRET_KEY_NAME = 'localyze_pollinations_key'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
 
@@ -115,19 +113,22 @@ function buildPanelHTML() {
                 ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory')}
                 ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory')}
                 ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId')}
+                
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
                     <strong style="font-size:0.95em;">Image Generation</strong>
                     <p style="font-size:0.83em;opacity:0.65;margin:4px 0 12px;">
-                        Images are generated via Pollinations. Select a stored secret as your
-                        user token for higher rate limits, pick a model, and customise the
-                        image prompt template.
+                        Images are generated via Pollinations. Enter your API key (sk_...) to securely save it to your server vault.
                     </p>
 
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                         <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">API Key:</label>
-                        <input type="password" id="lz-pollinations-key" class="text_pole" placeholder="sk_..." style="flex:1;" />
-                        <button class="menu_button" id="lz-pollinations-save" style="white-space:nowrap;">Save Key</button>
+                        <input type="password" id="lz-pollinations-key" class="text_pole" placeholder="Enter new sk_ key..." style="flex:1;" />
+                        <button class="menu_button" id="lz-pollinations-save" style="white-space:nowrap;">Save to Vault</button>
                     </div>
+                    <div id="lz-key-status-indicator" style="font-size:0.82em; margin-left:88px; margin-bottom:12px;">
+                        <span style="opacity:0.6;"><i class="fa-solid fa-spinner fa-spin"></i> Checking vault...</span>
+                    </div>
+
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <button class="menu_button" id="lz-pollinations-check">Test Connection</button>
                     </div>
@@ -152,7 +153,7 @@ function buildPanelHTML() {
                             <input type="checkbox" id="lz-dev-mode" />
                             <span>Dev mode</span>
                         </label>
-                        <span style="font-size:0.78em;opacity:0.55;">Generates 64×36 placeholder images to save credits</span>
+                        <span style="font-size:0.78em;opacity:0.55;">Generates 320×180 preview images to save credits</span>
                     </div>
                 </div>
             </div>
@@ -164,7 +165,7 @@ function buildPanelHTML() {
 
 function initDropdowns() {
     const s = getSettings()
-    const pairs = [
+    const pairs =[
         { selector: '#lz-profile-boolean',    key: 'booleanProfileId'    },
         { selector: '#lz-profile-classifier', key: 'classifierProfileId' },
         { selector: '#lz-profile-describer',  key: 'describerProfileId'  },
@@ -183,6 +184,22 @@ function initDropdowns() {
             // Connection Manager unavailable — hide the row gracefully
             $(selector).closest('.lz-profile-row').hide()
         }
+    }
+}
+
+// ─── Secret Key Status ────────────────────────────────────────────────────────
+
+async function updateKeyStatusIndicator() {
+    const $indicator = $('#lz-key-status-indicator')
+    try {
+        const key = await getSecret(SECRET_KEY_NAME)
+        if (key) {
+            $indicator.html('<span style="color:var(--SmartThemeQuoteColor,#28a745);"><i class="fa-solid fa-circle-check"></i> Configured (Encrypted)</span>')
+        } else {
+            $indicator.html('<span style="color:var(--SmartThemeWarningColor,#ffc107);"><i class="fa-solid fa-triangle-exclamation"></i> Not Configured</span>')
+        }
+    } catch (err) {
+        $indicator.html('<span style="color:var(--SmartThemeErrorColor,#dc3545);"><i class="fa-solid fa-circle-xmark"></i> Vault Error</span>')
     }
 }
 
@@ -221,15 +238,15 @@ function bindHandlers() {
         saveSettingsDebounced()
     })
 
-    $('#lz-settings').on('click', '#lz-pollinations-save', function () {
+    $('#lz-settings').on('click', '#lz-pollinations-save', async function () {
         const key = $('#lz-pollinations-key').val().trim()
-        if (!key) { toastr.warning('Paste your Pollinations sk_ key first.', 'Localyze'); return }
-        if (!key.startsWith('sk_')) { toastr.warning('Key should start with sk_', 'Localyze'); return }
-        getSettings().pollinationsKey = key
-        saveSettingsDebounced()
+        if (!key) { toastr.warning('Paste your Pollinations API key first.', 'Localyze'); return }
+        
+        await setSecret(SECRET_KEY_NAME, key)
         $('#lz-pollinations-key').val('')
-        $('#lz-pollinations-status').text('Key saved.')
-        toastr.success('Pollinations key saved.', 'Localyze')
+        
+        toastr.success('Pollinations key securely saved to vault.', 'Localyze')
+        updateKeyStatusIndicator()
     })
 
     $('#lz-settings').on('click', '#lz-pollinations-check', async function () {
@@ -275,6 +292,7 @@ function populateImageSettings() {
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL)
     $('#lz-dev-mode').prop('checked', s.devMode ?? false)
     $('#lz-pollinations-status').text('')
+    updateKeyStatusIndicator()
 }
 
 // ─── Refresh ──────────────────────────────────────────────────────────────────

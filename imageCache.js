@@ -1,37 +1,40 @@
 /**
  * @file data/default-user/extensions/localyze/imageCache.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.2
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Image IO
  * @description
- * Owns all image-related IO: building the file index from the backgrounds
- * endpoint, fetching images from Pollinations, and uploading them to ST's
- * backgrounds folder. No state mutation, no UI, no LLM calls.
- *
- * Pollinations auth: sk_ user key stored in extension_settings.localyze.pollinationsKey
- * and passed as ?key= query param (CORS-safe GET, no Authorization header needed).
- * Endpoint: image.pollinations.ai/prompt/{prompt}
- * Filename convention: localyze_{{sessionId}}_{{key}}.png
+ * Owns all image-related IO. 
+ * 
+ * Version 1.1.0 Updates:
+ * - Uses SillyTavern SecretService for secure key retrieval.
+ * - Implements strict Response validation (checks ok status and Content-Type).
+ * - Switches to Authorization: Bearer headers for the gen.pollinations.ai gateway.
+ * - Wraps blobs in File objects with explicit MIME types for ST server compatibility.
  *
  * @api-declaration
  * fetchFileIndex(sessionId) → Promise<{ fileIndex: Set, allImages: string[] }>
  * generate(key, locationDef, sessionId) → Promise<filename: string>
+ * fetchPreviewBlob(prompt) → Promise<string> (Object URL)
  *
  * @contract
  *   assertions:
  *     purity: IO
  *     state_ownership: []
- *     external_io: [POST /api/backgrounds/all, GET image.pollinations.ai,
- *       POST /api/backgrounds/upload]
+ *     external_io: [POST /api/backgrounds/all, GET gen.pollinations.ai,
+ *       POST /api/backgrounds/upload, getSecret()]
  */
 import { getRequestHeaders } from '../../../../script.js'
-import { extension_settings } from '../../../extensions.js'
+import { extension_settings, getSecret } from '../../../extensions.js'
 import {
+    POLLINATIONS_BASE_URL,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEV_IMAGE_WIDTH,
     DEV_IMAGE_HEIGHT,
 } from './defaults.js'
+
+const SECRET_KEY_NAME = 'localyze_pollinations_key'
 
 function interpolateImagePrompt(template, locationDef) {
     return template
@@ -40,35 +43,60 @@ function interpolateImagePrompt(template, locationDef) {
         .replace(/\{\{description\}\}/g,  locationDef.description ?? '')
 }
 
-function buildPollinationsUrl(finalPrompt, userKey, overrides = {}) {
+/**
+ * Builds the URL for the gen.pollinations.ai gateway.
+ * No keys are passed in the URL to prevent leakage and comply with gateway rules.
+ */
+function buildPollinationsUrl(finalPrompt, overrides = {}) {
     const s = extension_settings.localyze ?? {}
     const devMode = s.devMode ?? false
     const params = new URLSearchParams({
         width:  overrides.width  ?? (devMode ? String(DEV_IMAGE_WIDTH)  : '1920'),
         height: overrides.height ?? (devMode ? String(DEV_IMAGE_HEIGHT) : '1080'),
         model:  s.imageModel ?? DEFAULT_IMAGE_MODEL,
-        key:    userKey,
         nologo: 'true',
     })
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?${params.toString()}`
-}
-
-function getUserKey() {
-    const key = extension_settings.localyze?.pollinationsKey ?? ''
-    if (!key) throw new Error('No Pollinations key saved. Paste your sk_ key in Localyze settings.')
-    return key
+    return `${POLLINATIONS_BASE_URL}/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`
 }
 
 /**
- * Fetches a 320×180 test image and returns an object URL for preview.
- * Used by the settings test button and addModal preview.
+ * Fetches the user's API key from the SillyTavern Secret Service.
+ * Throws if the key is missing to prevent keyless requests that will be rejected.
  */
+async function getAuthHeaders() {
+    const userKey = await getSecret(SECRET_KEY_NAME)
+    if (!userKey) {
+        throw new Error('Pollinations API key not found. Please set it in the Localyze settings.')
+    }
+    return {
+        'Authorization': `Bearer ${userKey}`,
+    }
+}
+
+/**
+ * Validates that the response from Pollinations is actually an image.
+ * Prevents saving error text strings as broken .png files.
+ */
+async function validateImageResponse(response, url) {
+    if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`Pollinations API Error (${response.status}): ${text}`)
+    }
+    const contentType = response.headers.get('Content-Type')
+    if (!contentType || !contentType.startsWith('image/')) {
+        const text = await response.text()
+        throw new Error(`Expected image, but received ${contentType}: ${text}`)
+    }
+}
+
 export async function fetchPreviewBlob(prompt) {
-    const userKey = getUserKey()
-    const url = buildPollinationsUrl(prompt, userKey, { width: '320', height: '180' })
+    const url = buildPollinationsUrl(prompt, { width: '320', height: '180' })
+    const headers = await getAuthHeaders()
+    
     console.debug('[Localyze:Preview] GET', url)
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Preview fetch failed: ${res.status} ${res.statusText} — ${url}`)
+    const res = await fetch(url, { headers })
+    await validateImageResponse(res, url)
+    
     return URL.createObjectURL(await res.blob())
 }
 
@@ -88,16 +116,22 @@ export async function generate(key, locationDef, sessionId) {
     const filename = `localyze_${sessionId}_${key}.png`
     const template = extension_settings.localyze?.imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
-    const userKey = getUserKey()
-    const url = buildPollinationsUrl(finalPrompt, userKey)
+    
+    const url = buildPollinationsUrl(finalPrompt)
+    const headers = await getAuthHeaders()
+    
     console.debug(`[Localyze:Image] GET ${url}`)
-
-    const imgRes = await fetch(url)
-    if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status} ${imgRes.statusText} — ${url}`)
+    const imgRes = await fetch(url, { headers })
+    await validateImageResponse(imgRes, url)
+    
     const blob = await imgRes.blob()
 
+    // Wrap blob in a File object with explicit image MIME type.
+    // This ensures SillyTavern's multer middleware accepts and writes the file correctly.
+    const file = new File([blob], filename, { type: 'image/png' })
+
     const formData = new FormData()
-    formData.append('avatar', blob, filename)
+    formData.append('avatar', file)
 
     const res = await fetch('/api/backgrounds/upload', {
         method: 'POST',

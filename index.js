@@ -1,48 +1,20 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.17
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.0.18
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
- * detection pipeline, all branching logic, and all writes to message.extra
- * .localyze. Calls modules in sequence; no module calls back into index.js.
+ * detection pipeline, and branching logic.
  *
- * Boot sequence (runs on load and every CHAT_CHANGED):
- *   1. initSession()      — read/generate sessionId
- *   2. reconstruct()      — derive locations and transitions from chat log
- *   3. fetchFileIndex()   — single POST /api/backgrounds/all → fileIndex
- *   4. regen queue        — silent background generation for missing files
- *   5. restoreBackground  — set or clear based on currentImage + fileIndex
- *   6. fastDiff()         — orphan badge if suspect files found
- *
- * Per-turn pipeline (MESSAGE_RECEIVED):
- *   Boolean → Classifier → Known (Step 3a) | Unknown (Step 3b)
- *   Unknown: Describer → confirmation modal → addModal → writeLocationDef
- *   Two-write pattern: scene record written immediately with image:null,
- *   patched with filename when generation completes.
+ * Version 1.0.18 Updates:
+ * - Added UI error notifications to image generation catch blocks to 
+ *   bubble up authentication/validation failures from imageCache.js.
  *
  * @api-declaration
  * Entry points (event-bound):
- *   handleMessageReceived(messageId) — per-turn detection pipeline
- *   handleChatChanged()              — resets state, reruns boot sequence
- * Internal:
- *   boot(), handleKnownLocation(), handleUnknownLocation(),
- *   writeSceneRecord(), patchSceneImage()
- *
- * @contract
- *   assertions:
- *     purity: mutates
- *     state_ownership: [state.locations, state.currentLocation,
- *       state.currentImage, state.fileIndex, state.sessionId]
- *     external_io: [generateQuietPrompt (via detector.js),
- *       POST /api/backgrounds/all (via imageCache.js),
- *       GET image.pollinations.ai (via imageCache.js),
- *       POST /api/backgrounds/upload (via imageCache.js),
- *       message.extra.localyze (write), saveChatConditional(),
- *       chat_metadata.localyze (via session.js),
- *       extension_settings.localyze (read/write),
- *       #bg1 DOM (via background.js)]
+ *   handleMessageReceived(messageId)
+ *   handleChatChanged()
  */
 import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup } from '../../../../script.js'
 import { extension_settings, getContext } from '../../../extensions.js'
@@ -63,12 +35,6 @@ function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/**
- * Builds a formatted history block from N turn-pairs (user+AI = 1 pair)
- * immediately before `beforeIndex`. Returns an empty string when numPairs <= 0.
- * The returned string includes a trailing newline so {{history}} slots cleanly
- * into prompts with no extra spacing logic needed.
- */
 function buildHistoryText(chat, beforeIndex, numPairs) {
     if (numPairs <= 0) return ''
     const start = Math.max(0, beforeIndex - numPairs * 2)
@@ -102,10 +68,8 @@ async function boot() {
     state.fileIndex = fileIndex
     console.debug(`[Localyze] fileIndex: ${fileIndex.size} localyze files, ${allImages.length} total backgrounds`)
 
-    // Build regeneration queue (deduplicated)
-    const queue = []
+    const queue =[]
 
-    // Path A — known locations with no file
     for (const key of Object.keys(state.locations)) {
         const filename = `localyze_${state.sessionId}_${key}.png`
         if (!state.fileIndex.has(filename)) {
@@ -113,7 +77,6 @@ async function boot() {
         }
     }
 
-    // Path B — scene records with null image (interrupted generation)
     for (const t of transitions) {
         if (t.location && !t.image && !queue.includes(t.location)) {
             queue.push(t.location)
@@ -122,7 +85,7 @@ async function boot() {
 
     if (queue.length) console.debug('[Localyze] regen queue:', queue)
 
-    // Fire all queued keys as silent background generation (non-blocking)
+    // Fire queued background generation silently
     for (const key of queue) {
         const def = state.locations[key]
         if (!def) continue
@@ -134,7 +97,6 @@ async function boot() {
             .catch(err => console.error('[Localyze] Silent regen failed:', err))
     }
 
-    // Restore background
     if (state.currentImage && state.fileIndex.has(state.currentImage)) {
         console.debug('[Localyze] restoring background:', state.currentImage)
         setBg(state.currentImage)
@@ -143,10 +105,9 @@ async function boot() {
         clearBg()
     }
 
-    // Fast orphan diff
-    const suspects = fastDiff(allImages, extension_settings.localyze?.knownSessions ?? [])
+    const suspects = fastDiff(allImages, extension_settings.localyze?.knownSessions ??[])
     if (suspects.length > 0) {
-        if (!extension_settings.localyze) extension_settings.localyze = { knownSessions: [], auditCache: { suspects: [], lastAudit: null, orphans: [] } }
+        if (!extension_settings.localyze) extension_settings.localyze = { knownSessions: [], auditCache: { suspects: [], lastAudit: null, orphans:[] } }
         extension_settings.localyze.auditCache = extension_settings.localyze.auditCache ?? {}
         extension_settings.localyze.auditCache.suspects = suspects
         saveSettingsDebounced()
@@ -160,10 +121,8 @@ async function handleMessageReceived(messageId) {
     if (!message || message.is_user) return
 
     const locationKeys = Object.keys(state.locations)
-
     const s = extension_settings.localyze
 
-    // Step 1: Boolean gate — only if we have a current location
     if (state.currentLocation !== null) {
         const historyText = buildHistoryText(context.chat, messageId, s.booleanHistory ?? 0)
         const changed = await detectBoolean(
@@ -173,7 +132,6 @@ async function handleMessageReceived(messageId) {
         if (!changed) return
     }
 
-    // Step 2: Classifier
     if (locationKeys.length > 0) {
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0)
         const key = await detectClassifier(
@@ -186,7 +144,6 @@ async function handleMessageReceived(messageId) {
             await handleUnknownLocation(messageId, context)
         }
     } else {
-        // No locations in library yet — go straight to unknown
         await handleUnknownLocation(messageId, context)
     }
 }
@@ -212,12 +169,14 @@ async function handleKnownLocation(messageId, key) {
                 setBg(filename)
                 state.currentImage = filename
             })
-            .catch(err => console.error('[Localyze] Known location generate failed:', err))
+            .catch(err => {
+                console.error('[Localyze] Known location generate failed:', err)
+                toastr.error(`Generation failed: ${err.message}`, 'Localyze')
+            })
     }
 }
 
 async function handleUnknownLocation(messageId, context) {
-    // Build contextText from last 6 messages (or fewer)
     const chat = context.chat
     const start = Math.max(0, chat.length - 6)
     const contextText = chat.slice(start).map(m => `${m.name ?? ''}: ${m.mes ?? ''}`).join('\n\n')
@@ -232,7 +191,6 @@ async function handleUnknownLocation(messageId, context) {
         return
     }
 
-    // Show confirmation modal
     const confirmed = await callPopup(
         `<h3>New location detected: ${escapeHtml(def.name)}</h3>
         <p>${escapeHtml(def.description)}</p>`,
@@ -246,18 +204,15 @@ async function handleUnknownLocation(messageId, context) {
         return
     }
 
-    // User said Yes — open addModal for review/editing
     const approved = await openAddModal(def)
 
     if (approved === null) {
-        // Cancelled in addModal — same as No
         clearBg()
         await writeSceneRecord(messageId, { location: null, image: null, bg_declined: true })
         updateState(null, null)
         return
     }
 
-    // Approved — write location def and fire generation
     await writeLocationDef(messageId, approved, state.sessionId)
     state.locations[approved.key] = approved
     clearBg()
@@ -272,7 +227,10 @@ async function handleUnknownLocation(messageId, context) {
             setBg(filename)
             state.currentImage = filename
         })
-        .catch(err => console.error('[Localyze] Generate failed after approve:', err))
+        .catch(err => {
+            console.error('[Localyze] Generate failed after approve:', err)
+            toastr.error(`Generation failed: ${err.message}`, 'Localyze')
+        })
 }
 
 async function writeSceneRecord(messageId, record) {
@@ -299,7 +257,6 @@ function handleChatChanged() {
     boot().catch(err => console.error('[Localyze] Boot error:', err))
 }
 
-// Module-level init
 console.debug('[Localyze] module loading — injecting toolbar and settings panel')
 injectToolbar()
 injectSettingsPanel()

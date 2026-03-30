@@ -1,16 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/ui/pickerModal.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Manual Override UI
  * @description
  * Searchable location picker modal. Allows the user to manually set the
  * active location and background at any time, bypassing LLM detection.
- * Mirrors the Step 3a (known location) pipeline from index.js, including
- * the two-write pattern for pending image generation.
- *
- * Auto-selects the current location when opened. Search filters by both
- * display name and key slug.
+ * 
+ * Version 1.1.0 Updates:
+ * - Added UI error notifications for generation failures to match index.js.
  *
  * @api-declaration
  * openPickerModal() — opens the picker; no-ops with toastr if library is empty
@@ -21,7 +19,7 @@
  *     state_ownership: [state.currentLocation, state.currentImage,
  *       state.fileIndex (indirect via applyLocation)]
  *     external_io: [message.extra.localyze (write), saveChatConditional(),
- *       generate() (via imageCache), set/clear (via background)]
+ *       generate() (via imageCache), set/clear (via background), toastr]
  */
 import { saveChatConditional, callPopup } from '../../../../../script.js'
 import { getContext } from '../../../../extensions.js'
@@ -63,6 +61,7 @@ async function applyLocation(key) {
         await writeSceneRecord(lastMsgId, { location: key, image: filename, bg_declined: false })
         updateState(key, filename)
     } else {
+        // Clear background and write transition immediately (Two-Write Pattern)
         clearBg()
         await writeSceneRecord(lastMsgId, { location: key, image: null, bg_declined: false })
         updateState(key, null)
@@ -75,7 +74,10 @@ async function applyLocation(key) {
                 setBg(filename)
                 state.currentImage = filename
             })
-            .catch(err => console.error('[Localyze] Picker generate failed:', err))
+            .catch(err => {
+                console.error('[Localyze] Picker generate failed:', err)
+                toastr.error(`Generation failed: ${err.message}`, 'Localyze')
+            })
     }
 }
 
