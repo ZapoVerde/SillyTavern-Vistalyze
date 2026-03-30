@@ -1,19 +1,20 @@
 /**
- * @file data/default-user/extensions/localyze/index.js
+ * @file index.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.0.20
+ * @version 1.0.21
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
  * detection pipeline, and branching logic.
  *
- * Updates:
- * - Added UI error notifications to image generation catch blocks to 
- *   bubble up authentication/validation failures from imageCache.js.
+ * Version 1.1.3 Updates:
+ * - Decoupled MESSAGE_RECEIVED from ST's event emitter to fix Save Timeouts.
+ * - Added AsyncLock to safely queue concurrent writes (Two-Write Pattern).
+ * - Fixed location_def vs scene overwrite collision on the same message.
  *
  * @api-declaration
  * Entry points (event-bound):
- *   handleMessageReceived(messageId)
+ *   handleMessageReceived(messageId) -> Fire and forget pipeline
  *   handleChatChanged()
  */
 import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup } from '../../../../script.js'
@@ -31,6 +32,73 @@ import { openAddModal } from './ui/addModal.js'
 import { openPickerModal } from './ui/pickerModal.js'
 import { injectSettingsPanel } from './settings/panel.js'
 
+// ─── AsyncLock (Mutex) for safe concurrent chat writes ───────────────
+
+class AsyncLock {
+    constructor() {
+        this.locked = false;
+        this.queue =[];
+    }
+    async acquire() {
+        if (!this.locked) {
+            this.locked = true;
+            return;
+        }
+        return new Promise(resolve => this.queue.push(resolve));
+    }
+    release() {
+        if (this.queue.length > 0) {
+            const nextResolve = this.queue.shift();
+            nextResolve();
+        } else {
+            this.locked = false;
+        }
+    }
+}
+const writeLock = new AsyncLock();
+
+// ─── Locked Write Wrappers ───────────────────────────────────────────
+
+async function lockedWriteSceneRecord(messageId, record) {
+    await writeLock.acquire()
+    try {
+        const context = getContext()
+        const message = context.chat[messageId]
+        if (message) {
+            message.extra = message.extra ?? {}
+            message.extra.localyze = { type: 'scene', ...record }
+            await saveChatConditional()
+        }
+    } finally {
+        writeLock.release()
+    }
+}
+
+async function lockedPatchSceneImage(messageId, filename) {
+    await writeLock.acquire()
+    try {
+        const context = getContext()
+        const message = context.chat[messageId]
+        if (message && message.extra?.localyze) {
+            message.extra.localyze.image = filename
+            await saveChatConditional()
+        }
+    } finally {
+        writeLock.release()
+    }
+}
+
+async function lockedWriteLocationDef(messageId, def, sessionId) {
+    await writeLock.acquire()
+    try {
+        await writeLocationDef(messageId, def, sessionId)
+    } finally {
+        writeLock.release()
+    }
+}
+
+// ─── Utility ─────────────────────────────────────────────────────────
+
 function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
@@ -43,6 +111,8 @@ function buildHistoryText(chat, beforeIndex, numPairs) {
     const transcript = slice.map(m => `${m.name ?? ''}: ${m.mes ?? ''}`).join('\n\n')
     return `Preceding turns:\n${transcript}\n\n`
 }
+
+// ─── Boot Sequence ───────────────────────────────────────────────────
 
 async function boot() {
     console.debug('[Localyze] boot() start')
@@ -90,7 +160,7 @@ async function boot() {
         const def = state.locations[key]
         if (!def) continue
         generate(key, def, state.sessionId)
-            .then(filename => {
+            .then(async filename => {
                 state.fileIndex.add(filename)
                 if (filename === state.currentImage) setBg(filename)
             })
@@ -115,7 +185,19 @@ async function boot() {
     }
 }
 
-async function handleMessageReceived(messageId) {
+// ─── Per-Turn Pipeline ───────────────────────────────────────────────
+
+/**
+ * FIRE-AND-FORGET handler to unblock ST's MESSAGE_RECEIVED event emitter.
+ * Resolves instantly so ST can save the chat without timing out.
+ */
+function handleMessageReceived(messageId) {
+    runDetectionPipeline(messageId).catch(err => {
+        console.error('[Localyze] Pipeline error:', err)
+    })
+}
+
+async function runDetectionPipeline(messageId) {
     const context = getContext()
     const message = context.chat[messageId]
     if (!message || message.is_user) return
@@ -154,18 +236,18 @@ async function handleKnownLocation(messageId, key) {
 
     if (state.fileIndex.has(filename)) {
         setBg(filename)
-        await writeSceneRecord(messageId, { location: key, image: filename, bg_declined: false })
+        await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false })
         updateState(key, filename)
     } else {
         clearBg()
-        await writeSceneRecord(messageId, { location: key, image: null, bg_declined: false })
+        await lockedWriteSceneRecord(messageId, { location: key, image: null, bg_declined: false })
         updateState(key, null)
 
         const capturedId = messageId
         generate(key, def, state.sessionId)
-            .then(filename => {
+            .then(async filename => {
                 state.fileIndex.add(filename)
-                patchSceneImage(capturedId, filename)
+                await lockedPatchSceneImage(capturedId, filename)
                 setBg(filename)
                 state.currentImage = filename
             })
@@ -186,7 +268,7 @@ async function handleUnknownLocation(messageId, context) {
 
     if (def === null) {
         clearBg()
-        await writeSceneRecord(messageId, { location: null, image: null, bg_declined: true })
+        await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true })
         updateState(null, null)
         return
     }
@@ -199,7 +281,7 @@ async function handleUnknownLocation(messageId, context) {
 
     if (!confirmed) {
         clearBg()
-        await writeSceneRecord(messageId, { location: null, image: null, bg_declined: true })
+        await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true })
         updateState(null, null)
         return
     }
@@ -208,22 +290,30 @@ async function handleUnknownLocation(messageId, context) {
 
     if (approved === null) {
         clearBg()
-        await writeSceneRecord(messageId, { location: null, image: null, bg_declined: true })
+        await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true })
         updateState(null, null)
         return
     }
 
-    await writeLocationDef(messageId, approved, state.sessionId)
+    // Write the Definition to the previous message (user prompt) to avoid schema collision
+    // with the Scene record, which must live on the current AI message.
+    const defMsgId = messageId > 0 ? messageId - 1 : messageId;
+    await lockedWriteLocationDef(defMsgId, approved, state.sessionId)
+    
     state.locations[approved.key] = approved
     clearBg()
-    await writeSceneRecord(messageId, { location: approved.key, image: null, bg_declined: false })
+    
+    // Write Scene to the current AI message (skip if it was message 0 to prevent overwrite)
+    if (defMsgId !== messageId) {
+        await lockedWriteSceneRecord(messageId, { location: approved.key, image: null, bg_declined: false })
+    }
     updateState(approved.key, null)
 
     const capturedId = messageId
     generate(approved.key, approved, state.sessionId)
-        .then(filename => {
+        .then(async filename => {
             state.fileIndex.add(filename)
-            patchSceneImage(capturedId, filename)
+            await lockedPatchSceneImage(capturedId, filename)
             setBg(filename)
             state.currentImage = filename
         })
@@ -231,25 +321,6 @@ async function handleUnknownLocation(messageId, context) {
             console.error('[Localyze] Generate failed after approve:', err)
             toastr.error(`Generation failed: ${err.message}`, 'Localyze')
         })
-}
-
-async function writeSceneRecord(messageId, record) {
-    const context = getContext()
-    const message = context.chat[messageId]
-    if (!message) return
-    message.extra = message.extra ?? {}
-    message.extra.localyze = { type: 'scene', ...record }
-    await saveChatConditional()
-}
-
-async function patchSceneImage(messageId, filename) {
-    const context = getContext()
-    const message = context.chat[messageId]
-    if (!message) return
-    if (message.extra?.localyze) {
-        message.extra.localyze.image = filename
-        await saveChatConditional()
-    }
 }
 
 function handleChatChanged() {
