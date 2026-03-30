@@ -20,8 +20,8 @@
  *     external_io: [message.extra.localyze (write), saveChatConditional(),
  *       generate(), set/clear, callPopup]
  */
-import { saveChatConditional, callPopup } from '../../../../../script.js'
-import { getContext } from '../../../../extensions.js'
+import { saveChatConditional, callPopup } from '../../../../../script.js';
+import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js'
 import { set as setBg, clear as clearBg } from '../background.js'
 import { generate } from '../imageCache.js'
