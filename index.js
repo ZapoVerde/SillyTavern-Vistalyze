@@ -1,13 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.0.19
+ * @version 1.0.20
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
  * detection pipeline, and branching logic.
  *
- * Version 1.0.18 Updates:
+ * Updates:
  * - Added UI error notifications to image generation catch blocks to 
  *   bubble up authentication/validation failures from imageCache.js.
  *

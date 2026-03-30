@@ -1,15 +1,16 @@
 /**
- * @file data/default-user/extensions/localyze/settings/panel.js
+ * @file panel.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.0
+ * @version 1.1.2
  * @architectural-role Settings UI
  * @description
  * Injects the Localyze settings panel into ST's extensions drawer.
  *
- * Version 1.1.0 Updates:
- * - Migrated key storage to ST's async Secret Service.
- * - Added visual status indicator for the encrypted key.
- * - Removed plaintext key population to prevent leakage.
+ * Version 1.1.2 Updates:
+ * - Migrated to SillyTavern standard Secret Service (writeSecret, secret_state).
+ * - Standardized Preamble and relative paths.
+ * - Improved UI text to warn users about allowKeysExposure.
+ * - Uses synchronous secret_state check to prevent 403 errors on UI render.
  *
  * @api-declaration
  * injectSettingsPanel() — idempotent; appends panel to #extensions_settings
@@ -17,13 +18,14 @@
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership:[extension_settings.localyze (write via save handlers)]
+ *     state_ownership:[extension_settings.localyze (write)]
  *     external_io:[#extensions_settings DOM (write), saveSettingsDebounced(),
- *       ConnectionManagerRequestService.handleDropdown(), callPopup(),
- *       getSecret(), setSecret()]
+ *       writeSecret(), secret_state (read)]
  */
+
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { extension_settings, getSecret, setSecret } from '../../../../extensions.js'
+import { extension_settings } from '../../../../extensions.js'
+import { writeSecret, secret_state } from '../../../../secrets.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,
@@ -35,7 +37,7 @@ import {
 } from '../defaults.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 
-const SECRET_KEY_NAME = 'localyze_pollinations_key'
+const SECRET_KEY_NAME = 'api_key_pollinations'
 
 // ─── Settings accessor ────────────────────────────────────────────────────────
 
@@ -117,7 +119,8 @@ function buildPanelHTML() {
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
                     <strong style="font-size:0.95em;">Image Generation</strong>
                     <p style="font-size:0.83em;opacity:0.65;margin:4px 0 12px;">
-                        Images are generated via Pollinations. Enter your API key (sk_...) to securely save it to your server vault.
+                        Images are generated via Pollinations. Enter your API key to securely save it to your server vault.<br/>
+                        <strong style="color:var(--SmartThemeWarningColor,#ffc107);">Note:</strong> Extensions require <code>allowKeysExposure: true</code> in <code>config.yaml</code> to read this key.
                     </p>
 
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -189,17 +192,17 @@ function initDropdowns() {
 
 // ─── Secret Key Status ────────────────────────────────────────────────────────
 
-async function updateKeyStatusIndicator() {
+function updateKeyStatusIndicator() {
     const $indicator = $('#lz-key-status-indicator')
-    try {
-        const key = await getSecret(SECRET_KEY_NAME)
-        if (key) {
-            $indicator.html('<span style="color:var(--SmartThemeQuoteColor,#28a745);"><i class="fa-solid fa-circle-check"></i> Configured (Encrypted)</span>')
-        } else {
-            $indicator.html('<span style="color:var(--SmartThemeWarningColor,#ffc107);"><i class="fa-solid fa-triangle-exclamation"></i> Not Configured</span>')
-        }
-    } catch (err) {
-        $indicator.html('<span style="color:var(--SmartThemeErrorColor,#dc3545);"><i class="fa-solid fa-circle-xmark"></i> Vault Error</span>')
+    
+    // Check ST's active secret_state registry. This works securely even if 
+    // allowKeysExposure is false, as it only checks the masked registry.
+    const state = secret_state[SECRET_KEY_NAME]
+    
+    if (Array.isArray(state) && state.length > 0) {
+        $indicator.html('<span style="color:var(--SmartThemeQuoteColor,#28a745);"><i class="fa-solid fa-circle-check"></i> Configured (Saved in Vault)</span>')
+    } else {
+        $indicator.html('<span style="color:var(--SmartThemeWarningColor,#ffc107);"><i class="fa-solid fa-triangle-exclamation"></i> Not Configured</span>')
     }
 }
 
@@ -242,7 +245,7 @@ function bindHandlers() {
         const key = $('#lz-pollinations-key').val().trim()
         if (!key) { toastr.warning('Paste your Pollinations API key first.', 'Localyze'); return }
         
-        await setSecret(SECRET_KEY_NAME, key)
+        await writeSecret(SECRET_KEY_NAME, key, 'Localyze: Pollinations')
         $('#lz-pollinations-key').val('')
         
         toastr.success('Pollinations key securely saved to vault.', 'Localyze')

@@ -1,31 +1,32 @@
 /**
- * @file data/default-user/extensions/localyze/imageCache.js
+ * @file imageCache.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.0
+ * @version 1.1.2
  * @architectural-role Image IO
  * @description
- * Owns all image-related IO. 
+ * Owns all image-related IO. Migrated to SillyTavern's standard Secret Service
+ * using findSecret() and the 'api_key_pollinations' key. 
  * 
- * Version 1.1.0 Updates:
- * - Uses SillyTavern SecretService for secure key retrieval.
- * - Implements strict Response validation (checks ok status and Content-Type).
- * - Switches to Authorization: Bearer headers for the gen.pollinations.ai gateway.
- * - Wraps blobs in File objects with explicit MIME types for ST server compatibility.
+ * Version 1.1.2 Updates:
+ * - Fixed import paths to align with SillyTavern /scripts/ structure.
+ * - Standardized Preamble to match Localyze Seed requirements.
+ * - Hardened error handling for blocked key exposure.
  *
  * @api-declaration
- * fetchFileIndex(sessionId) → Promise<{ fileIndex: Set, allImages: string[] }>
- * generate(key, locationDef, sessionId) → Promise<filename: string>
  * fetchPreviewBlob(prompt) → Promise<string> (Object URL)
+ * fetchFileIndex(sessionId) → Promise<{fileIndex, allImages}>
+ * generate(key, locationDef, sessionId) → Promise<string> (filename)
  *
  * @contract
  *   assertions:
  *     purity: IO
  *     state_ownership: []
- *     external_io: [POST /api/backgrounds/all, GET gen.pollinations.ai,
- *       POST /api/backgrounds/upload, getSecret()]
+ *     external_io: [findSecret, fetch(/api/backgrounds/all), fetch(/api/backgrounds/upload)]
  */
+
 import { getRequestHeaders } from '../../../../script.js'
-import { extension_settings, getSecret } from '../../../extensions.js'
+import { findSecret } from '../../../secrets.js'
+import { extension_settings } from '../../../extensions.js'
 import {
     POLLINATIONS_BASE_URL,
     DEFAULT_IMAGE_MODEL,
@@ -34,7 +35,8 @@ import {
     DEV_IMAGE_HEIGHT,
 } from './defaults.js'
 
-const SECRET_KEY_NAME = 'localyze_pollinations_key'
+/** Standard SillyTavern secret key name for Pollinations */
+const SECRET_KEY_NAME = 'api_key_pollinations'
 
 function interpolateImagePrompt(template, locationDef) {
     return template
@@ -43,10 +45,6 @@ function interpolateImagePrompt(template, locationDef) {
         .replace(/\{\{description\}\}/g,  locationDef.description ?? '')
 }
 
-/**
- * Builds the URL for the gen.pollinations.ai gateway.
- * No keys are passed in the URL to prevent leakage and comply with gateway rules.
- */
 function buildPollinationsUrl(finalPrompt, overrides = {}) {
     const s = extension_settings.localyze ?? {}
     const devMode = s.devMode ?? false
@@ -60,24 +58,26 @@ function buildPollinationsUrl(finalPrompt, overrides = {}) {
 }
 
 /**
- * Fetches the user's API key from the SillyTavern Secret Service.
- * Throws if the key is missing to prevent keyless requests that will be rejected.
+ * Retrieves the API key using the standard ST findSecret function.
+ * Note: Returns null if allowKeysExposure is false in SillyTavern config.
  */
 async function getAuthHeaders() {
-    const userKey = await getSecret(SECRET_KEY_NAME)
+    const userKey = await findSecret(SECRET_KEY_NAME)
+    
     if (!userKey) {
-        throw new Error('Pollinations API key not found. Please set it in the Localyze settings.')
+        throw new Error(
+            'Pollinations API key not found or blocked.\n\n' +
+            '1. Ensure the key is set in ST API settings (Pollinations).\n' +
+            '2. In SillyTavern/config.yaml, set "allowKeysExposure: true" then restart the server.'
+        )
     }
+    
     return {
         'Authorization': `Bearer ${userKey}`,
     }
 }
 
-/**
- * Validates that the response from Pollinations is actually an image.
- * Prevents saving error text strings as broken .png files.
- */
-async function validateImageResponse(response, url) {
+async function validateImageResponse(response) {
     if (!response.ok) {
         const text = await response.text()
         throw new Error(`Pollinations API Error (${response.status}): ${text}`)
@@ -93,9 +93,8 @@ export async function fetchPreviewBlob(prompt) {
     const url = buildPollinationsUrl(prompt, { width: '320', height: '180' })
     const headers = await getAuthHeaders()
     
-    console.debug('[Localyze:Preview] GET', url)
     const res = await fetch(url, { headers })
-    await validateImageResponse(res, url)
+    await validateImageResponse(res)
     
     return URL.createObjectURL(await res.blob())
 }
@@ -120,14 +119,10 @@ export async function generate(key, locationDef, sessionId) {
     const url = buildPollinationsUrl(finalPrompt)
     const headers = await getAuthHeaders()
     
-    console.debug(`[Localyze:Image] GET ${url}`)
     const imgRes = await fetch(url, { headers })
-    await validateImageResponse(imgRes, url)
+    await validateImageResponse(imgRes)
     
     const blob = await imgRes.blob()
-
-    // Wrap blob in a File object with explicit image MIME type.
-    // This ensures SillyTavern's multer middleware accepts and writes the file correctly.
     const file = new File([blob], filename, { type: 'image/png' })
 
     const formData = new FormData()

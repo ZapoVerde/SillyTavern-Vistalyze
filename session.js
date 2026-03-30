@@ -1,14 +1,15 @@
 /**
- * @file data/default-user/extensions/localyze/session.js
+ * @file session.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.0
+ * @version 1.1.2
  * @architectural-role Session Identity
  * @description
  * Manages the per-chat sessionId and initializes extension settings.
  * 
- * Version 1.1.0 Updates:
- * - Removed pollinationsKey from extension_settings (migrated to Secrets).
- * - Hardened ensureSettings to prevent accidental data loss during boot.
+ * Version 1.1.2 Updates:
+ * - Removed all legacy key storage from extension_settings (migrated to ST Vault).
+ * - Standardized Preamble and relative paths.
+ * - Hardened ensureSettings to prevent data leakage in settings.json.
  *
  * @api-declaration
  * initSession() — idempotent; reads or generates sessionId, registers it
@@ -21,6 +22,7 @@
  *       extension_settings.localyze.knownSessions (write),
  *       saveMetadataDebounced(), saveSettingsDebounced()]
  */
+
 import { chat_metadata, saveSettingsDebounced } from '../../../../script.js'
 import { extension_settings, saveMetadataDebounced } from '../../../extensions.js'
 import { state } from './state.js'
@@ -37,7 +39,7 @@ import {
 
 /**
  * Ensures the extension settings object exists and contains all required keys.
- * Note: Sensitive API keys are no longer stored here.
+ * Note: Sensitive API keys are strictly forbidden here and moved to the Vault.
  */
 function ensureSettings() {
     if (!extension_settings.localyze) {
@@ -82,9 +84,11 @@ function ensureSettings() {
     if (s.imagePromptTemplate === undefined) s.imagePromptTemplate = DEFAULT_IMAGE_PROMPT_TEMPLATE
     if (s.devMode             === undefined) s.devMode             = DEFAULT_DEV_MODE
 
-    // Clean up legacy keys from previous versions to ensure purity
+    // CRITICAL: Clean up legacy keys from settings.json to ensure security.
+    // Keys now live exclusively in ST's encrypted secrets.json vault.
     delete s.pollinationsKey
     delete s.pollinationsSecretKey
+    delete s.localyze_pollinations_key
 }
 
 function generateSessionId() {
