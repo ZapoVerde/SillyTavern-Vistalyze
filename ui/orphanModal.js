@@ -1,30 +1,30 @@
 /**
  * @file data/default-user/extensions/localyze/ui/orphanModal.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Orphan File Review UI
  * @description
  * Modal for reviewing and deleting orphaned Localyze background images.
  * Opened by toolbar.js after a full audit returns results. Shows a
  * checkbox table of orphan filenames with select-all support.
  *
- * Deletion calls POST /api/backgrounds/delete for each selected file.
- * On completion, clears extension_settings.localyze.auditCache and the
- * orphan badge. Never auto-deletes — user must explicitly select and confirm.
+ * Version 1.2.0 Updates:
+ * - Refactored to use getMetaSettings() for clearing the global auditCache.
+ * - Hardened deletion loop and success notifications.
  *
  * @api-declaration
- * openOrphanModal(orphans) — opens the modal; toastr if orphans is empty
+ * openOrphanModal(orphans) — opens the modal; toastr if orphans is empty.
  *
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [extension_settings.localyze.auditCache (write)]
+ *     state_ownership: [getMetaSettings().auditCache (write)]
  *     external_io: [POST /api/backgrounds/delete, saveSettingsDebounced(),
  *       clearOrphanBadge()]
  */
 import { getRequestHeaders, saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { extension_settings } from '../../../../extensions.js'
 import { clearOrphanBadge } from './toolbar.js'
+import { getMetaSettings } from '../settings/data.js'
 
 function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -62,6 +62,7 @@ export async function openOrphanModal(orphans) {
         'confirm',
     )
 
+    // Bind event handlers after callPopup renders
     $('#lz-orphan-select-all').on('change', function () {
         $('.lz-orphan-check').prop('checked', this.checked)
     })
@@ -88,10 +89,15 @@ export async function openOrphanModal(orphans) {
         }
     }
 
-    if (extension_settings.localyze) {
-        extension_settings.localyze.auditCache = { suspects: [], lastAudit: null, orphans: [] }
-        saveSettingsDebounced()
+    // Reset the global audit cache in meta settings
+    const meta = getMetaSettings()
+    meta.auditCache = {
+        suspects: [],
+        lastAudit: new Date().toISOString(),
+        orphans: []
     }
+    
+    saveSettingsDebounced()
     clearOrphanBadge()
 
     if (failed > 0) {

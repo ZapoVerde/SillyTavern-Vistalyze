@@ -1,16 +1,15 @@
 /**
  * @file index.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.0.21
+ * @version 1.0.22
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * Localyze extension entry point. Owns the boot sequence, the per-turn
  * detection pipeline, and branching logic.
  *
- * Version 1.1.3 Updates:
- * - Decoupled MESSAGE_RECEIVED from ST's event emitter to fix Save Timeouts.
- * - Added AsyncLock to safely queue concurrent writes (Two-Write Pattern).
- * - Fixed location_def vs scene overwrite collision on the same message.
+ * Version 1.2.0 Updates:
+ * - Migrated to profile-aware settings via getSettings() and getMetaSettings().
+ * - Ensure prompts, models, and thresholds are read from activeState.
  *
  * @api-declaration
  * Entry points (event-bound):
@@ -18,7 +17,7 @@
  *   handleChatChanged()
  */
 import { eventSource, event_types, saveChatConditional, saveSettingsDebounced, callPopup } from '../../../../script.js'
-import { extension_settings, getContext } from '../../../extensions.js'
+import { getContext } from '../../../extensions.js'
 import { state, resetState, updateState } from './state.js'
 import { initSession } from './session.js'
 import { reconstruct } from './reconstruction.js'
@@ -31,6 +30,7 @@ import { injectToolbar, showOrphanBadge } from './ui/toolbar.js'
 import { openAddModal } from './ui/addModal.js'
 import { openPickerModal } from './ui/pickerModal.js'
 import { injectSettingsPanel } from './settings/panel.js'
+import { getSettings, getMetaSettings } from './settings/data.js'
 
 // ─── AsyncLock (Mutex) for safe concurrent chat writes ───────────────
 
@@ -175,11 +175,11 @@ async function boot() {
         clearBg()
     }
 
-    const suspects = fastDiff(allImages, extension_settings.localyze?.knownSessions ??[])
+    const meta = getMetaSettings()
+    const suspects = fastDiff(allImages, meta?.knownSessions ??[])
     if (suspects.length > 0) {
-        if (!extension_settings.localyze) extension_settings.localyze = { knownSessions: [], auditCache: { suspects: [], lastAudit: null, orphans:[] } }
-        extension_settings.localyze.auditCache = extension_settings.localyze.auditCache ?? {}
-        extension_settings.localyze.auditCache.suspects = suspects
+        meta.auditCache = meta.auditCache ?? {}
+        meta.auditCache.suspects = suspects
         saveSettingsDebounced()
         showOrphanBadge(suspects.length)
     }
@@ -203,7 +203,7 @@ async function runDetectionPipeline(messageId) {
     if (!message || message.is_user) return
 
     const locationKeys = Object.keys(state.locations)
-    const s = extension_settings.localyze
+    const s = getSettings()
 
     if (state.currentLocation !== null) {
         const historyText = buildHistoryText(context.chat, messageId, s.booleanHistory ?? 0)
@@ -263,7 +263,7 @@ async function handleUnknownLocation(messageId, context) {
     const start = Math.max(0, chat.length - 6)
     const contextText = chat.slice(start).map(m => `${m.name ?? ''}: ${m.mes ?? ''}`).join('\n\n')
 
-    const s = extension_settings.localyze
+    const s = getSettings()
     const def = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId)
 
     if (def === null) {

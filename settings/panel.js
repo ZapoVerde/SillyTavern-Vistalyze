@@ -1,16 +1,15 @@
 /**
  * @file panel.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.2
+ * @version 1.2.0
  * @architectural-role Settings UI
  * @description
  * Injects the Localyze settings panel into ST's extensions drawer.
  *
- * Version 1.1.2 Updates:
- * - Migrated to SillyTavern standard Secret Service (writeSecret, secret_state).
- * - Standardized Preamble and relative paths.
- * - Improved UI text to warn users about allowKeysExposure.
- * - Uses synchronous secret_state check to prevent 403 errors on UI render.
+ * Version 1.2.0 Updates:
+ * - Implemented profile management bar (Select, Save, New, Rename, Delete).
+ * - Refactored to read/write against activeState via getSettings().
+ * - Added dirty state tracking and automatic UI refresh on profile switch.
  *
  * @api-declaration
  * injectSettingsPanel() — idempotent; appends panel to #extensions_settings
@@ -24,9 +23,9 @@
  */
 
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
-import { extension_settings } from '../../../../extensions.js'
 import { writeSecret, secret_state } from '../../../../secrets.js'
 import { ConnectionManagerRequestService } from '../../../shared.js'
+import { getSettings, getMetaSettings } from './data.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_CLASSIFIER_PROMPT,
@@ -39,11 +38,29 @@ import { fetchPreviewBlob } from '../imageCache.js'
 
 const SECRET_KEY_NAME = 'api_key_pollinations'
 
-// ─── Settings accessor ────────────────────────────────────────────────────────
+// ─── Profile State Tracking ───────────────────────────────────────────────────
 
-function getSettings() {
-    if (!extension_settings.localyze) extension_settings.localyze = {}
-    return extension_settings.localyze
+function isStateDirty() {
+    const meta = getMetaSettings()
+    return JSON.stringify(meta.activeState) !== JSON.stringify(meta.profiles[meta.currentProfileName])
+}
+
+function updateDirtyIndicator() {
+    const meta = getMetaSettings()
+    const label = meta.currentProfileName + (isStateDirty() ? ' *' : '')
+    const $sel = $('#lz-profile-select')
+    $sel.find(`option[value="${CSS.escape(meta.currentProfileName)}"]`).text(label)
+    $sel.val(meta.currentProfileName)
+}
+
+function refreshProfileDropdown() {
+    const meta = getMetaSettings()
+    const $sel = $('#lz-profile-select')
+    $sel.empty()
+    for (const name of Object.keys(meta.profiles)) {
+        $sel.append($('<option>').val(name).text(name))
+    }
+    updateDirtyIndicator()
 }
 
 // ─── Prompt popup ─────────────────────────────────────────────────────────────
@@ -67,6 +84,7 @@ async function openPromptPopup(settingsKey, title, defaultValue) {
     const value = $('#lz-prompt-editor').val()
     s[settingsKey] = (value ?? '').trim() || defaultValue
     saveSettingsDebounced()
+    updateDirtyIndicator()
     refreshPanel()
 }
 
@@ -108,6 +126,14 @@ function buildPanelHTML() {
                 <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
             </div>
             <div class="inline-drawer-content">
+                <div class="lz-profile-bar" style="display:flex;align-items:center;gap:4px;margin-bottom:12px;">
+                    <select id="lz-profile-select" class="text_pole" style="flex:1;" title="Active settings profile"></select>
+                    <button id="lz-profile-save" class="menu_button" title="Save profile" style="padding:2px 8px;">&#x1F4BE;</button>
+                    <button id="lz-profile-add" class="menu_button" title="New profile" style="padding:2px 8px;">&#x2795;</button>
+                    <button id="lz-profile-rename" class="menu_button" title="Rename profile" style="padding:2px 8px;">&#x270F;&#xFE0F;</button>
+                    <button id="lz-profile-delete" class="menu_button" title="Delete profile" style="padding:2px 8px;">&#x1F5D1;&#xFE0F;</button>
+                </div>
+                
                 <p style="font-size:0.85em;opacity:0.7;margin:0 0 14px;">
                     Each AI call uses its own prompt template and connection profile.
                     Leave connection blank to use the chat's active API.
@@ -181,6 +207,7 @@ function initDropdowns() {
                 (profile) => {
                     s[key] = profile?.id ?? null
                     saveSettingsDebounced()
+                    updateDirtyIndicator()
                 },
             )
         } catch {
@@ -230,6 +257,76 @@ function bindHandlers() {
         imagePromptTemplate: 'Image Prompt Template — {{image_prompt}} {{name}} {{description}}',
     }
 
+    // ── Profile Management Events ──
+
+    $('#lz-settings').on('change', '#lz-profile-select', function() {
+        const newName = $(this).val()
+        const meta = getMetaSettings()
+        if (!meta.profiles[newName]) return
+        meta.currentProfileName = newName
+        meta.activeState = structuredClone(meta.profiles[newName])
+        saveSettingsDebounced()
+        refreshPanel()
+    })
+
+    $('#lz-settings').on('click', '#lz-profile-save', function() {
+        const meta = getMetaSettings()
+        meta.profiles[meta.currentProfileName] = structuredClone(meta.activeState)
+        saveSettingsDebounced()
+        updateDirtyIndicator()
+    })
+
+    $('#lz-settings').on('click', '#lz-profile-add', async function() {
+        const rawName = await callPopup('<h3>New profile name</h3>', 'input', '')
+        const name = (rawName ?? '').trim()
+        if (!name) return
+        const meta = getMetaSettings()
+        if (meta.profiles[name]) {
+            toastr.warning(`Profile "${name}" already exists.`, 'Localyze')
+            return
+        }
+        meta.profiles[name] = structuredClone(meta.activeState)
+        meta.currentProfileName = name
+        saveSettingsDebounced()
+        refreshProfileDropdown()
+    })
+
+    $('#lz-settings').on('click', '#lz-profile-rename', async function() {
+        const meta = getMetaSettings()
+        const rawName = await callPopup('<h3>Rename profile</h3>', 'input', meta.currentProfileName)
+        const newName = (rawName ?? '').trim()
+        if (!newName || newName === meta.currentProfileName) return
+        if (meta.profiles[newName]) {
+            toastr.warning(`Profile "${newName}" already exists.`, 'Localyze')
+            return
+        }
+        meta.profiles[newName] = meta.profiles[meta.currentProfileName]
+        delete meta.profiles[meta.currentProfileName]
+        meta.currentProfileName = newName
+        saveSettingsDebounced()
+        refreshProfileDropdown()
+    })
+
+    $('#lz-settings').on('click', '#lz-profile-delete', async function() {
+        const meta = getMetaSettings()
+        if (Object.keys(meta.profiles).length <= 1) {
+            toastr.warning('Cannot delete the only profile.', 'Localyze')
+            return
+        }
+        const confirmed = await callPopup(
+            `<h3>Delete profile "${escapeHtml(meta.currentProfileName)}"?</h3>This cannot be undone.`,
+            'confirm'
+        )
+        if (!confirmed) return
+        delete meta.profiles[meta.currentProfileName]
+        meta.currentProfileName = Object.keys(meta.profiles)[0]
+        meta.activeState = structuredClone(meta.profiles[meta.currentProfileName])
+        saveSettingsDebounced()
+        refreshPanel()
+    })
+
+    // ── Input Events ──
+
     $('#lz-settings').on('click', '.lz-open-prompt', function () {
         const key = $(this).data('prompt-key')
         openPromptPopup(key, promptTitles[key], promptDefaults[key])
@@ -239,6 +336,7 @@ function bindHandlers() {
         const key = $(this).data('history-key')
         getSettings()[key] = Math.max(0, parseInt($(this).val()) || 0)
         saveSettingsDebounced()
+        updateDirtyIndicator()
     })
 
     $('#lz-settings').on('click', '#lz-pollinations-save', async function () {
@@ -280,11 +378,13 @@ function bindHandlers() {
     $('#lz-settings').on('change', '#lz-image-model', function () {
         getSettings().imageModel = $(this).val() || DEFAULT_IMAGE_MODEL
         saveSettingsDebounced()
+        updateDirtyIndicator()
     })
 
     $('#lz-settings').on('change', '#lz-dev-mode', function () {
         getSettings().devMode = $(this).prop('checked')
         saveSettingsDebounced()
+        updateDirtyIndicator()
     })
 }
 
@@ -302,7 +402,9 @@ function populateImageSettings() {
 
 function refreshPanel() {
     initDropdowns()
+    populateHistoryInputs()
     populateImageSettings()
+    refreshProfileDropdown()
 }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
@@ -318,7 +420,5 @@ export function injectSettingsPanel() {
 
     $parent.append(buildPanelHTML())
     bindHandlers()
-    initDropdowns()
-    populateHistoryInputs()
-    populateImageSettings()
+    refreshPanel()
 }

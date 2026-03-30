@@ -1,16 +1,15 @@
 /**
  * @file imageCache.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.2
+ * @version 1.2.1
  * @architectural-role Image IO
  * @description
- * Owns all image-related IO. Migrated to SillyTavern's standard Secret Service
- * using findSecret() and the 'api_key_pollinations' key. 
+ * Owns all image-related IO. Refactored to use the profile-aware getSettings() 
+ * accessor for prompts, models, and dev mode flags.
  * 
- * Version 1.1.2 Updates:
- * - Fixed import paths to align with SillyTavern /scripts/ structure.
- * - Standardized Preamble to match Localyze Seed requirements.
- * - Hardened error handling for blocked key exposure.
+ * Version 1.2.1 Updates:
+ * - Migrated from direct extension_settings access to getSettings().
+ * - Standardized usage of profile-level configuration.
  *
  * @api-declaration
  * fetchPreviewBlob(prompt) → Promise<string> (Object URL)
@@ -26,7 +25,7 @@
 
 import { getRequestHeaders } from '../../../../script.js'
 import { findSecret } from '../../../secrets.js'
-import { extension_settings } from '../../../extensions.js'
+import { getSettings } from './settings/data.js'
 import {
     POLLINATIONS_BASE_URL,
     DEFAULT_IMAGE_MODEL,
@@ -46,7 +45,7 @@ function interpolateImagePrompt(template, locationDef) {
 }
 
 function buildPollinationsUrl(finalPrompt, overrides = {}) {
-    const s = extension_settings.localyze ?? {}
+    const s = getSettings()
     const devMode = s.devMode ?? false
     const params = new URLSearchParams({
         width:  overrides.width  ?? (devMode ? String(DEV_IMAGE_WIDTH)  : '1920'),
@@ -59,7 +58,6 @@ function buildPollinationsUrl(finalPrompt, overrides = {}) {
 
 /**
  * Retrieves the API key using the standard ST findSecret function.
- * Note: Returns null if allowKeysExposure is false in SillyTavern config.
  */
 async function getAuthHeaders() {
     const userKey = await findSecret(SECRET_KEY_NAME)
@@ -113,7 +111,7 @@ export async function fetchFileIndex(sessionId) {
 
 export async function generate(key, locationDef, sessionId) {
     const filename = `localyze_${sessionId}_${key}.png`
-    const template = extension_settings.localyze?.imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
+    const template = getSettings().imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
     
     const url = buildPollinationsUrl(finalPrompt)

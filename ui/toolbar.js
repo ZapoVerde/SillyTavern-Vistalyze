@@ -1,37 +1,37 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Toolbar UI
  * @description
  * Injects two buttons into the ST extensions panel (#extensionsMenu):
  *
- *   Localyze button  — opens the location picker modal for manual override
+ *   Localyze button  — opens the location picker modal for manual override.
  *   Audit Images btn — runs full orphan audit and opens orphanModal if needed;
  *                      carries the orphan badge (#lz-orphan-badge) which is
- *                      shown by index.js after the boot-time fast diff
+ *                      shown by index.js after the boot-time fast diff.
  *
- * Duplicate buttons are removed before injection to survive hot reloads.
- * The orphan badge is driven externally by showOrphanBadge() and
- * clearOrphanBadge(), which are called by index.js and orphanModal.js.
+ * Version 1.2.0 Updates:
+ * - Refactored to use getMetaSettings() for the global auditCache.
+ * - Standardized badge and audit lifecycle with the profile system.
  *
  * @api-declaration
- * injectToolbar()        — idempotent; injects both buttons
- * showOrphanBadge(count) — shows red count badge on audit button
- * clearOrphanBadge()     — hides badge
+ * injectToolbar()        — idempotent; injects both buttons.
+ * showOrphanBadge(count) — shows red count badge on audit button.
+ * clearOrphanBadge()     — hides badge.
  *
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [extension_settings.localyze.auditCache (write)]
+ *     state_ownership: [getMetaSettings().auditCache (write)]
  *     external_io: [#extensionsMenu DOM (write), POST /api/backgrounds/all,
  *       runFullAudit(), openPickerModal(), openOrphanModal()]
  */
-import { extension_settings } from '../../../../extensions.js'
 import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js'
 import { openPickerModal } from './pickerModal.js'
 import { openOrphanModal } from './orphanModal.js'
 import { runFullAudit } from '../orphanDetector.js'
+import { getMetaSettings } from '../settings/data.js'
 
 export function injectToolbar() {
     // Remove any existing buttons to avoid duplicates on hot reload
@@ -59,21 +59,23 @@ export function injectToolbar() {
     `)
     auditBtn.on('click', async () => {
         try {
+            // Fetch the full image list for the audit
             const images = await fetch('/api/backgrounds/all', {
                 method: 'POST',
                 headers: getRequestHeaders(),
                 body: JSON.stringify({}),
             }).then(r => r.json()).then(d => d.images ?? [])
 
+            // Run the expensive full audit across all character folders
             const orphans = await runFullAudit(images)
 
-            if (!extension_settings.localyze) {
-                extension_settings.localyze = { knownSessions: [], auditCache: { suspects: [], lastAudit: null, orphans: [] } }
-            }
-            extension_settings.localyze.auditCache = extension_settings.localyze.auditCache ?? {}
-            extension_settings.localyze.auditCache.lastAudit = new Date().toISOString()
-            extension_settings.localyze.auditCache.orphans = orphans
-            extension_settings.localyze.auditCache.suspects = orphans
+            // Access global meta settings to store results
+            const meta = getMetaSettings()
+            meta.auditCache = meta.auditCache ?? {}
+            meta.auditCache.lastAudit = new Date().toISOString()
+            meta.auditCache.orphans = orphans
+            meta.auditCache.suspects = orphans
+            
             saveSettingsDebounced()
 
             if (orphans.length > 0) {
