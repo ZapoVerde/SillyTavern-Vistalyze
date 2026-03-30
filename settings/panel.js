@@ -24,7 +24,7 @@
 
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js'
 import { writeSecret, secret_state } from '../../../../secrets.js'
-import { ConnectionManagerRequestService } from '../../../shared.js'
+import { ConnectionManagerRequestService } from '../../../../shared.js'
 import { getSettings, getMetaSettings } from './data.js'
 import {
     DEFAULT_BOOLEAN_PROMPT,

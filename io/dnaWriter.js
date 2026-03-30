@@ -24,8 +24,8 @@
  *     external_io: [message.extra.localyze (write), saveChatConditional()]
  */
 
-import { saveChatConditional } from '../../../../script.js';
-import { getContext } from '../../../extensions.js';
+import { saveChatConditional } from '../../../../../script.js';
+import { getContext } from '../../../../extensions.js';
 import { AsyncLock } from '../utils/lock.js';
 import { writeLocationDef } from '../library.js';
 

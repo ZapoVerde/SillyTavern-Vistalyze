@@ -20,7 +20,7 @@
  *     external_io: [none]
  */
 
-import { extension_settings } from '../../../extensions.js';
+import { extension_settings } from '../../../../extensions.js';
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_BOOLEAN_HISTORY,

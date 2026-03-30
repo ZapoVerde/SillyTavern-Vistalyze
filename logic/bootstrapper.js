@@ -24,8 +24,8 @@
  *     external_io: [session, reconstruction, imageCache, background, orphanDetector]
  */
 
-import { saveSettingsDebounced } from '../../../../script.js';
-import { getContext } from '../../../extensions.js';
+import { saveSettingsDebounced } from '../../../../../script.js';
+import { getContext } from '../../../../extensions.js';
 import { state, resetState } from '../state.js';
 import { initSession } from '../session.js';
 import { reconstruct } from '../reconstruction.js';

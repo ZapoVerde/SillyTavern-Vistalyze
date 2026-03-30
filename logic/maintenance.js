@@ -20,7 +20,7 @@
  *     external_io: [ui/editModal, io/dnaWriter, imageCache, background]
  */
 
-import { getContext } from '../../../extensions.js';
+import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { openEditModal } from '../ui/editModal.js';
 import { lockedWriteLocationDef } from '../io/dnaWriter.js';

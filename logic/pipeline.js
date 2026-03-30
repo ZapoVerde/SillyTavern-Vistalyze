@@ -22,8 +22,8 @@
  *     external_io: [LLM Calls, Chat Writes, Image Generation, Background UI]
  */
 
-import { callPopup } from '../../../../script.js';
-import { getContext } from '../../../extensions.js';
+import { callPopup } from '../../../../../script.js';
+import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { buildHistoryText, escapeHtml } from '../utils/history.js';

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.23
+ * @version 1.0.24
  * @architectural-role Entry Point / Event Router
  * @description
  * The primary entry point for the Localyze extension. This module is 
@@ -23,7 +23,7 @@
  *     external_io: [eventSource (subscribe), UI Injections]
  */
 
-import { eventSource, event_types } from '../../../script.js';
+import { eventSource, event_types } from '../../../../script.js';
 import { resetState } from './state.js';
 import { runBoot } from './logic/bootstrapper.js';
 import { runPipeline } from './logic/pipeline.js';
