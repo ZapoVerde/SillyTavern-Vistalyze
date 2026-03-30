@@ -1,18 +1,19 @@
 /**
  * @file data/default-user/extensions/localyze/utils/history.js
- * @stamp {"utc":"2026-03-31T06:25:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-04-01T12:05:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Pure Functions / Text Processor
  * @description
  * Pure string and array manipulation utilities for the Localyze pipeline.
- * Contains logic for escaping HTML in UI elements and building history 
- * transcripts for LLM context windows.
+ * Contains logic for escaping HTML in UI elements, building history 
+ * transcripts for LLM context windows, and deterministic slugification.
  * 
- * Version 1.1.0 Updates:
- * - Added buildDescriberContext() for Step 3 transcript generation.
+ * Version 1.2.0 Updates:
+ * - Added slugify() for programmatic location key generation.
  *
  * @api-declaration
  * escapeHtml(str) -> string
+ * slugify(name) -> string
  * buildHistoryText(chat, beforeIndex, numPairs) -> string
  * buildDescriberContext(chat, messageId, numPairs) -> string
  *
@@ -34,6 +35,20 @@ export function escapeHtml(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+/**
+ * Programmatically generates a stable, URL-safe key from a location name.
+ * Used to maintain the "Immutable Link" between DNA and the filesystem.
+ * @param {string|null|undefined} name 
+ * @returns {string}
+ */
+export function slugify(name) {
+    return (name ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '');
 }
 
 /**

@@ -1,13 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2026-03-31T06:21:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-04-01T12:00:00.000Z"}
+ * @version 1.3.0
  * @architectural-role Default Configuration
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
- * Version 1.2.0 Updates:
- * - Added DEFAULT_DESCRIBER_HISTORY constant for Step 3 context tuning.
+ * Version 1.3.0 Updates:
+ * - Refactored DESCRIBER prompt to use "Location Archivist" persona.
+ * - Split location metadata into 'essence' (semantic) and 'atmosphere' (visual).
+ * - Removed 'key' from LLM output requirements to favor programmatic slugging.
+ * - Updated IMAGE_PROMPT_TEMPLATE to utilize the new 'atmosphere' field.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -28,8 +31,6 @@
 
 /**
  * Primary API Gateway for Pollinations.
- * Requests to this domain are routed through enter.pollinations.ai for
- * authentication (Authorization: Bearer) and billing.
  */
 export const POLLINATIONS_BASE_URL = 'https://gen.pollinations.ai'
 
@@ -56,12 +57,12 @@ export const DEFAULT_IMAGE_MODEL = 'flux'
 
 /**
  * Image prompt template. Interpolated by imageCache.js.
+ * Updated to use 'atmosphere' for focused visual generation.
  */
-export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{description}}, landscape, cinematic lighting, detailed environment'
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{atmosphere}}, landscape, cinematic lighting, detailed environment'
 
 /**
  * Dev mode — generates recognizable but low-cost images.
- * Balanced at 320x180 for visibility without high credit consumption.
  */
 export const DEFAULT_DEV_MODE = false
 export const DEV_IMAGE_WIDTH  = 320
@@ -84,29 +85,27 @@ Latest message:
 Has the scene moved to a new named location since the previous turns? YES or NO.`
 
 export const DEFAULT_CLASSIFIER_PROMPT =
-`Which of these location keys does this message take place in?
-Reply with the exact key or NULL if none match.
-Keys: {{key_list}}
+`Which of these locations matches the latest message?
+Reply with the exact Key or NULL.
 
-{{history}}Message:
-{{message}}`
+Locations:
+{{key_list}}
+
+{{history}}
+Message: {{message}}`
 
 export const DEFAULT_DESCRIBER_PROMPT =
-`[SYSTEM: TASK — LOCATION IDENTIFIER]
-You are reading a roleplay transcript and identifying the physical location of the current scene.
-Your job is to name the location, assign it a stable key, and write a vivid atmospheric description
-suitable for generating a background image.
+`[SYSTEM: TASK — LOCATION ARCHIVIST]
+Analyze the roleplay transcript to identify the current physical location.
 
 TRANSCRIPT:
 {{context}}
 
 INSTRUCTIONS:
-- Identify the single most specific location active at the end of the transcript.
-- name: A short human-readable label (e.g. "Throne Room", "Rainy Dockside Street").
-- key: A lowercase_slug version of the name, unique and stable (e.g. "throne_room", "rainy_dockside_street").
-- description: 2–3 sentences. Capture the visual atmosphere — lighting, mood, key architectural or
-  environmental details. Write as if directing a scene painter, not narrating plot.
-- If the location cannot be determined from the transcript, output exactly: NULL
+1. Identify the single most specific active location at the end of the transcript.
+2. name: A short, formal label (e.g., "The Silver Swan Tavern").
+3. essence: A brief, conceptual definition of what this place IS (e.g., "A crowded medieval pub and inn"). This helps distinguish the location semantically.
+4. atmosphere: 2-3 sentences of pure visual/sensory detail for an image generator. Focus on lighting, materials, and mood. Do not mention characters.
 
 ### OUTPUT FORMAT — JSON only, no markdown fences, no other text:
-{"name":"","key":"","description":""}`
+{"name": "", "essence": "", "atmosphere": ""}`

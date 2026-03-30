@@ -1,19 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/ui/addModal.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-04-01T12:15:00.000Z"}
+ * @version 1.1.0
  * @architectural-role New Location Review UI
  * @description
- * Modal for reviewing, editing, and approving a new location definition
- * before it is written to the chat DNA chain. Pre-filled by the Describer
- * LLM output. The user can edit all fields before approving.
- *
- * Key is auto-slugified from the name field as the user types. The
- * "Generate Preview" button sets an <img> src to the Pollinations URL
- * directly — the browser fetches and renders the preview asynchronously.
- *
- * Returns a Promise that resolves with the approved def object (name, key,
- * description, imagePrompt) or null if the user cancels.
+ * Modal for reviewing, editing, and approving a new location definition.
+ * 
+ * Version 1.1.0 Updates:
+ * - Uses programmatic slugify() for deterministic key generation.
+ * - Displays 'essence' (semantic) and 'atmosphere' (visual) separately.
+ * - Key field is auto-updated based on Name but remains visible for transparency.
  *
  * @api-declaration
  * openAddModal(def) → Promise<{ name, key, description, imagePrompt } | null>
@@ -22,18 +18,11 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: []
- *     external_io: [image.pollinations.ai (browser img src, no fetch())]
+ *     external_io: [callPopup, fetchPreviewBlob]
  */
 import { callPopup } from '../../../../../script.js'
 import { fetchPreviewBlob } from '../imageCache.js'
-
-function escapeHtml(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-function buildPollinationsPreviewUrl(imagePrompt) {
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=640&height=360&model=flux&nologo=true`
-}
+import { escapeHtml, slugify } from '../utils/history.js'
 
 export async function openAddModal(def) {
     const popupPromise = callPopup(
@@ -42,11 +31,14 @@ export async function openAddModal(def) {
         <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Name</label>
         <input type="text" id="lz-add-name" class="text_pole" value="${escapeHtml(def.name ?? '')}" style="width:100%;" />
 
-        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Key (slug)</label>
-        <input type="text" id="lz-add-key" class="text_pole" value="${escapeHtml(def.key ?? '')}" style="width:100%;" />
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Key (Automated Slug)</label>
+        <input type="text" id="lz-add-key" class="text_pole" value="${escapeHtml(def.key ?? '')}" readonly style="width:100%; opacity:0.6; cursor:not-allowed;" />
 
-        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Description</label>
-        <textarea id="lz-add-description" class="text_pole" rows="3" style="width:100%;">${escapeHtml(def.description ?? '')}</textarea>
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Essence (What is this place?)</label>
+        <input type="text" id="lz-add-essence" class="text_pole" value="${escapeHtml(def.description ?? '')}" style="width:100%;" />
+
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Atmosphere (Visual Image Prompt)</label>
+        <textarea id="lz-add-atmosphere" class="text_pole" rows="3" style="width:100%;">${escapeHtml(def.imagePrompt ?? '')}</textarea>
 
         <div style="margin-top:10px;">
             <button class="menu_button" id="lz-add-preview-btn">Generate Preview</button>
@@ -58,27 +50,25 @@ export async function openAddModal(def) {
         'confirm',
     )
 
-    // Bind handlers immediately — callPopup renders synchronously before awaiting
+    // Bind slugification handler: name -> key
     $('#lz-add-name').on('input', function () {
-        $('#lz-add-key').val(
-            this.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-        )
+        $('#lz-add-key').val(slugify(this.value))
     })
 
+    // Bind preview handler using the 'atmosphere' field
     $('#lz-add-preview-btn').on('click', async function () {
-        const desc = $('#lz-add-description').val().trim()
-        if (!desc) { toastr.warning('Enter a description first.', 'Localyze'); return }
+        const atmosphere = $('#lz-add-atmosphere').val().trim()
+        if (!atmosphere) { toastr.warning('Enter an atmosphere description first.', 'Localyze'); return }
         const btn = $(this)
         const status = $('#lz-preview-status')
         btn.prop('disabled', true).text('Fetching...')
         status.text('')
-        console.debug('[Localyze:Preview] requesting preview for:', desc)
+        
         try {
-            const objectUrl = await fetchPreviewBlob(desc)
+            const objectUrl = await fetchPreviewBlob(atmosphere)
             $('#lz-preview-container').show()
             $('#lz-preview-img').attr('src', objectUrl)
             status.text('320×180 preview')
-            console.debug('[Localyze:Preview] preview loaded OK')
         } catch (err) {
             console.error('[Localyze:Preview] failed:', err)
             status.text(`Failed: ${err.message}`)
@@ -102,6 +92,7 @@ export async function openAddModal(def) {
     return {
         name,
         key,
-        description: $('#lz-add-description').val().trim(),
+        description: $('#lz-add-essence').val().trim(),
+        imagePrompt: $('#lz-add-atmosphere').val().trim(),
     }
 }

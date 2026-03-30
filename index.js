@@ -1,16 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
- * @stamp {"utc":"2026-03-31T06:42:00.000Z"}
- * @version 1.0.27
+ * @stamp {"utc":"2026-04-01T14:20:00.000Z"}
+ * @version 1.0.28
  * @architectural-role Entry Point / Event Router
  * @description
- * The primary entry point for the Localyze extension. This module is 
- * responsible for binding host application events to the internal 
- * orchestrators and initializing UI components.
+ * The primary entry point for the Localyze extension. Responsible for 
+ * binding host application events and initializing UI components.
  * 
- * Version 1.1.0 Updates:
- * - Integrated handleManualDescriber to enable the "Force Detect Location" 
- *   feature in the settings panel.
+ * Updates:
+ * - Relocated handleManualDescriber routing from settings panel to toolbar.
+ * - Updated UI injection signatures to reflect deconstructed architecture.
  *
  * @api-declaration
  * Entry points (event-bound):
@@ -35,9 +34,6 @@ import { injectSettingsPanel } from './settings/panel.js';
 
 /**
  * Reacts to new AI messages by triggering the detection pipeline.
- * Errors are caught and logged here to prevent bubbling into the host's 
- * event emitter, but execution is fire-and-forget.
- * 
  * @param {number} messageId 
  */
 function handleMessageReceived(messageId) {
@@ -62,25 +58,21 @@ function handleChatChanged() {
 console.debug('[Localyze] Initializing Extension...');
 
 /**
- * Ensure settings structure is initialized immediately.
- * This prevents race conditions where UI elements attempt to read
- * state (like booleanHistory) before the data object is created.
+ * Ensure settings structure is initialized immediately to prevent
+ * race conditions in UI population.
  */
 initSettings();
 
 /**
- * Injects the UI elements into the SillyTavern interface.
- * The toolbar is injected with the maintenance callback to allow 
- * manual editing from the Location Picker.
- * 
- * The settings panel is injected with the manual detection callback 
- * for the Step 3 override button.
+ * Injects UI elements.
+ * handleEditLocation: used for the pencil icon in Picker.
+ * handleManualDescriber: used for the "Force Detect" button in Picker.
  */
-injectToolbar(handleEditLocation);
-injectSettingsPanel(handleManualDescriber);
+injectToolbar(handleEditLocation, handleManualDescriber);
+injectSettingsPanel();
 
 /**
- * Bind core SillyTavern events to Localyze dispatchers.
+ * Bind core SillyTavern events.
  */
 eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageReceived);
 eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);

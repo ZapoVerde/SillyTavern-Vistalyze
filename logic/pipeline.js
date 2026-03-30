@@ -1,15 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-03-31T06:30:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-04-01T12:10:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Orchestrator / Narrative Logic
  * @description
- * Implements the "Falling Water" detection pipeline and per-turn narrative 
- * branching. This module coordinates between LLM detectors, the DNA writer, 
- * and the image generation service.
+ * Implements the "Falling Water" detection pipeline.
  * 
- * Version 1.1.0 Updates:
- * - Integrated buildDescriberContext and describerHistory setting.
+ * Version 1.2.0 Updates:
+ * - Step 2 (Classifier) now uses "Semantic Identity" (Name + Essence) for prompts.
+ * - Step 3 (Describer) uses programmatic slugging and Archivist field mapping.
+ * - Map 'atmosphere' to 'imagePrompt' for generator consistency.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -25,7 +25,7 @@ import { callPopup } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { getSettings } from '../settings/data.js';
-import { buildHistoryText, buildDescriberContext, escapeHtml } from '../utils/history.js';
+import { buildHistoryText, buildDescriberContext, escapeHtml, slugify } from '../utils/history.js';
 import { detectBoolean, detectClassifier, detectDescriber } from '../detector.js';
 import { generate } from '../imageCache.js';
 import { set as setBg, clear as clearBg } from '../background.js';
@@ -66,12 +66,17 @@ export async function runPipeline(messageId) {
 
     // Step 2: Classifier (Does it match a known location?)
     if (locationKeys.length > 0) {
+        // Build a descriptive list for the LLM: "key (Name: Essence)"
+        const descriptiveList = Object.entries(state.locations)
+            .map(([key, loc]) => `- ${key} (${loc.name}: ${loc.essence ?? 'Unknown'})`)
+            .join('\n');
+
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
         const matchedKey = await detectClassifier(
             message.mes, 
             locationKeys, 
             historyText,
-            s.classifierPrompt, 
+            s.classifierPrompt.replace('{{key_list}}', descriptiveList),
             s.classifierProfileId
         );
         
@@ -93,12 +98,10 @@ async function handleKnownLocation(messageId, key) {
     const def = state.locations[key];
 
     if (state.fileIndex.has(filename)) {
-        // File exists - apply immediately
         setBg(filename);
         await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false });
         updateState(key, filename);
     } else {
-        // File missing - clear background and queue generation (Two-Write)
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: key, image: null, bg_declined: false });
         updateState(key, null);
@@ -125,20 +128,29 @@ async function handleUnknownLocation(messageId, context) {
     const s = getSettings();
     const contextText = buildDescriberContext(context.chat, messageId, s.describerHistory ?? 0);
 
-    const def = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
+    const rawDef = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
 
     // If LLM fails to parse or returns null, treat as a declined transition
-    if (def === null) {
+    if (rawDef === null) {
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true });
         updateState(null, null);
         return;
     }
 
+    // Programmatic Key Generation & Field Mapping
+    const def = {
+        ...rawDef,
+        key: slugify(rawDef.name),
+        description: rawDef.essence, // Store essence as the primary 'description' in DNA
+        imagePrompt: rawDef.atmosphere // Map atmosphere to the image prompt field
+    };
+
     // Quick confirm toastr-style popup
     const confirmed = await callPopup(
         `<h3>New location detected: ${escapeHtml(def.name)}</h3>
-        <p>${escapeHtml(def.description)}</p>`,
+        <p><em>${escapeHtml(def.description)}</em></p>
+        <p style="font-size:0.9em; opacity:0.8;">${escapeHtml(rawDef.atmosphere)}</p>`,
         'confirm'
     );
 
