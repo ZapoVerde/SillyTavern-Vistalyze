@@ -1,16 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.26
+ * @stamp {"utc":"2026-03-31T06:42:00.000Z"}
+ * @version 1.0.27
  * @architectural-role Entry Point / Event Router
  * @description
  * The primary entry point for the Localyze extension. This module is 
  * responsible for binding host application events to the internal 
  * orchestrators and initializing UI components.
  * 
- * Updates:
- * - Added explicit initSettings() call to guarantee data structure availability 
- *   before any UI injection or async booting begins.
+ * Version 1.1.0 Updates:
+ * - Integrated handleManualDescriber to enable the "Force Detect Location" 
+ *   feature in the settings panel.
  *
  * @api-declaration
  * Entry points (event-bound):
@@ -29,7 +29,7 @@ import { resetState } from './state.js';
 import { initSettings } from './settings/data.js';
 import { runBoot } from './logic/bootstrapper.js';
 import { runPipeline } from './logic/pipeline.js';
-import { handleEditLocation } from './logic/maintenance.js';
+import { handleEditLocation, handleManualDescriber } from './logic/maintenance.js';
 import { injectToolbar } from './ui/toolbar.js';
 import { injectSettingsPanel } from './settings/panel.js';
 
@@ -72,9 +72,12 @@ initSettings();
  * Injects the UI elements into the SillyTavern interface.
  * The toolbar is injected with the maintenance callback to allow 
  * manual editing from the Location Picker.
+ * 
+ * The settings panel is injected with the manual detection callback 
+ * for the Step 3 override button.
  */
 injectToolbar(handleEditLocation);
-injectSettingsPanel();
+injectSettingsPanel(handleManualDescriber);
 
 /**
  * Bind core SillyTavern events to Localyze dispatchers.

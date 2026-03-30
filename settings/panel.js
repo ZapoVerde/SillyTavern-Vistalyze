@@ -1,17 +1,18 @@
 /**
- * @file panel.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.2.1
+ * @file data/default-user/extensions/localyze/settings/panel.js
+ * @stamp {"utc":"2026-03-31T06:38:00.000Z"}
+ * @version 1.3.0
  * @architectural-role Settings UI
  * @description
  * Injects the Localyze settings panel into ST's extensions drawer.
  *
- * Version 1.2.1 Updates:
- * - Fixed broken import path for ConnectionManagerRequestService.
- * - Added initSettings() call during injection to prevent race condition.
+ * Version 1.3.0 Updates:
+ * - Added describerHistory to the Step 3 input row.
+ * - Added "Force Detect Location" button to manually trigger Step 3.
+ * - Updated injectSettingsPanel signature to accept onManualDetect callback.
  *
  * @api-declaration
- * injectSettingsPanel() — idempotent; appends panel to #extensions_settings
+ * injectSettingsPanel(onManualDetect) — idempotent; appends panel to #extensions_settings
  *
  * @contract
  *   assertions:
@@ -139,8 +140,12 @@ function buildPanelHTML() {
                 </p>
                 ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory')}
                 ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory')}
-                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId')}
+                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory')}
                 
+                <div style="margin-top:-8px; margin-bottom:16px; text-align:right;">
+                    <button id="lz-manual-detect" class="menu_button" title="Manually execute Step 3 and preview the output.">Force Detect Location</button>
+                </div>
+
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
                     <strong style="font-size:0.95em;">Image Generation</strong>
                     <p style="font-size:0.83em;opacity:0.65;margin:4px 0 12px;">
@@ -242,7 +247,7 @@ function populateHistoryInputs() {
     })
 }
 
-function bindHandlers() {
+function bindHandlers(onManualDetect) {
     const promptDefaults = {
         booleanPrompt:       DEFAULT_BOOLEAN_PROMPT,
         classifierPrompt:    DEFAULT_CLASSIFIER_PROMPT,
@@ -338,6 +343,20 @@ function bindHandlers() {
         updateDirtyIndicator()
     })
 
+    $('#lz-settings').on('click', '#lz-manual-detect', async function () {
+        if (typeof onManualDetect !== 'function') return
+        const btn = $(this)
+        const originalText = btn.text()
+        btn.prop('disabled', true).text('Detecting...')
+        try {
+            await onManualDetect()
+        } catch (err) {
+            console.error('[Localyze] Manual detection error:', err)
+        } finally {
+            btn.prop('disabled', false).text(originalText)
+        }
+    })
+
     $('#lz-settings').on('click', '#lz-pollinations-save', async function () {
         const key = $('#lz-pollinations-key').val().trim()
         if (!key) { toastr.warning('Paste your Pollinations API key first.', 'Localyze'); return }
@@ -408,7 +427,7 @@ function refreshPanel() {
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
-export function injectSettingsPanel() {
+export function injectSettingsPanel(onManualDetect) {
     if ($('#lz-settings').length) return
 
     // Resolve structural race condition: ensure data object exists before UI reads from it
@@ -421,6 +440,6 @@ export function injectSettingsPanel() {
     }
 
     $parent.append(buildPanelHTML())
-    bindHandlers()
+    bindHandlers(onManualDetect)
     refreshPanel()
 }

@@ -1,15 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-03-31T06:21:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Default Configuration
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
- * Version 1.1.0 Updates:
- * - Migrated to gen.pollinations.ai gateway.
- * - Optimized Dev Mode resolution (320x180).
- * - Removed query-param based authentication constants.
+ * Version 1.2.0 Updates:
+ * - Added DEFAULT_DESCRIBER_HISTORY constant for Step 3 context tuning.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -22,6 +20,7 @@
  * DEV_IMAGE_HEIGHT
  * DEFAULT_BOOLEAN_HISTORY
  * DEFAULT_CLASSIFIER_HISTORY
+ * DEFAULT_DESCRIBER_HISTORY
  * DEFAULT_BOOLEAN_PROMPT
  * DEFAULT_CLASSIFIER_PROMPT
  * DEFAULT_DESCRIBER_PROMPT
@@ -42,7 +41,7 @@ export const POLLINATIONS_APP_KEY = 'pk_WfuLORZ5RZDfPRZU'
 /**
  * Available Pollinations image models.
  */
-export const POLLINATIONS_MODELS = [
+export const POLLINATIONS_MODELS =[
     'flux',
     'zimage',
     'klein',
@@ -71,6 +70,7 @@ export const DEV_IMAGE_HEIGHT = 180
 /** Default turn-pair history for LLM calls. */
 export const DEFAULT_BOOLEAN_HISTORY = 3
 export const DEFAULT_CLASSIFIER_HISTORY = 3
+export const DEFAULT_DESCRIBER_HISTORY = 3
 
 export const DEFAULT_BOOLEAN_PROMPT =
 `Current scene: {{current_location}}

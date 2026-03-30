@@ -1,12 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-03-31T06:23:00.000Z"}
+ * @version 1.2.1
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle. Implements a profile-based system 
  * (profiles, currentProfileName, activeState) with a one-time migration 
  * path from legacy flat settings.
+ * 
+ * Version 1.2.1 Updates:
+ * - Added describerHistory to PROFILE_DEFAULTS.
  *
  * @api-declaration
  * getSettings()     — returns the activeState object for the current profile.
@@ -27,6 +30,7 @@ import {
     DEFAULT_CLASSIFIER_PROMPT,
     DEFAULT_CLASSIFIER_HISTORY,
     DEFAULT_DESCRIBER_PROMPT,
+    DEFAULT_DESCRIBER_HISTORY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_DEV_MODE,
@@ -47,13 +51,14 @@ export const PROFILE_DEFAULTS = Object.freeze({
     classifierHistory:    DEFAULT_CLASSIFIER_HISTORY,
     describerPrompt:      DEFAULT_DESCRIBER_PROMPT,
     describerProfileId:   null,
+    describerHistory:     DEFAULT_DESCRIBER_HISTORY,
     imageModel:          DEFAULT_IMAGE_MODEL,
     imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
     devMode:             DEFAULT_DEV_MODE,
 });
 
 /**
- * Returns the active configuration for the current session.
+ * Returns the active configuration for the current profile.
  * All engine components should read from here.
  */
 export function getSettings() {

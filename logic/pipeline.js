@@ -1,16 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-03-31T06:30:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline and per-turn narrative 
  * branching. This module coordinates between LLM detectors, the DNA writer, 
  * and the image generation service.
  * 
- * It ensures that every AI message is evaluated for environmental changes 
- * and that the resulting state (currentLocation, currentImage) is synchronized 
- * with the chat log and the UI background.
+ * Version 1.1.0 Updates:
+ * - Integrated buildDescriberContext and describerHistory setting.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -26,7 +25,7 @@ import { callPopup } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { getSettings } from '../settings/data.js';
-import { buildHistoryText, escapeHtml } from '../utils/history.js';
+import { buildHistoryText, buildDescriberContext, escapeHtml } from '../utils/history.js';
 import { detectBoolean, detectClassifier, detectDescriber } from '../detector.js';
 import { generate } from '../imageCache.js';
 import { set as setBg, clear as clearBg } from '../background.js';
@@ -123,11 +122,9 @@ async function handleKnownLocation(messageId, key) {
  * Handles extraction and approval of a brand new location.
  */
 async function handleUnknownLocation(messageId, context) {
-    const chat = context.chat;
-    const start = Math.max(0, chat.length - 6);
-    const contextText = chat.slice(start).map(m => `${m.name ?? ''}: ${m.mes ?? ''}`).join('\n\n');
-
     const s = getSettings();
+    const contextText = buildDescriberContext(context.chat, messageId, s.describerHistory ?? 0);
+
     const def = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
 
     // If LLM fails to parse or returns null, treat as a declined transition
