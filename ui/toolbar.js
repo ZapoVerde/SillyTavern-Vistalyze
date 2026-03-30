@@ -1,22 +1,19 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
+ * @version 1.3.0
  * @architectural-role Toolbar UI
  * @description
  * Injects two buttons into the ST extensions panel (#extensionsMenu):
  *
  *   Localyze button  — opens the location picker modal for manual override.
- *   Audit Images btn — runs full orphan audit and opens orphanModal if needed;
- *                      carries the orphan badge (#lz-orphan-badge) which is
- *                      shown by index.js after the boot-time fast diff.
+ *   Audit Images btn — runs full orphan audit and opens orphanModal if needed.
  *
- * Version 1.2.0 Updates:
- * - Refactored to use getMetaSettings() for the global auditCache.
- * - Standardized badge and audit lifecycle with the profile system.
+ * Version 1.3.0 Updates:
+ * - Refactored injectToolbar to accept an onEdit callback for the picker.
  *
  * @api-declaration
- * injectToolbar()        — idempotent; injects both buttons.
+ * injectToolbar(onEdit)  — idempotent; injects both buttons.
  * showOrphanBadge(count) — shows red count badge on audit button.
  * clearOrphanBadge()     — hides badge.
  *
@@ -33,7 +30,11 @@ import { openOrphanModal } from './orphanModal.js'
 import { runFullAudit } from '../orphanDetector.js'
 import { getMetaSettings } from '../settings/data.js'
 
-export function injectToolbar() {
+/**
+ * Injects the Localyze buttons into the ST extension menu.
+ * @param {Function} onEdit Callback passed to the picker to handle location editing.
+ */
+export function injectToolbar(onEdit) {
     // Remove any existing buttons to avoid duplicates on hot reload
     $('#lz-toolbar-btn').remove()
     $('#lz-audit-btn').remove()
@@ -46,7 +47,7 @@ export function injectToolbar() {
         </div>
     `)
     pickerBtn.on('click', () => {
-        openPickerModal()
+        openPickerModal(onEdit)
     })
 
     // Audit button

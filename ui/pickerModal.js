@@ -1,25 +1,24 @@
 /**
  * @file data/default-user/extensions/localyze/ui/pickerModal.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Manual Override UI
  * @description
  * Searchable location picker modal. Allows the user to manually set the
- * active location and background at any time, bypassing LLM detection.
+ * active location or launch the location editor.
  * 
- * Version 1.1.0 Updates:
- * - Added UI error notifications for generation failures to match index.js.
+ * Refactored in 1.2.0 to use a custom div-based list instead of a select 
+ * element, enabling per-item action buttons (Edit).
  *
  * @api-declaration
- * openPickerModal() — opens the picker; no-ops with toastr if library is empty
+ * openPickerModal(onEditCallback) — opens the picker.
  *
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [state.currentLocation, state.currentImage,
- *       state.fileIndex (indirect via applyLocation)]
+ *     state_ownership: [state.currentLocation, state.currentImage]
  *     external_io: [message.extra.localyze (write), saveChatConditional(),
- *       generate() (via imageCache), set/clear (via background), toastr]
+ *       generate(), set/clear, callPopup]
  */
 import { saveChatConditional, callPopup } from '../../../../../script.js'
 import { getContext } from '../../../../extensions.js'
@@ -61,7 +60,6 @@ async function applyLocation(key) {
         await writeSceneRecord(lastMsgId, { location: key, image: filename, bg_declined: false })
         updateState(key, filename)
     } else {
-        // Clear background and write transition immediately (Two-Write Pattern)
         clearBg()
         await writeSceneRecord(lastMsgId, { location: key, image: null, bg_declined: false })
         updateState(key, null)
@@ -81,48 +79,89 @@ async function applyLocation(key) {
     }
 }
 
-export async function openPickerModal() {
+/**
+ * Opens the location picker.
+ * @param {Function} onEdit An optional callback function(key) triggered when the edit icon is clicked.
+ */
+export async function openPickerModal(onEdit) {
     if (Object.keys(state.locations).length === 0) {
         toastr.info('No locations in library for this chat.', 'Localyze')
         return
     }
 
     const locationEntries = Object.entries(state.locations)
-    const optionsHtml = locationEntries
-        .map(([key, loc]) => `<option value="${escapeHtml(key)}">${escapeHtml(loc.name)}</option>`)
-        .join('')
+    const listHtml = locationEntries
+        .map(([key, loc]) => `
+            <div class="lz-picker-item" data-key="${escapeHtml(key)}" 
+                 style="display:flex; align-items:center; justify-content:space-between; padding:8px; cursor:pointer; border-bottom:1px solid var(--SmartThemeBorderColor); border-radius:4px;">
+                <div class="lz-picker-label" style="flex:1; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-location-dot" style="opacity:0.5; font-size:0.8em;"></i>
+                    <span>${escapeHtml(loc.name)}</span>
+                </div>
+                <div class="lz-picker-actions" style="display:flex; gap:12px;">
+                    <i class="fa-solid fa-pen-to-square lz-edit-trigger" data-key="${escapeHtml(key)}" 
+                       title="Edit Location" style="opacity:0.6; padding:4px;"></i>
+                </div>
+            </div>
+        `).join('')
 
-    const confirmed = await callPopup(
+    const popupPromise = callPopup(
         `<h3>Select Location</h3>
-        <input type="text" id="lz-picker-search" class="text_pole" placeholder="Search locations..." style="width:100%; margin-bottom:6px;" />
-        <select id="lz-picker-select" class="text_pole" size="8" style="width:100%;">
-            ${optionsHtml}
-        </select>`,
+        <input type="text" id="lz-picker-search" class="text_pole" placeholder="Search locations..." style="width:100%; margin-bottom:10px;" />
+        <div id="lz-picker-list" style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:4px; padding:4px;">
+            ${listHtml}
+        </div>
+        <p style="font-size:0.8em; opacity:0.5; margin-top:10px;">Click a location name to apply it, or the pencil to edit it.</p>`,
         'confirm',
     )
 
-    // Bind search filter immediately after popup renders
+    // Selection state
+    let selectedKey = state.currentLocation
+
+    function updateSelectionUI() {
+        $('.lz-picker-item').css('background', 'transparent')
+        if (selectedKey) {
+            $(`.lz-picker-item[data-key="${CSS.escape(selectedKey)}"]`).css('background', 'var(--SmartThemeQuoteColor)')
+        }
+    }
+
+    // Bind item clicks
+    $('#lz-picker-list').on('click', '.lz-picker-item', function(e) {
+        // If clicking the name/row, select it
+        selectedKey = $(this).data('key')
+        updateSelectionUI()
+    })
+
+    // Bind edit clicks
+    $('#lz-picker-list').on('click', '.lz-edit-trigger', function(e) {
+        e.stopPropagation() // Don't trigger the row selection
+        const key = $(this).data('key')
+        
+        // Close the current picker modal
+        // In SillyTavern, triggering the 'cancel' button on the current dialog is the cleanest exit
+        $('#dialog_overlay .menu_button:last').click()
+        
+        if (typeof onEdit === 'function') {
+            onEdit(key)
+        }
+    })
+
+    // Search filter
     $('#lz-picker-search').on('input', function () {
         const query = this.value.toLowerCase()
-        $('#lz-picker-select option').each(function () {
-            $(this).toggle(
-                $(this).text().toLowerCase().includes(query) ||
-                $(this).val().toLowerCase().includes(query)
-            )
+        $('.lz-picker-item').each(function () {
+            const text = $(this).find('.lz-picker-label span').text().toLowerCase()
+            const key = $(this).data('key').toLowerCase()
+            $(this).toggle(text.includes(query) || key.includes(query))
         })
     })
 
-    // Auto-select current location
-    if (state.currentLocation) {
-        $(`#lz-picker-select option[value="${escapeHtml(state.currentLocation)}"]`).prop('selected', true)
-    }
+    // Initial UI state
+    setTimeout(updateSelectionUI, 10)
 
-    if (!confirmed) return
+    const confirmed = await popupPromise
 
-    const selected = $('#lz-picker-select').val()
-    if (!selected) {
-        toastr.warning('Please select a location.', 'Localyze')
-        return
-    }
-    await applyLocation(selected)
+    if (!confirmed || !selectedKey) return
+
+    await applyLocation(selectedKey)
 }
