@@ -1,15 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.25
+ * @version 1.0.26
  * @architectural-role Entry Point / Event Router
  * @description
  * The primary entry point for the Localyze extension. This module is 
  * responsible for binding host application events to the internal 
  * orchestrators and initializing UI components.
  * 
- * Following the project principles, this file contains zero narrative 
- * logic or IO execution. It serves purely as a reactive bridge.
+ * Updates:
+ * - Added explicit initSettings() call to guarantee data structure availability 
+ *   before any UI injection or async booting begins.
  *
  * @api-declaration
  * Entry points (event-bound):
@@ -25,6 +26,7 @@
 
 import { eventSource, event_types } from '../../../../script.js';
 import { resetState } from './state.js';
+import { initSettings } from './settings/data.js';
 import { runBoot } from './logic/bootstrapper.js';
 import { runPipeline } from './logic/pipeline.js';
 import { handleEditLocation } from './logic/maintenance.js';
@@ -58,6 +60,13 @@ function handleChatChanged() {
 // ─── Initialization ──────────────────────────────────────────────────
 
 console.debug('[Localyze] Initializing Extension...');
+
+/**
+ * Ensure settings structure is initialized immediately.
+ * This prevents race conditions where UI elements attempt to read
+ * state (like booleanHistory) before the data object is created.
+ */
+initSettings();
 
 /**
  * Injects the UI elements into the SillyTavern interface.

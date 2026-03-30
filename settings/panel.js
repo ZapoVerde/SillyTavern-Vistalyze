@@ -1,15 +1,14 @@
 /**
  * @file panel.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
+ * @version 1.2.1
  * @architectural-role Settings UI
  * @description
  * Injects the Localyze settings panel into ST's extensions drawer.
  *
- * Version 1.2.0 Updates:
- * - Implemented profile management bar (Select, Save, New, Rename, Delete).
- * - Refactored to read/write against activeState via getSettings().
- * - Added dirty state tracking and automatic UI refresh on profile switch.
+ * Version 1.2.1 Updates:
+ * - Fixed broken import path for ConnectionManagerRequestService.
+ * - Added initSettings() call during injection to prevent race condition.
  *
  * @api-declaration
  * injectSettingsPanel() — idempotent; appends panel to #extensions_settings
@@ -25,7 +24,7 @@
 import { saveSettingsDebounced, callPopup } from '../../../../../script.js';
 import { writeSecret, secret_state } from '../../../../secrets.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
-import { getSettings, getMetaSettings } from './data.js';
+import { getSettings, getMetaSettings, initSettings } from './data.js';
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_CLASSIFIER_PROMPT,
@@ -411,6 +410,9 @@ function refreshPanel() {
 
 export function injectSettingsPanel() {
     if ($('#lz-settings').length) return
+
+    // Resolve structural race condition: ensure data object exists before UI reads from it
+    initSettings();
 
     const $parent = $('#extensions_settings')
     if (!$parent.length) {
