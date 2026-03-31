@@ -1,13 +1,12 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
  * @stamp {"utc":"2026-04-01T23:20:00.000Z"}
- * @version 1.2.5
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle. Implements a profile-based system 
  * (profiles, currentProfileName, activeState).
  * 
- * Version 1.2.5 Updates:
+ * @updates
  * - Added Discovery settings (Prompt, ProfileId, History) to the profile blueprint.
  *
  * @api-declaration

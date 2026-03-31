@@ -9,7 +9,7 @@
  * and refine locations in a temporary "Draft" state before committing 
  * changes to the chat DNA.
  *
- * Updates:
+ * @updates
  * - Added handleOpenLibrary() to ensure draft state is synced before UI display.
  * - Implemented dual-mode discoverySearch (Passive vs Targeted).
  * - Targeted mode uses Step 4 settings and interpolates {{keywords}}.

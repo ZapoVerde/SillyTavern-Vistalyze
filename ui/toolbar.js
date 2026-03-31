@@ -6,7 +6,7 @@
  * @description
  * Injects management buttons into the ST extensions panel (#extensionsMenu).
  *
- * Updates:
+ * @updates
  * - Added onOpenLibrary callback to ensure data sync before showing UI.
  * - "Localyze" button now triggers the provided callback.
  *

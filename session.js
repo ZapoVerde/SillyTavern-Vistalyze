@@ -6,7 +6,7 @@
  * Manages the per-chat sessionId and initializes extension settings using 
  * the profile-aware data layer.
  * 
- * Updates:
+ * @updates:
  * - Delegated settings initialization and migration to settings/data.js.
  * - Switched to getMetaSettings() for session registration in knownSessions.
  * - Removed legacy default constants and redundant schema logic.

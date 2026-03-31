@@ -6,7 +6,7 @@
  * Searchable location picker modal. Allows the user to manually set the
  * active location or launch the location editor.
  * 
- * Updates:
+ * @updates
  * - Added "Force Detect New Location" button to the bottom of the picker.
  * - Updated openPickerModal signature to support manual detection callback.
  *

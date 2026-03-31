@@ -1,14 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-04-02T10:00:00.000Z"}
- * @version 1.0.40
+ * @version 1.0.41
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * SillyTavern Location Engine (Localyze) — extension entry point and session
  * orchestrator. This module coordinates the lifecycle of the "Falling Water"
  * detection pipeline, UI injection, and state management.
  *
- * Updates:
+ * @updates
  * - Wired handleOpenLibrary to the injectToolbar call.
  *
  * @api-declaration

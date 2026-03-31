@@ -5,7 +5,7 @@
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
- * Updates:
+ * @updates
  * - Standardized terminology: removed 'essence' and 'atmosphere' in favor of 
  *   'description' and 'imagePrompt' to match detector/UI standardization.
  * - Simplified handleUnknownLocation object construction.

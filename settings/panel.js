@@ -1,12 +1,11 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
  * @stamp {"utc":"2026-04-01T23:45:00.000Z"}
- * @version 1.4.2
  * @architectural-role UI Orchestrator
  * @description
  * The primary entry point for the Localyze settings UI. 
  *
- * Version 1.4.2 Updates:
+ * @updates
  * - Added Step 4 (Targeted Discovery) to dropdown and prompt editor bindings.
  *
  * @api-declaration

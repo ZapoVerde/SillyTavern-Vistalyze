@@ -7,7 +7,7 @@
  * Contains logic for escaping HTML in UI elements, building history 
  * transcripts for LLM context windows, and deterministic slugification.
  * 
- * Updates:
+ * @updates
  * - Added slugify() for programmatic location key generation.
  *
  * @api-declaration

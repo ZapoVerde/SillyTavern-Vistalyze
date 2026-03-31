@@ -5,7 +5,7 @@
  * @description
  * Owns the three LLM detection calls in the per-turn pipeline.
  * 
- * Updates:
+ * @updates
  * - Standardized property names: 'essence' becomes 'description', 'atmosphere' becomes 'imagePrompt'.
  * - Maintained "Definition" and "Visuals" as the AI-facing markers for Step 3.
  *

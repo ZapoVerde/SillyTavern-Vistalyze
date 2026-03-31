@@ -5,7 +5,7 @@
  * @description
  * Modal for editing existing location metadata.
  * 
- * Updates:
+ * @updates
  * - Renamed labels to "Definition" and "Visuals" for functional clarity.
  * - Separated Definition (Step 2 Logic) from Visuals (Image Generation).
  * - Updated internal mapping to ensure edits persist correctly to the DNA chain.

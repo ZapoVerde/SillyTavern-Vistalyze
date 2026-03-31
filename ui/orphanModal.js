@@ -7,7 +7,7 @@
  * Opened by toolbar.js after a full audit returns results. Shows a
  * checkbox table of orphan filenames with select-all support.
  *
- * Updates:
+ * @updates
  * - Refactored to use getMetaSettings() for clearing the global auditCache.
  * - Hardened deletion loop and success notifications.
  *

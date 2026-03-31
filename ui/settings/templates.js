@@ -6,7 +6,7 @@
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
- * Updates:
+ * @Updates
  * - Added Step 4 (Targeted Discovery) to the settings panel layout.
  *
  * @api-declaration

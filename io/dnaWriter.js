@@ -1,16 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/io/dnaWriter.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-04-02T12:00:00.000Z"}
  * @architectural-role IO Executor / DNA Chain Writer
  * @description
  * Handles all writes to message.extra.localyze with integrated concurrency 
- * locking. This ensures that rapid events (like an AI message arriving 
- * while an image generation finishes) do not cause "lost updates" in the 
- * chat JSONL.
+ * locking. 
  * 
- * This module coordinates with SillyTavern's saveChatConditional to persist 
- * state changes immediately to disk.
+ * @updates
+ * - Implemented the "Array Pattern" for event storage.
+ * - Migrated from single-object records to a list of records.
+ * - This allows multiple events (e.g. location_def + scene) to coexist on 
+ *   a single message without overwriting each other.
  *
  * @api-declaration
  * lockedWriteSceneRecord(messageId, record) -> Promise<void>
@@ -33,6 +33,22 @@ import { writeLocationDef } from '../library.js';
 const writeLock = new AsyncLock();
 
 /**
+ * Ensures message.extra.localyze is a valid array, migrating old objects if found.
+ * @param {object} message 
+ */
+function ensureLocalyzeArray(message) {
+    message.extra = message.extra ?? {};
+    const existing = message.extra.localyze;
+
+    if (!existing) {
+        message.extra.localyze = [];
+    } else if (!Array.isArray(existing)) {
+        // Migration: Wrap existing object-style record into an array
+        message.extra.localyze = [existing];
+    }
+}
+
+/**
  * Writes a scene transition record to a message.
  * @param {number} messageId 
  * @param {object} record { location, image, bg_declined }
@@ -43,11 +59,11 @@ export async function lockedWriteSceneRecord(messageId, record) {
         const context = getContext();
         const message = context.chat[messageId];
         if (message) {
-            message.extra = message.extra ?? {};
-            message.extra.localyze = { 
+            ensureLocalyzeArray(message);
+            message.extra.localyze.push({ 
                 type: 'scene', 
                 ...record 
-            };
+            });
             await saveChatConditional();
         }
     } finally {
@@ -66,9 +82,17 @@ export async function lockedPatchSceneImage(messageId, filename) {
     try {
         const context = getContext();
         const message = context.chat[messageId];
-        if (message && message.extra?.localyze) {
-            message.extra.localyze.image = filename;
-            await saveChatConditional();
+        if (message) {
+            ensureLocalyzeArray(message);
+            // Find the most recent 'scene' record in the array and patch it
+            const records = message.extra.localyze;
+            for (let i = records.length - 1; i >= 0; i--) {
+                if (records[i].type === 'scene') {
+                    records[i].image = filename;
+                    await saveChatConditional();
+                    break;
+                }
+            }
         }
     } finally {
         writeLock.release();
@@ -84,7 +108,7 @@ export async function lockedPatchSceneImage(messageId, filename) {
 export async function lockedWriteLocationDef(messageId, def, sessionId) {
     await writeLock.acquire();
     try {
-        // library.js handles the object formatting
+        // library.js now handles the array-based write
         await writeLocationDef(messageId, def, sessionId);
     } finally {
         writeLock.release();

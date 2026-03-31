@@ -1,15 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/library.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
+ * @stamp {"utc":"2026-04-02T12:05:00.000Z"}
  * @architectural-role Chat DNA Writer
  * @description
- * Writes location_def records into message.extra.localyze. This is the sole
- * write path for location library entries — no LLM calls, no UI, no state
- * mutation. The written record becomes part of the chat DNA chain and is
- * picked up by reconstruction.js on next load.
- *
- * Edits are expressed as a new location_def with the same key; last write
- * wins during reconstruction forward pass.
+ * Writes location_def records into message.extra.localyze as an array.
+ * 
+ * @updates
+ * - Implemented the "Array Pattern" for storage.
+ * - Migrated from single-object records to a list of records.
+ * - This prevents the "Last Write Wins" bug where a scene transition 
+ *   could delete a location definition on the same message.
  *
  * @api-declaration
  * writeLocationDef(messageId, def, sessionId) → Promise<void>
@@ -23,18 +23,38 @@
 import { getContext } from '../../../extensions.js'
 import { saveChatConditional } from '../../../../script.js'
 
+/**
+ * Writes a location definition into the chat DNA.
+ * @param {number} messageId 
+ * @param {object} def { key, name, description, imagePrompt }
+ * @param {string} sessionId 
+ */
 export async function writeLocationDef(messageId, def, sessionId) {
     const context = getContext()
     const message = context.chat[messageId]
     if (!message) return
+
     message.extra = message.extra ?? {}
-    message.extra.localyze = {
+    const existing = message.extra.localyze;
+
+    // Handle Array Pattern Migration
+    if (!existing) {
+        // Fresh start
+        message.extra.localyze = [];
+    } else if (!Array.isArray(existing)) {
+        // Migration: Wrap existing object-style record into an array
+        message.extra.localyze = [existing];
+    }
+
+    // Append the new definition to the ledger
+    message.extra.localyze.push({
         type: 'location_def',
         key: def.key,
         name: def.name,
         description: def.description,
         imagePrompt: def.imagePrompt,
         sessionId,
-    }
+    });
+
     await saveChatConditional()
 }

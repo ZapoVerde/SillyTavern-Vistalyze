@@ -5,7 +5,7 @@
  * @description
  * Modal for reviewing, editing, and approving a new location definition.
  * 
- * Updates:
+ * @updates
  * - Renamed "Essence" to "Definition" for semantic clarity.
  * - Renamed "Atmosphere" to "Visuals" for functional clarity.
  * - Aligned labels with the new AI-marker pattern.

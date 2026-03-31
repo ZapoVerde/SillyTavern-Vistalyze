@@ -6,7 +6,7 @@
  * Owns all image-related IO. Refactored to use the profile-aware getSettings() 
  * accessor for prompts, models, and dev mode flags.
  * 
- * Updates:
+ * @updates
  * - Migrated from direct extension_settings access to getSettings().
  * - Standardized usage of profile-level configuration.
  *

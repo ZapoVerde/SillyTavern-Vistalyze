@@ -5,7 +5,7 @@
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
- * Updates:
+ * @updates
  * - Added DEFAULT_DISCOVERY_PROMPT for targeted keyword-based generation.
  * - Added DEFAULT_DISCOVERY_HISTORY turns.
  *
