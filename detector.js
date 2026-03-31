@@ -1,14 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/detector.js
- * @stamp {"utc":"2026-04-01T15:30:00.000Z"}
- * @version 1.1.1
+ * @stamp {"utc":"2026-04-01T15:10:00.000Z"}
+ * @version 1.1.2
  * @architectural-role LLM IO
  * @description
  * Owns the three LLM detection calls in the per-turn pipeline.
  * 
- * Version 1.1.1 Updates:
- * - Upgraded detectClassifier to use robust key-matching (Semantic Search).
- * - Scans LLM response for valid keys using word boundaries.
+ * Version 1.1.2 Updates:
+ * - Hardened dispatch debugging to log the raw response object for diagnostic clarity.
+ * - Simplified response_format to 'json_object' for broader provider compatibility.
+ * - Improved safeParseJSON to handle non-string or already-parsed inputs.
  *
  * @api-declaration
  * detectBoolean(messageText, currentLocation, ...) → boolean
@@ -25,68 +26,67 @@ import { generateQuietPrompt } from '../../../../script.js'
 import { ConnectionManagerRequestService } from '../../shared.js'
 
 /**
- * JSON Schema for Structured Outputs (Location Archivist).
+ * Simplified JSON Object request for broader compatibility across backends.
  */
-const DESCRIBER_SCHEMA = {
-    type: "json_schema",
-    json_schema: {
-        name: "location_definition",
-        strict: true,
-        schema: {
-            type: "object",
-            properties: {
-                name: { type: "string", description: "Human-readable label for the location" },
-                essence: { type: "string", description: "A conceptual definition of what the place is" },
-                atmosphere: { type: "string", description: "2-3 sentences of visual/sensory details for image generation" }
-            },
-            required: ["name", "essence", "atmosphere"],
-            additionalProperties: false
-        }
-    }
-};
+const DESCRIBER_FORMAT = { type: "json_object" };
 
 function interpolate(template, vars) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '')
 }
 
+/**
+ * Robust JSON parser that handles markdown fences and already-parsed objects.
+ */
 function safeParseJSON(raw) {
+    if (typeof raw === 'object' && raw !== null) return raw;
     try {
-        const stripped = raw
+        const str = String(raw || '').trim();
+        if (!str) return null;
+        
+        const stripped = str
             .replace(/^```(?:json)?\s*/i, '')
             .replace(/\s*```$/, '')
-            .trim()
-        return JSON.parse(stripped)
-    } catch {
-        return null
+            .trim();
+        return JSON.parse(stripped);
+    } catch (err) {
+        console.warn('[Localyze:JSON] Parse failed:', err.message);
+        return null;
     }
 }
 
+/**
+ * Dispatches the prompt to the LLM.
+ */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
-    console.debug(`[Localyze:${label}] Prompt:\n${prompt}`)
+    console.debug(`[Localyze:${label}] Prompt Sent:\n${prompt}`);
     
+    let result;
     if (profileId) {
         try {
-            const result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions)
-            const text = result.content ?? result
-            console.debug(`[Localyze:${label}] Response (ConnectionManager):\n${text}`)
-            return text
+            result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions);
+            console.debug(`[Localyze:${label}] Raw result object (ConnectionManager):`, result);
         } catch (err) {
-            console.warn(`[Localyze:${label}] ConnectionManager failed, falling back:`, err)
+            console.warn(`[Localyze:${label}] ConnectionManager failed, falling back:`, err);
         }
     }
 
-    try {
-        const text = await generateQuietPrompt({ 
-            quietPrompt: prompt, 
-            removeReasoning: true,
-            ...extraOptions 
-        })
-        console.debug(`[Localyze:${label}] Response (generateQuietPrompt):\n${text}`)
-        return text
-    } catch (err) {
-        console.error(`[Localyze:${label}] generateQuietPrompt failed:`, err)
-        throw err
+    if (!result) {
+        try {
+            result = await generateQuietPrompt({ 
+                quietPrompt: prompt, 
+                removeReasoning: true,
+                ...extraOptions 
+            });
+            console.debug(`[Localyze:${label}] Raw result object (generateQuietPrompt):`, result);
+        } catch (err) {
+            console.error(`[Localyze:${label}] generateQuietPrompt failed:`, err);
+            throw err;
+        }
     }
+
+    const text = result?.content ?? result;
+    console.debug(`[Localyze:${label}] Extracted Text Output:\n${text}`);
+    return text;
 }
 
 export async function detectBoolean(messageText, currentLocation, historyText, promptTemplate, profileId) {
@@ -95,16 +95,12 @@ export async function detectBoolean(messageText, currentLocation, historyText, p
         history: historyText,
         message: messageText,
     })
-    const result = await dispatch(prompt, profileId, 'Boolean', { temperature: 0.1 })
-    const answer = String(result).trim().toUpperCase().startsWith('YES')
+    const text = await dispatch(prompt, profileId, 'Boolean', { temperature: 0.1 })
+    const answer = String(text).trim().toUpperCase().startsWith('YES')
     console.debug(`[Localyze:Boolean] → ${answer ? 'YES (location changed)' : 'NO (same location)'}`)
     return answer
 }
 
-/**
- * Identifies which location key matches the current context.
- * Performs a robust search: scans the LLM output for the presence of known keys.
- */
 export async function detectClassifier(messageText, locationKeys, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         key_list: locationKeys.join(', '),
@@ -112,29 +108,24 @@ export async function detectClassifier(messageText, locationKeys, historyText, p
         message: messageText,
     })
     
-    const rawResult = await dispatch(prompt, profileId, 'Classifier', { temperature: 0.1 })
-    const text = String(rawResult).trim()
+    const text = await dispatch(prompt, profileId, 'Classifier', { temperature: 0.1 })
+    const cleanedText = String(text).trim()
 
-    if (!text || text.toUpperCase().includes('NULL')) {
+    if (!cleanedText || cleanedText.toUpperCase().includes('NULL')) {
         console.debug('[Localyze:Classifier] → NULL (no match indicated)')
         return null
     }
 
-    // Robust Search: Iterate through valid keys and find if any are present in the text.
-    // We check for word boundaries to prevent 'inn' matching 'dinner'.
     for (const key of locationKeys) {
         const regex = new RegExp(`\\b${key}\\b`, 'i');
-        if (regex.test(text)) {
+        if (regex.test(cleanedText)) {
             console.debug(`[Localyze:Classifier] → Found key match: ${key}`)
             return key;
         }
     }
 
-    // Final fallback: Clean the whole string and try exact match
-    const cleaned = text.replace(/[^a-z0-9_]/gi, '').toLowerCase()
-    const fallback = locationKeys.find(k => k === cleaned) ?? null
-    
-    console.debug(`[Localyze:Classifier] → ${fallback ?? `no match found in "${text}"`}`)
+    const fallback = locationKeys.find(k => k === cleanedText.replace(/[^a-z0-9_]/gi, '').toLowerCase()) ?? null
+    console.debug(`[Localyze:Classifier] → Final Match Result: ${fallback}`)
     return fallback
 }
 
@@ -142,15 +133,15 @@ export async function detectDescriber(contextText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, { context: contextText })
     
     const raw = await dispatch(prompt, profileId, 'Describer', { 
-        response_format: DESCRIBER_SCHEMA,
+        response_format: DESCRIBER_FORMAT,
         temperature: 0.1 
     })
     
-    const parsed = safeParseJSON(String(raw))
+    const parsed = safeParseJSON(raw)
     if (parsed === null) {
-        console.warn('[Localyze:Describer] JSON parse failed. Raw output was:\n', raw)
+        console.error('[Localyze:Describer] Final JSON check failed. Raw input was:', raw)
     } else {
-        console.debug('[Localyze:Describer] →', parsed)
+        console.debug('[Localyze:Describer] Final Parsed Object:', parsed)
     }
     return parsed
 }
