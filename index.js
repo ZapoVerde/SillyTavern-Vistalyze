@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-04-01T14:20:00.000Z"}
- * @version 1.0.29
+ * @version 1.0.30
  * @architectural-role Entry Point / Event Router
  * @description
  * The primary entry point for the Localyze extension. Responsible for 
