@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshopModal.js
- * @stamp {"utc":"2026-04-01T20:00:00.000Z"}
- * @version 1.0.1
+ * @stamp {"utc":"2026-04-01T23:00:00.000Z"}
+ * @version 1.0.2
  * @architectural-role UI Orchestrator / Workshop View
  * @description
  * Implements the Location Workshop UI. Replaces the fragmented Picker, Add, 
@@ -12,15 +12,9 @@
  * 2. ARCHITECT: Refining metadata (Definition/Visuals) with live previews.
  * 3. EXPLORER: Automated discovery of new locations from context.
  *
- * @api-declaration
- * openWorkshop(tabName) — Opens the workshop modal and activates the specified tab.
- * injectWorkshop() — Injects the workshop overlay into the DOM (called once).
- *
- * @contract
- *   assertions:
- *     purity: Stateful UI Orchestrator
- *     state_ownership: [DOM visibility, Active Tab State]
- *     external_io:[maintenance.js, commit.js, DOM Manipulation]
+ * Updates:
+ * - Visual Fix: Switched to solid ST UI colors (--mainColor) and opaque backgrounds.
+ * - Logic Fix: Properly clearing draft state on open.
  */
 
 import { state } from '../state.js';
@@ -34,16 +28,16 @@ import {
 
 /**
  * Injects the Workshop HTML into the SillyTavern DOM.
- * Idempotent; call once at extension init.
  */
 export function injectWorkshop() {
     if ($('#lz-workshop-overlay').length) return;
 
+    // Use ST system variables for a native "UI" feel
     const html = `
-    <div id="lz-workshop-overlay" class="lz-overlay lz-hidden">
-        <div id="lz-workshop-modal" class="lz-modal">
-            <div class="lz-workshop-header">
-                <h3>Location Workshop</h3>
+    <div id="lz-workshop-overlay" class="lz-overlay lz-hidden" style="background: rgba(0,0,0,0.85); backdrop-filter: none;">
+        <div id="lz-workshop-modal" class="lz-modal" style="background: var(--mainColor); border: 1px solid var(--SmartThemeBorderColor); color: var(--unselectedWhite);">
+            <div class="lz-workshop-header" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--SmartThemeBorderColor);">
+                <h3 style="margin:0;">Location Workshop</h3>
                 <div class="lz-tab-bar">
                     <button class="lz-tab-btn" data-tab="library">Library</button>
                     <button class="lz-tab-btn" data-tab="architect">Architect</button>
@@ -76,11 +70,11 @@ export function injectWorkshop() {
                     
                     <div class="lz-architect-preview">
                         <div class="lz-preview-pane">
-                            <div class="lz-preview-box">
+                            <div class="lz-preview-box" style="background: #000; border: 1px solid var(--SmartThemeBorderColor);">
                                 <small>Current Background</small>
                                 <img id="lz-preview-before" src="" alt="No current BG" />
                             </div>
-                            <div class="lz-preview-box">
+                            <div class="lz-preview-box" style="background: #000; border: 1px solid var(--SmartThemeBorderColor);">
                                 <small>Proposed (Dev Mode)</small>
                                 <img id="lz-preview-after" src="" alt="No preview" />
                                 <div id="lz-preview-spinner" class="lz-hidden"><i class="fa-solid fa-spinner fa-spin"></i></div>
@@ -88,22 +82,24 @@ export function injectWorkshop() {
                         </div>
                     </div>
                 </div>
-                <div class="lz-workshop-footer">
+                <div class="lz-workshop-footer" style="border-top: 1px solid var(--SmartThemeBorderColor);">
                     <button id="lz-arch-finalize" class="menu_button menu_button_success">Finalize & Apply</button>
                 </div>
             </div>
 
             <!-- Tab 3: Explorer -->
             <div id="lz-tab-explorer" class="lz-tab-panel lz-hidden">
-                <p>Discover a new location from the current roleplay context.</p>
-                <input type="text" id="lz-explorer-keywords" class="text_pole" placeholder="Optional keywords (e.g. 'A dark damp cave')..." />
-                <button id="lz-explorer-go" class="menu_button">Discover Location</button>
-                <div id="lz-explorer-status" class="lz-hidden" style="margin-top:10px; opacity:0.7;">
+                <div style="margin-bottom:15px;">
+                    <p style="margin-top:0; opacity:0.8;">Discover a new location from the current roleplay context.</p>
+                    <input type="text" id="lz-explorer-keywords" class="text_pole" placeholder="Optional keywords (e.g. 'A dark damp cave')..." style="width:100%;" />
+                </div>
+                <button id="lz-explorer-go" class="menu_button" style="width:100%;">Discover Location</button>
+                <div id="lz-explorer-status" class="lz-hidden" style="margin-top:15px; text-align:center; opacity:0.7;">
                     <i class="fa-solid fa-spinner fa-spin"></i> Analyzing context...
                 </div>
             </div>
 
-            <div class="lz-workshop-controls">
+            <div class="lz-workshop-controls" style="background: rgba(0,0,0,0.1);">
                 <button id="lz-workshop-close" class="menu_button">Close</button>
             </div>
         </div>
@@ -128,15 +124,16 @@ function renderLibrary() {
     drafts.forEach(([key, loc]) => {
         const isCurrent = state.currentLocation === key;
         const $item = $(`
-            <div class="lz-library-item ${isCurrent ? 'lz-active-loc' : ''}" data-key="${escapeHtml(key)}">
+            <div class="lz-library-item ${isCurrent ? 'lz-active-loc' : ''}" data-key="${escapeHtml(key)}" 
+                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); margin-bottom:5px; border-radius:4px; padding:10px; display:flex; align-items:center; justify-content:space-between;">
                 <div class="lz-lib-text">
-                    <strong>${escapeHtml(loc.name)}</strong>
-                    <small>${escapeHtml(loc.description)}</small>
+                    <strong style="display:block;">${escapeHtml(loc.name)}</strong>
+                    <small style="opacity:0.6; font-size:0.85em;">${escapeHtml(loc.description)}</small>
                 </div>
-                <div class="lz-lib-actions">
-                    <i class="fa-solid fa-location-arrow lz-lib-apply" title="Apply Location"></i>
-                    <i class="fa-solid fa-pen-to-square lz-lib-edit" title="Edit in Architect"></i>
-                    <i class="fa-solid fa-trash lz-lib-delete" title="Delete Location"></i>
+                <div class="lz-lib-actions" style="display:flex; gap:12px; font-size:1.1em; opacity:0.7;">
+                    <i class="fa-solid fa-location-arrow lz-lib-apply" title="Apply Location" style="cursor:pointer;"></i>
+                    <i class="fa-solid fa-pen-to-square lz-lib-edit" title="Edit in Architect" style="cursor:pointer;"></i>
+                    <i class="fa-solid fa-trash lz-lib-delete" title="Delete Location" style="cursor:pointer;"></i>
                 </div>
             </div>
         `);
@@ -154,7 +151,9 @@ async function renderArchitect() {
     if (!draft) {
         $('.lz-architect-grid').addClass('lz-hidden');
         $('.lz-workshop-footer').addClass('lz-hidden');
-        $('#lz-tab-architect').prepend('<p id="lz-arch-empty" style="text-align:center; padding:40px; opacity:0.5;">Select a location from Library or Explorer to edit.</p>');
+        if (!$('#lz-arch-empty').length) {
+            $('#lz-tab-architect').prepend('<p id="lz-arch-empty" style="text-align:center; padding:40px; opacity:0.5;">Select a location from Library or Explorer to edit.</p>');
+        }
         return;
     }
 
@@ -184,7 +183,6 @@ async function renderArchitect() {
 
 /**
  * Switches the active tab in the Workshop.
- * @param {string} tabName 'library' | 'architect' | 'explorer'
  */
 export function switchTab(tabName) {
     $('.lz-tab-btn').removeClass('lz-active');
@@ -198,7 +196,6 @@ export function switchTab(tabName) {
 
 /**
  * Primary entry point to show the workshop.
- * @param {string} tab Optional tab to open to.
  */
 export function openWorkshop(tab = 'library') {
     injectWorkshop();
@@ -224,7 +221,7 @@ function bindEvents() {
     $('.lz-library-list').on('click', '.lz-lib-edit', function(e) {
         e.stopPropagation();
         state._activeWorkshopKey = $(this).closest('.lz-library-item').data('key');
-        state._proposedImageBlob = null; // Prevent preview bleeding
+        state._proposedImageBlob = null;
         switchTab('architect');
     });
 
@@ -305,11 +302,11 @@ function bindEvents() {
         try {
             const key = await discoverySearch(keywords);
             if (key) {
-                state._proposedImageBlob = null; // Prevent preview bleeding
+                state._proposedImageBlob = null;
                 switchTab('architect');
                 $('#lz-explorer-keywords').val('');
             } else {
-                alert('No location detected. Try being more specific or checking context.');
+                if (window.toastr) window.toastr.warning('No location detected. Try being more specific or checking context.', 'Localyze');
             }
         } finally {
             $('#lz-explorer-status').addClass('lz-hidden');

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
- * @stamp {"utc":"2026-04-01T18:30:00.000Z"}
- * @version 1.5.0
+ * @stamp {"utc":"2026-04-01T23:55:00.000Z"}
+ * @version 1.5.1
  * @architectural-role Orchestrator / Workshop Controller
  * @description
  * Manages the logic for the unified Location Workshop. This module acts as the
@@ -9,24 +9,18 @@
  * and refine locations in a temporary "Draft" state before committing 
  * changes to the chat DNA.
  *
- * Implements targeted regeneration (Regen Definition/Visuals) and discovery
- * logic using the "immediate feeling" principle (current transcript horizon).
- *
- * @core-principles
- * 1. STAGED EDITS: All changes are written to state._draftLocations.
- * 2. TARGETED REGEN: Allows updating specific fields (definition or visuals)
- *    independently via the LLM.
- * 3. PREVIEW CONFIDENCE: Logic for generating Dev Mode previews using the
- *    Settings Template for visual confirmation.
+ * Updates:
+ * - Implemented dual-mode discoverySearch (Passive vs Targeted).
+ * - Targeted mode uses Step 4 settings and interpolates {{keywords}}.
  *
  * @api-declaration
  * handleEditLocation(key)      — entry point to open workshop in Architect mode.
  * handleManualDescriber()      — entry point to open workshop in Explorer mode.
  * syncDraftState()             — clones live locations into the draft dictionary.
  * regenField(key, field)       — targeted AI update for a specific definition field.
- * discoverySearch(keywords)    — runs Step 3 detection and stages the result.
+ * discoverySearch(keywords)    — runs Step 3 or Step 4 detection and stages result.
  * previewProposedImage(key)    — generates a Dev Mode preview blob for a draft.
- * deleteDraftLocation(key)     — removes a location from the current workshop session.
+ * deleteDraftLocation(key)     — removes a location from the workshop draft.
  *
  * @contract
  *   assertions:
@@ -54,21 +48,19 @@ export function syncDraftState() {
 }
 
 /**
- * Entry point for the "Edit" action from the toolbar or picker.
+ * Entry point for the "Edit" action from the toolbar.
  * @param {string} key 
  */
 export async function handleEditLocation(key) {
     syncDraftState();
     state._activeWorkshopKey = key;
     
-    // The UI module (workshopModal.js) will be responsible for showing the modal.
-    // We import it dynamically to avoid circular dependencies.
     const { openWorkshop } = await import('../ui/workshopModal.js');
     openWorkshop('architect');
 }
 
 /**
- * Entry point for "Force Detect" or "Discovery" from the toolbar.
+ * Entry point for "Discovery" (Force Detect) from the toolbar.
  */
 export async function handleManualDescriber() {
     syncDraftState();
@@ -83,9 +75,6 @@ export async function handleManualDescriber() {
  * Targeted Regeneration.
  * Uses the current transcript to re-extract either the Definition (logic)
  * or the Visuals (image prompt) for a specific location.
- * 
- * @param {string} key The slug in _draftLocations.
- * @param {'description'|'imagePrompt'} field The field to update.
  */
 export async function regenField(key, field) {
     const draft = state._draftLocations[key];
@@ -95,18 +84,13 @@ export async function regenField(key, field) {
     const s = getSettings();
     const lastMsgId = context.chat.length - 1;
     
-    // Build context based on "immediate feeling" (current horizon)
     const contextText = buildDescriberContext(context.chat, lastMsgId, s.describerHistory ?? 3);
-    
-    // We use the standard describer, but we can append the existing name 
-    // to focus the AI's attention.
     const augmentedContext = `FOCUS LOCATION: ${draft.name}\n\n${contextText}`;
     
     try {
         const result = await detectDescriber(augmentedContext, s.describerPrompt, s.describerProfileId);
         if (result && result[field]) {
             draft[field] = result[field];
-            console.debug(`[Localyze:Regen] Updated ${field} for ${key}`);
             return true;
         }
     } catch (err) {
@@ -119,16 +103,12 @@ export async function regenField(key, field) {
 /**
  * Visual Preview Logic.
  * Generates a low-res preview of the draft's visual prompt.
- * 
- * @param {string} key 
- * @returns {Promise<string>} Object URL for the blob.
  */
 export async function previewProposedImage(key) {
     const draft = state._draftLocations[key];
     if (!draft || !draft.imagePrompt) return null;
 
     try {
-        // fetchPreviewBlob internally applies the Settings Template and Dev Mode sizing.
         const blobUrl = await fetchPreviewBlob(draft.imagePrompt);
         state._proposedImageBlob = blobUrl;
         return blobUrl;
@@ -142,21 +122,31 @@ export async function previewProposedImage(key) {
 
 /**
  * The "Discovery Search" logic.
- * Runs detection based on optional keywords and current context.
  * 
- * @param {string} keywords User-provided hint (e.g. "A misty swamp").
+ * Logic:
+ * 1. If keywords are provided: Use Step 4 (Discovery) configuration.
+ * 2. If keywords are empty: Use Step 3 (Describer) configuration.
+ * 
+ * @param {string} keywords User-provided hint.
  */
 export async function discoverySearch(keywords = '') {
     const context = getContext();
     const s = getSettings();
     const lastMsgId = context.chat.length - 1;
+    const hasKeywords = keywords.trim().length > 0;
 
-    let contextText = buildDescriberContext(context.chat, lastMsgId, s.describerHistory ?? 3);
-    if (keywords.trim()) {
-        contextText = `USER HINT: ${keywords}\n\n${contextText}`;
+    // Determine config based on mode
+    const historyLen = hasKeywords ? (s.discoveryHistory ?? 3) : (s.describerHistory ?? 3);
+    const profileId  = hasKeywords ? s.discoveryProfileId : s.describerProfileId;
+    let promptTemplate = hasKeywords ? s.discoveryPrompt : s.describerPrompt;
+
+    // If targeted, pre-interpolate keywords into the template
+    if (hasKeywords) {
+        promptTemplate = promptTemplate.replace(/\{\{keywords\}\}/g, keywords);
     }
 
-    const result = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
+    const contextText = buildDescriberContext(context.chat, lastMsgId, historyLen);
+    const result = await detectDescriber(contextText, promptTemplate, profileId);
 
     if (result) {
         const key = slugify(result.name);

@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-04-01T21:30:00.000Z"}
- * @version 1.2.4
+ * @stamp {"utc":"2026-04-01T23:20:00.000Z"}
+ * @version 1.2.5
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle. Implements a profile-based system 
  * (profiles, currentProfileName, activeState).
  * 
- * Version 1.2.4 Updates:
- * - Fixed path depth for script.js (5 levels deep from subfolder).
- * - Added robustness to initSettings for existing profile recovery.
+ * Version 1.2.5 Updates:
+ * - Added Discovery settings (Prompt, ProfileId, History) to the profile blueprint.
  *
  * @api-declaration
  * getSettings()     — returns the activeState object for the current profile.
@@ -32,6 +31,8 @@ import {
     DEFAULT_CLASSIFIER_HISTORY,
     DEFAULT_DESCRIBER_PROMPT,
     DEFAULT_DESCRIBER_HISTORY,
+    DEFAULT_DISCOVERY_PROMPT,
+    DEFAULT_DISCOVERY_HISTORY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_DEV_MODE,
@@ -53,6 +54,9 @@ export const PROFILE_DEFAULTS = Object.freeze({
     describerPrompt:      DEFAULT_DESCRIBER_PROMPT,
     describerProfileId:   null,
     describerHistory:     DEFAULT_DESCRIBER_HISTORY,
+    discoveryPrompt:      DEFAULT_DISCOVERY_PROMPT,
+    discoveryProfileId:   null,
+    discoveryHistory:     DEFAULT_DISCOVERY_HISTORY,
     imageModel:          DEFAULT_IMAGE_MODEL,
     imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
     devMode:             DEFAULT_DEV_MODE,
@@ -108,7 +112,7 @@ export function initSettings() {
         root.currentProfileName = 'Default';
         root.activeState = structuredClone(defaultProfile);
 
-        // PERSISTENCE LOCK: Immediately save the newly created structure to the server.
+        // PERSISTENCE LOCK
         saveSettingsDebounced(); 
     } else {
         // Structure already exists; ensure vital pointers and objects are healthy

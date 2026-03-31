@@ -1,97 +1,126 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-04-01T14:15:00.000Z"}
+ * @stamp {"utc":"2026-04-01T23:59:00.000Z"}
+ * @version 1.6.0
  * @architectural-role Toolbar UI
  * @description
- * Injects two buttons into the ST extensions panel (#extensionsMenu).
+ * Injects management buttons into the ST extensions panel (#extensionsMenu).
  *
  * Updates:
- * - Refactored injectToolbar to accept onManualDetect callback for the picker.
+ * - Unhooked pickerModal.js (Ghost removal).
+ * - "Localyze" button now opens Workshop Library directly.
+ * - Added "Discovery" button to open Workshop Explorer directly.
  *
  * @api-declaration
- * injectToolbar(onEdit, onManualDetect) — idempotent; injects both buttons.
+ * injectToolbar(onEdit, onManualDetect) — Injects Localyze, Discovery, and Audit buttons.
  * showOrphanBadge(count) — shows red count badge on audit button.
  * clearOrphanBadge()     — hides badge.
  *
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [getMetaSettings().auditCache (write)]
- *     external_io: [#extensionsMenu DOM (write), POST /api/backgrounds/all,
- *       runFullAudit(), openPickerModal(), openOrphanModal()]
+ *     state_ownership: [none]
+ *     external_io: [#extensionsMenu DOM, runFullAudit, openWorkshop]
  */
-import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js'
-import { openPickerModal } from './pickerModal.js'
-import { openOrphanModal } from './orphanModal.js'
-import { runFullAudit } from '../orphanDetector.js'
-import { getMetaSettings } from '../settings/data.js'
+import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js';
+import { openWorkshop } from './workshopModal.js';
+import { openOrphanModal } from './orphanModal.js';
+import { runFullAudit } from '../orphanDetector.js';
+import { getMetaSettings } from '../settings/data.js';
 
 /**
- * Injects the Localyze buttons into the ST extension menu.
- * @param {Function} onEdit Callback passed to the picker to handle location editing.
- * @param {Function} onManualDetect Callback passed to the picker to handle manual detection.
+ * Injects the Localyze suite buttons into the ST extension menu.
+ * @param {Function} onEdit Callback for Architect mode.
+ * @param {Function} onManualDetect Callback for Discovery/Explorer mode.
  */
 export function injectToolbar(onEdit, onManualDetect) {
-    // Remove any existing buttons to avoid duplicates on hot reload
-    $('#lz-toolbar-btn').remove()
-    $('#lz-audit-btn').remove()
+    // Cleanup for hot-reloads
+    $('#lz-toolbar-btn').remove();
+    $('#lz-explorer-btn').remove();
+    $('#lz-audit-btn').remove();
 
-    // Main picker button
+    // 1. Library Button (Primary entry)
     const pickerBtn = $(`
-        <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" title="Localyze">
+        <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" title="Localyze: Library">
             <i class="fa-solid fa-location-dot"></i>
-            <span>Localyze</span>
+            <span>Localyze Library</span>
         </div>
-    `)
+    `);
     pickerBtn.on('click', () => {
-        openPickerModal(onEdit, onManualDetect)
-    })
+        openWorkshop('library');
+    });
 
-    // Audit button
+    // 2. Discovery Button (Force Detect replacement)
+    const explorerBtn = $(`
+        <div id="lz-explorer-btn" class="list-group-item flex-container flexGap5" title="Localyze: Discover New Location">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Discovery</span>
+        </div>
+    `);
+    explorerBtn.on('click', async () => {
+        if (typeof onManualDetect === 'function') {
+            await onManualDetect();
+        } else {
+            openWorkshop('explorer');
+        }
+    });
+
+    // 3. Audit Button
     const auditBtn = $(`
         <div id="lz-audit-btn" class="list-group-item flex-container flexGap5" title="Localyze: Audit Images">
             <i class="fa-solid fa-trash-can"></i>
             <span>Audit Images</span>
-            <span id="lz-orphan-badge" style="display:none;"></span>
+            <span id="lz-orphan-badge" style="display:none; background:var(--SmartThemeErrorColor); color:white; padding:1px 6px; border-radius:10px; font-size:0.75em; margin-left:auto;"></span>
         </div>
-    `)
+    `);
     auditBtn.on('click', async () => {
         try {
-            const images = await fetch('/api/backgrounds/all', {
+            const res = await fetch('/api/backgrounds/all', {
                 method: 'POST',
                 headers: getRequestHeaders(),
                 body: JSON.stringify({}),
-            }).then(r => r.json()).then(d => d.images ?? [])
+            });
+            const data = await res.json();
+            const images = data.images ?? [];
 
-            const orphans = await runFullAudit(images)
+            const orphans = await runFullAudit(images);
 
-            const meta = getMetaSettings()
-            meta.auditCache = meta.auditCache ?? {}
-            meta.auditCache.lastAudit = new Date().toISOString()
-            meta.auditCache.orphans = orphans
-            meta.auditCache.suspects = orphans
+            const meta = getMetaSettings();
+            meta.auditCache = meta.auditCache ?? {};
+            meta.auditCache.lastAudit = new Date().toISOString();
+            meta.auditCache.orphans = orphans;
+            meta.auditCache.suspects = orphans;
             
-            saveSettingsDebounced()
+            saveSettingsDebounced();
 
             if (orphans.length > 0) {
-                openOrphanModal(orphans)
+                openOrphanModal(orphans);
             } else {
-                if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze')
+                if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze');
             }
         } catch (err) {
-            console.error('[Localyze] Audit failed:', err)
-            if (window.toastr) window.toastr.error('Audit failed. See console for details.', 'Localyze')
+            console.error('[Localyze] Audit failed:', err);
+            if (window.toastr) window.toastr.error('Audit failed. See console for details.', 'Localyze');
         }
-    })
+    });
 
-    $('#extensionsMenu').append(pickerBtn)
-    $('#extensionsMenu').append(auditBtn)
+    // Injection order
+    const $menu = $('#extensionsMenu');
+    $menu.append(pickerBtn);
+    $menu.append(explorerBtn);
+    $menu.append(auditBtn);
 }
 
+/**
+ * Visual badge for orphan detection.
+ */
 export function showOrphanBadge(count) {
-    $('#lz-orphan-badge').text(count).show()
+    $('#lz-orphan-badge').text(count).show();
 }
 
+/**
+ * Hide badge after cleanup.
+ */
 export function clearOrphanBadge() {
-    $('#lz-orphan-badge').hide().text('')
+    $('#lz-orphan-badge').hide().text('');
 }

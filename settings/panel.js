@@ -1,14 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
- * @stamp {"utc":"2026-04-01T14:05:00.000Z"}
- * @version 1.4.1
+ * @stamp {"utc":"2026-04-01T23:45:00.000Z"}
+ * @version 1.4.2
  * @architectural-role UI Orchestrator
  * @description
  * The primary entry point for the Localyze settings UI. 
  *
- * Version 1.4.1 Updates:
- * - Removed manual detection button logic (relocating to Picker Modal).
- * - Simplified injectSettingsPanel signature.
+ * Version 1.4.2 Updates:
+ * - Added Step 4 (Targeted Discovery) to dropdown and prompt editor bindings.
  *
  * @api-declaration
  * injectSettingsPanel() — Main entry point for extension settings init.
@@ -27,6 +26,7 @@ import {
     DEFAULT_BOOLEAN_PROMPT, 
     DEFAULT_CLASSIFIER_PROMPT, 
     DEFAULT_DESCRIBER_PROMPT, 
+    DEFAULT_DISCOVERY_PROMPT,
     DEFAULT_IMAGE_PROMPT_TEMPLATE, 
     DEFAULT_IMAGE_MODEL, 
     POLLINATIONS_MODELS 
@@ -56,6 +56,7 @@ function initDropdowns() {
         { selector: '#lz-profile-boolean',    key: 'booleanProfileId'    },
         { selector: '#lz-profile-classifier', key: 'classifierProfileId' },
         { selector: '#lz-profile-describer',  key: 'describerProfileId'  },
+        { selector: '#lz-profile-discovery',  key: 'discoveryProfileId'  },
     ];
 
     for (const { selector, key } of pairs) {
@@ -108,12 +109,14 @@ function bindHandlers() {
         booleanPrompt:       DEFAULT_BOOLEAN_PROMPT,
         classifierPrompt:    DEFAULT_CLASSIFIER_PROMPT,
         describerPrompt:     DEFAULT_DESCRIBER_PROMPT,
+        discoveryPrompt:     DEFAULT_DISCOVERY_PROMPT,
         imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
     };
     const promptTitles = {
         booleanPrompt:       'Step 1 — Has Location Changed?',
         classifierPrompt:    'Step 2 — Which Location?',
         describerPrompt:     'Step 3 — Describe New Location',
+        discoveryPrompt:     'Step 4 — Targeted Discovery',
         imagePromptTemplate: 'Image Prompt Template',
     };
 

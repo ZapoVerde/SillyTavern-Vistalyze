@@ -1,14 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/templates.js
- * @stamp {"utc":"2026-04-01T22:15:00.000Z"}
- * @version 1.4.2
+ * @stamp {"utc":"2026-04-01T23:30:00.000Z"}
+ * @version 1.4.3
  * @architectural-role Pure UI Templates
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
  * Updates:
- * - Hardened XSS protection: All dynamic attributes and values are now escaped.
- * - Renamed class 'lz-profile-select' to 'lz-step-profile-select' to prevent ID/Class selector collision.
+ * - Added Step 4 (Targeted Discovery) to the settings panel layout.
  *
  * @api-declaration
  * buildPanelHTML(meta, models) -> string
@@ -105,10 +104,11 @@ export function buildPanelHTML(meta, availableModels) {
                     Leave connection blank to use the chat's active API.
                 </p>
 
-                <!-- Detection Steps -->
+                <!-- Detection & Discovery Steps -->
                 ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory')}
                 ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory')}
                 ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory')}
+                ${buildCallRow('discovery',  'Step 4 — Targeted Discovery',            'discoveryPrompt',  'discoveryProfileId',  'discoveryHistory')}
                 
                 <!-- Image Generation Section -->
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
