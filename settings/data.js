@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-04-01T21:00:00.000Z"}
- * @version 1.2.2
+ * @stamp {"utc":"2026-04-01T21:15:00.000Z"}
+ * @version 1.2.3
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle. Implements a profile-based system 
  * (profiles, currentProfileName, activeState).
  * 
- * Version 1.2.2 Updates:
- * - Added CRITICAL saveSettingsDebounced() call in initSettings to "lock in"
- *   profile creation/migration and prevent data loss on reload.
+ * Version 1.2.3 Updates:
+ * - Fixed incorrect import path for saveSettingsDebounced (moved from extensions.js to script.js).
  *
  * @api-declaration
  * getSettings()     — returns the activeState object for the current profile.
@@ -23,7 +22,8 @@
  *     external_io: [saveSettingsDebounced]
  */
 
-import { extension_settings, saveSettingsDebounced } from '../../../../extensions.js';
+import { saveSettingsDebounced } from '../../../../script.js';
+import { extension_settings } from '../../../../extensions.js';
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_BOOLEAN_HISTORY,
@@ -38,6 +38,10 @@ import {
 
 const EXT_NAME = 'localyze';
 
+/**
+ * Blueprint for profile-level settings.
+ * Any key added here will be included in every profile.
+ */
 export const PROFILE_DEFAULTS = Object.freeze({
     booleanPrompt:        DEFAULT_BOOLEAN_PROMPT,
     booleanProfileId:     null,
@@ -53,32 +57,48 @@ export const PROFILE_DEFAULTS = Object.freeze({
     devMode:             DEFAULT_DEV_MODE,
 });
 
+/**
+ * Returns the active configuration for the current profile.
+ * All engine components should read from here.
+ */
 export function getSettings() {
     return extension_settings[EXT_NAME].activeState;
 }
 
+/**
+ * Returns the root settings object. 
+ * Used for global (meta) keys like knownSessions and auditCache.
+ */
 export function getMetaSettings() {
     return extension_settings[EXT_NAME];
 }
 
+/**
+ * Initializes the settings structure.
+ * Performs a one-time migration from flat root keys to the profiles dictionary.
+ */
 export function initSettings() {
+    // 1. Ensure the root object exists
     if (!extension_settings[EXT_NAME]) {
         extension_settings[EXT_NAME] = {};
     }
 
     const root = extension_settings[EXT_NAME];
 
+    // 2. Structural Initialization & Migration
     if (!root.profiles) {
         console.log('[Localyze] Creating fresh profile-based settings structure...');
 
+        // Harvest legacy flat keys from root if they exist
         const legacyConfig = {};
         for (const key of Object.keys(PROFILE_DEFAULTS)) {
             if (Object.prototype.hasOwnProperty.call(root, key)) {
                 legacyConfig[key] = root[key];
-                delete root[key];
+                delete root[key]; // Clean up root
             }
         }
 
+        // Create the initial "Default" profile using legacy values or defaults
         const defaultProfile = Object.assign({}, PROFILE_DEFAULTS, legacyConfig);
 
         root.profiles = {
@@ -91,17 +111,23 @@ export function initSettings() {
         // This prevents the "Fresh Install" state from being re-triggered on next reload.
         saveSettingsDebounced(); 
     } else {
+        // Structure already exists; ensure activeState has all current default keys
         root.activeState = Object.assign({}, PROFILE_DEFAULTS, root.activeState);
     }
 
+    // 3. Global (Meta) Key Initialization
     if (!Array.isArray(root.knownSessions)) {
         root.knownSessions = [];
     }
     if (!root.auditCache) {
-        root.auditCache = { suspects: [], lastAudit: null, orphans: [] };
+        root.auditCache = {
+            suspects: [],
+            lastAudit: null,
+            orphans: [],
+        };
     }
 
-    // Security Cleanup
+    // 4. Security Cleanup (Legacy keys from previous versions)
     delete root.pollinationsKey;
     delete root.pollinationsSecretKey;
     delete root.localyze_pollinations_key;
