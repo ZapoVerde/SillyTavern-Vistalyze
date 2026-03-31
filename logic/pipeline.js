@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-01T12:10:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-04-01T15:40:00.000Z"}
+ * @version 1.2.1
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
- * Version 1.2.0 Updates:
- * - Step 2 (Classifier) now uses "Semantic Identity" (Name + Essence) for prompts.
- * - Step 3 (Describer) uses programmatic slugging and Archivist field mapping.
- * - Map 'atmosphere' to 'imagePrompt' for generator consistency.
+ * Version 1.2.1 Updates:
+ * - Enhanced 'descriptiveList' formatting for robust Step 2 classification.
+ * - Uses clear ID: [key] markers to help LLM distinguish identifiers.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -45,13 +44,12 @@ export async function runPipeline(messageId) {
     const context = getContext();
     const message = context.chat[messageId];
     
-    // Safety check: LLZ only reacts to AI messages
     if (!message || message.is_user) return;
 
     const locationKeys = Object.keys(state.locations);
     const s = getSettings();
 
-    // Step 1: Boolean Gate (Has the location changed?)
+    // Step 1: Boolean Gate
     if (state.currentLocation !== null) {
         const historyText = buildHistoryText(context.chat, messageId, s.booleanHistory ?? 0);
         const changed = await detectBoolean(
@@ -61,14 +59,15 @@ export async function runPipeline(messageId) {
             s.booleanPrompt, 
             s.booleanProfileId
         );
-        if (!changed) return; // Halt: same location
+        if (!changed) return;
     }
 
-    // Step 2: Classifier (Does it match a known location?)
+    // Step 2: Classifier
     if (locationKeys.length > 0) {
-        // Build a descriptive list for the LLM: "key (Name: Essence)"
+        // Build a highly-structured Search Index for the LLM
+        // Format: ID: [key] | Name: Location Name | Essence: Semantic Identity
         const descriptiveList = Object.entries(state.locations)
-            .map(([key, loc]) => `- ${key} (${loc.name}: ${loc.essence ?? 'Unknown'})`)
+            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Essence: ${loc.description ?? 'Unknown'}`)
             .join('\n');
 
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
@@ -86,7 +85,7 @@ export async function runPipeline(messageId) {
         }
     }
 
-    // Step 3: Describer (New location detected)
+    // Step 3: Describer
     await handleUnknownLocation(messageId, context);
 }
 
@@ -130,7 +129,6 @@ async function handleUnknownLocation(messageId, context) {
 
     const rawDef = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
 
-    // If LLM fails to parse or returns null, treat as a declined transition
     if (rawDef === null) {
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true });
@@ -138,15 +136,13 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    // Programmatic Key Generation & Field Mapping
     const def = {
         ...rawDef,
         key: slugify(rawDef.name),
-        description: rawDef.essence, // Store essence as the primary 'description' in DNA
-        imagePrompt: rawDef.atmosphere // Map atmosphere to the image prompt field
+        description: rawDef.essence,
+        imagePrompt: rawDef.atmosphere
     };
 
-    // Quick confirm toastr-style popup
     const confirmed = await callPopup(
         `<h3>New location detected: ${escapeHtml(def.name)}</h3>
         <p><em>${escapeHtml(def.description)}</em></p>
@@ -161,7 +157,6 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    // Open full review/edit modal
     const approved = await openAddModal(def);
 
     if (approved === null) {
@@ -171,14 +166,12 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    // Commit new definition to DNA (write to previous message to avoid collision)
     const defMsgId = messageId > 0 ? messageId - 1 : messageId;
     await lockedWriteLocationDef(defMsgId, approved, state.sessionId);
     
     state.locations[approved.key] = approved;
     clearBg();
     
-    // Record the scene transition (Two-Write)
     if (defMsgId !== messageId) {
         await lockedWriteSceneRecord(messageId, { location: approved.key, image: null, bg_declined: false });
     }

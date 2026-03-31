@@ -1,16 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2026-04-01T12:00:00.000Z"}
- * @version 1.3.0
+ * @stamp {"utc":"2026-04-01T15:50:00.000Z"}
+ * @version 1.4.0
  * @architectural-role Default Configuration
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
- * Version 1.3.0 Updates:
- * - Refactored DESCRIBER prompt to use "Location Archivist" persona.
- * - Split location metadata into 'essence' (semantic) and 'atmosphere' (visual).
- * - Removed 'key' from LLM output requirements to favor programmatic slugging.
- * - Updated IMAGE_PROMPT_TEMPLATE to utilize the new 'atmosphere' field.
+ * Version 1.4.0 Updates:
+ * - Refined Step 2 (Classifier) prompt to support Semantic Search Index formatting.
+ * - Updated instructions to identify locations by ID, Name, and Essence.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -29,19 +27,13 @@
  * DEFAULT_DESCRIBER_PROMPT
  */
 
-/**
- * Primary API Gateway for Pollinations.
- */
+/** Primary API Gateway for Pollinations. */
 export const POLLINATIONS_BASE_URL = 'https://gen.pollinations.ai'
 
-/**
- * Publishable app key — identifies Localyze to Pollinations for attribution.
- */
+/** Publishable app key — identifies Localyze to Pollinations for attribution. */
 export const POLLINATIONS_APP_KEY = 'pk_WfuLORZ5RZDfPRZU'
 
-/**
- * Available Pollinations image models.
- */
+/** Available Pollinations image models. */
 export const POLLINATIONS_MODELS =[
     'flux',
     'zimage',
@@ -55,15 +47,10 @@ export const POLLINATIONS_MODELS =[
 /** Default Pollinations model. */
 export const DEFAULT_IMAGE_MODEL = 'flux'
 
-/**
- * Image prompt template. Interpolated by imageCache.js.
- * Updated to use 'atmosphere' for focused visual generation.
- */
+/** Image prompt template. Interpolated by imageCache.js. */
 export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{atmosphere}}, landscape, cinematic lighting, detailed environment'
 
-/**
- * Dev mode — generates recognizable but low-cost images.
- */
+/** Dev mode — generates recognizable but low-cost images. */
 export const DEFAULT_DEV_MODE = false
 export const DEV_IMAGE_WIDTH  = 320
 export const DEV_IMAGE_HEIGHT = 180
@@ -85,14 +72,20 @@ Latest message:
 Has the scene moved to a new named location since the previous turns? YES or NO.`
 
 export const DEFAULT_CLASSIFIER_PROMPT =
-`Which of these locations matches the latest message?
-Reply with the exact Key or NULL.
+`[SYSTEM: TASK — LOCATION CLASSIFIER]
+Identify which location from the list below matches the current scene described in the message.
 
-Locations:
+LOCATIONS:
 {{key_list}}
 
 {{history}}
-Message: {{message}}`
+LATEST MESSAGE:
+{{message}}
+
+INSTRUCTIONS:
+1. Compare the message to the Name and Essence of each location.
+2. If a match is found, reply with only the ID portion of the location (the text inside the brackets).
+3. If no match is found, reply with: NULL`
 
 export const DEFAULT_DESCRIBER_PROMPT =
 `[SYSTEM: TASK — LOCATION ARCHIVIST]

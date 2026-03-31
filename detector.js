@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/detector.js
- * @stamp {"utc":"2026-04-01T15:00:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-04-01T15:30:00.000Z"}
+ * @version 1.1.1
  * @architectural-role LLM IO
  * @description
  * Owns the three LLM detection calls in the per-turn pipeline.
  * 
- * Version 1.1.0 Updates:
- * - Added Structured Outputs (JSON Schema) support for the Describer step.
- * - Enforces JSON mode and low temperature for extraction consistency.
- * - Updated dispatch to handle response_format for compatible backends (OpenRouter/Gemini).
+ * Version 1.1.1 Updates:
+ * - Upgraded detectClassifier to use robust key-matching (Semantic Search).
+ * - Scans LLM response for valid keys using word boundaries.
  *
  * @api-declaration
  * detectBoolean(messageText, currentLocation, ...) → boolean
@@ -27,7 +26,6 @@ import { ConnectionManagerRequestService } from '../../shared.js'
 
 /**
  * JSON Schema for Structured Outputs (Location Archivist).
- * Enforces name, essence, and atmosphere fields.
  */
 const DESCRIBER_SCHEMA = {
     type: "json_schema",
@@ -63,19 +61,11 @@ function safeParseJSON(raw) {
     }
 }
 
-/**
- * Dispatches the prompt to the LLM.
- * @param {string} prompt 
- * @param {string|null} profileId 
- * @param {string} label 
- * @param {object} extraOptions Options like response_format or temperature.
- */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
     console.debug(`[Localyze:${label}] Prompt:\n${prompt}`)
     
     if (profileId) {
         try {
-            // ConnectionManager implementation varies; we attempt to pass extraOptions
             const result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions)
             const text = result.content ?? result
             console.debug(`[Localyze:${label}] Response (ConnectionManager):\n${text}`)
@@ -86,8 +76,6 @@ async function dispatch(prompt, profileId, label, extraOptions = {}) {
     }
 
     try {
-        // We pass prompt and options to generateQuietPrompt. 
-        // backends like OpenRouter/OpenAI will respect response_format in the options object.
         const text = await generateQuietPrompt({ 
             quietPrompt: prompt, 
             removeReasoning: true,
@@ -113,27 +101,46 @@ export async function detectBoolean(messageText, currentLocation, historyText, p
     return answer
 }
 
+/**
+ * Identifies which location key matches the current context.
+ * Performs a robust search: scans the LLM output for the presence of known keys.
+ */
 export async function detectClassifier(messageText, locationKeys, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         key_list: locationKeys.join(', '),
         history: historyText,
         message: messageText,
     })
-    const result = await dispatch(prompt, profileId, 'Classifier', { temperature: 0.1 })
-    const cleaned = String(result).trim().replace(/[^a-z0-9_]/gi, '')
-    if (!cleaned || cleaned.toUpperCase() === 'NULL') {
-        console.debug('[Localyze:Classifier] → NULL (no match / unknown location)')
+    
+    const rawResult = await dispatch(prompt, profileId, 'Classifier', { temperature: 0.1 })
+    const text = String(rawResult).trim()
+
+    if (!text || text.toUpperCase().includes('NULL')) {
+        console.debug('[Localyze:Classifier] → NULL (no match indicated)')
         return null
     }
-    const matched = locationKeys.find(k => k === cleaned) ?? null
-    console.debug(`[Localyze:Classifier] → ${matched ?? `no exact match for "${cleaned}"`}`)
-    return matched
+
+    // Robust Search: Iterate through valid keys and find if any are present in the text.
+    // We check for word boundaries to prevent 'inn' matching 'dinner'.
+    for (const key of locationKeys) {
+        const regex = new RegExp(`\\b${key}\\b`, 'i');
+        if (regex.test(text)) {
+            console.debug(`[Localyze:Classifier] → Found key match: ${key}`)
+            return key;
+        }
+    }
+
+    // Final fallback: Clean the whole string and try exact match
+    const cleaned = text.replace(/[^a-z0-9_]/gi, '').toLowerCase()
+    const fallback = locationKeys.find(k => k === cleaned) ?? null
+    
+    console.debug(`[Localyze:Classifier] → ${fallback ?? `no match found in "${text}"`}`)
+    return fallback
 }
 
 export async function detectDescriber(contextText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, { context: contextText })
     
-    // Structured Outputs: Passing the schema and forcing temperature to 0.0/0.1
     const raw = await dispatch(prompt, profileId, 'Describer', { 
         response_format: DESCRIBER_SCHEMA,
         temperature: 0.1 
