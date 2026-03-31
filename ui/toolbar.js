@@ -1,12 +1,11 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
  * @stamp {"utc":"2026-04-01T14:15:00.000Z"}
- * @version 1.3.1
  * @architectural-role Toolbar UI
  * @description
  * Injects two buttons into the ST extensions panel (#extensionsMenu).
  *
- * Version 1.3.1 Updates:
+ * Updates:
  * - Refactored injectToolbar to accept onManualDetect callback for the picker.
  *
  * @api-declaration

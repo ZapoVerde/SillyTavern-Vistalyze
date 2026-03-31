@@ -1,12 +1,11 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/templates.js
  * @stamp {"utc":"2026-04-01T14:00:00.000Z"}
- * @version 1.0.1
  * @architectural-role Pure UI Templates
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
- * Version 1.0.1 Updates:
+ * Updates:
  * - Removed 'Force Detect Location' button (relocating to Picker Modal).
  *
  * @api-declaration

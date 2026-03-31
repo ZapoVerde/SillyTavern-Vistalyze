@@ -1,13 +1,12 @@
 /**
  * @file session.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.0
  * @architectural-role Session Identity
  * @description
  * Manages the per-chat sessionId and initializes extension settings using 
  * the profile-aware data layer.
  * 
- * Version 1.2.0 Updates:
+ * Updates:
  * - Delegated settings initialization and migration to settings/data.js.
  * - Switched to getMetaSettings() for session registration in knownSessions.
  * - Removed legacy default constants and redundant schema logic.

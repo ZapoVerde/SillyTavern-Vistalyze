@@ -1,14 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/ui/orphanModal.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.0
  * @architectural-role Orphan File Review UI
  * @description
  * Modal for reviewing and deleting orphaned Localyze background images.
  * Opened by toolbar.js after a full audit returns results. Shows a
  * checkbox table of orphan filenames with select-all support.
  *
- * Version 1.2.0 Updates:
+ * Updates:
  * - Refactored to use getMetaSettings() for clearing the global auditCache.
  * - Hardened deletion loop and success notifications.
  *

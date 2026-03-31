@@ -1,13 +1,12 @@
 /**
  * @file data/default-user/extensions/localyze/ui/pickerModal.js
  * @stamp {"utc":"2026-04-01T14:10:00.000Z"}
- * @version 1.3.0
  * @architectural-role Manual Override UI
  * @description
  * Searchable location picker modal. Allows the user to manually set the
  * active location or launch the location editor.
  * 
- * Version 1.3.0 Updates:
+ * Updates:
  * - Added "Force Detect New Location" button to the bottom of the picker.
  * - Updated openPickerModal signature to support manual detection callback.
  *

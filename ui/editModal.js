@@ -1,22 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/ui/editModal.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2025-05-15T13:00:00.000Z"}
  * @architectural-role Location Maintenance UI
  * @description
- * Modal for editing existing location metadata (name and description).
+ * Modal for editing existing location metadata.
  * 
- * In the Localyze "DNA Chain" architecture, an edit is expressed by writing
- * a new location_def record to the chat with the same 'key'. The forward-pass
- * reconstruction logic ensures the most recent definition for a key wins.
- * 
- * This UI allows users to:
- * 1. Change the display Name (the label shown in UI).
- * 2. Update the Description (the primary source for image prompts).
- * 3. Request an image regeneration based on the new description.
+ * Updates:
+ * - Renamed labels to "Definition" and "Visuals" for functional clarity.
+ * - Separated Definition (Step 2 Logic) from Visuals (Image Generation).
+ * - Updated internal mapping to ensure edits persist correctly to the DNA chain.
  * 
  * @api-declaration
- * openEditModal(def) → Promise<{ name, description, regenRequested } | null>
+ * openEditModal(def) → Promise<{ name, description, imagePrompt, regenRequested } | null>
  *
  * @contract
  *   assertions:
@@ -27,10 +22,7 @@
 
 import { callPopup } from '../../../../../script.js'
 import { fetchPreviewBlob } from '../imageCache.js'
-
-function escapeHtml(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
+import { escapeHtml } from '../utils/history.js'
 
 /**
  * Opens the edit modal for a specific location.
@@ -47,8 +39,11 @@ export async function openEditModal(def) {
         <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Display Name</label>
         <input type="text" id="lz-edit-name" class="text_pole" value="${escapeHtml(def.name)}" style="width:100%;" />
 
-        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Description / Image Prompt</label>
-        <textarea id="lz-edit-description" class="text_pole" rows="5" style="width:100%; font-size:0.9em;">${escapeHtml(def.description)}</textarea>
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Definition (Identity / Function)</label>
+        <input type="text" id="lz-edit-definition" class="text_pole" value="${escapeHtml(def.description)}" style="width:100%;" />
+
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;">Visuals (Image Generation Details)</label>
+        <textarea id="lz-edit-visuals" class="text_pole" rows="4" style="width:100%; font-size:0.9em;">${escapeHtml(def.imagePrompt)}</textarea>
 
         <div style="margin-top:12px; display:flex; align-items:center; gap:10px;">
             <button class="menu_button" id="lz-edit-preview-btn">Regenerate Preview</button>
@@ -65,11 +60,11 @@ export async function openEditModal(def) {
         'confirm',
     )
 
-    // Handle preview generation
+    // Handle preview generation using the visuals field
     $('#lz-edit-preview-btn').on('click', async function () {
-        const desc = $('#lz-edit-description').val().trim()
-        if (!desc) {
-            toastr.warning('Description cannot be empty.', 'Localyze')
+        const visuals = $('#lz-edit-visuals').val().trim()
+        if (!visuals) {
+            toastr.warning('Visuals cannot be empty.', 'Localyze')
             return
         }
 
@@ -78,8 +73,8 @@ export async function openEditModal(def) {
         btn.prop('disabled', true).text('Generating...')
         
         try {
-            console.debug('[Localyze:Edit] Requesting preview for updated description.')
-            const objectUrl = await fetchPreviewBlob(desc)
+            console.debug('[Localyze:Edit] Requesting preview for updated visuals.')
+            const objectUrl = await fetchPreviewBlob(visuals)
             $('#lz-edit-preview-container').show()
             $('#lz-edit-preview-img').attr('src', objectUrl)
             // If the user previews, they likely want to regenerate the real file too
@@ -97,18 +92,19 @@ export async function openEditModal(def) {
     if (!confirmed) return null
 
     const name = $('#lz-edit-name').val().trim()
-    const description = $('#lz-edit-description').val().trim()
+    const definition = $('#lz-edit-definition').val().trim()
+    const visuals = $('#lz-edit-visuals').val().trim()
 
-    if (!name || !description) {
-        toastr.warning('Name and Description are required to save changes.', 'Localyze')
+    if (!name || !definition || !visuals) {
+        toastr.warning('Name, Definition, and Visuals are required to save changes.', 'Localyze')
         return null
     }
 
     return {
         key: def.key, // Keep key the same to patch the DNA chain
         name: name,
-        description: description,
-        imagePrompt: description, // Default to description as prompt
+        description: definition,
+        imagePrompt: visuals,
         regenRequested: $('#lz-edit-regen-check').prop('checked')
     }
 }

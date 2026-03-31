@@ -1,14 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/utils/history.js
  * @stamp {"utc":"2026-04-01T12:05:00.000Z"}
- * @version 1.2.0
  * @architectural-role Pure Functions / Text Processor
  * @description
  * Pure string and array manipulation utilities for the Localyze pipeline.
  * Contains logic for escaping HTML in UI elements, building history 
  * transcripts for LLM context windows, and deterministic slugification.
  * 
- * Version 1.2.0 Updates:
+ * Updates:
  * - Added slugify() for programmatic location key generation.
  *
  * @api-declaration

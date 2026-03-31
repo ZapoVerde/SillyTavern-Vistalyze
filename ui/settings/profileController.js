@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/profileController.js
  * @stamp {"utc":"2026-04-01T13:30:00.000Z"}
- * @version 1.0.0
  * @architectural-role Stateful Owner / Profile Logic
  * @description
  * Manages the logic for settings profiles and "dirty" state tracking.

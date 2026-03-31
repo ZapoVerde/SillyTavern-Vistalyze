@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/library.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
  * @architectural-role Chat DNA Writer
  * @description
  * Writes location_def records into message.extra.localyze. This is the sole

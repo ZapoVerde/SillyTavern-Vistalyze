@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/vault.js
  * @stamp {"utc":"2026-04-01T13:20:00.000Z"}
- * @version 1.0.0
  * @architectural-role IO Executor / Vault Manager
  * @description
  * Handles secure storage of API keys and network connectivity tests.

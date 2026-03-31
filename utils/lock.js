@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/utils/lock.js
  * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.0
  * @architectural-role Utility / Concurrency Mechanic
  * @description
  * Implements a simple Mutex (Mutual Exclusion) lock for asynchronous operations.

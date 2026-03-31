@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/background.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
  * @architectural-role ST Background API Wrapper
  * @description
  * Sets and clears the ST background using the chat_metadata lock mechanism

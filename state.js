@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/state.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
  * @architectural-role Runtime State
  * @description
  * Single source of truth for all Localyze in-memory runtime state. Fully

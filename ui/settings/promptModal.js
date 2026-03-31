@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/promptModal.js
  * @stamp {"utc":"2026-04-01T13:10:00.000Z"}
- * @version 1.0.0
  * @architectural-role UI Component / Prompt Editor
  * @description
  * Orchestrates the prompt editing modal. This component handles the 

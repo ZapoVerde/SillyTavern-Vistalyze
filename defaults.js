@@ -1,14 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2026-04-01T15:50:00.000Z"}
- * @version 1.4.0
+ * @stamp {"utc":"2025-05-15T10:00:00.000Z"}
  * @architectural-role Default Configuration
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
- * Version 1.4.0 Updates:
- * - Refined Step 2 (Classifier) prompt to support Semantic Search Index formatting.
- * - Updated instructions to identify locations by ID, Name, and Essence.
+ * Updates:
+ * - Removed JSON formatting from Step 3 (Describer).
+ * - Implemented "Name / Definition / Visuals" text-marker pattern.
+ * - Updated terminology for better AI clarity and Step 2 classification.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -96,9 +96,12 @@ TRANSCRIPT:
 
 INSTRUCTIONS:
 1. Identify the single most specific active location at the end of the transcript.
-2. name: A short, formal label (e.g., "The Silver Swan Tavern").
-3. essence: A brief, conceptual definition of what this place IS (e.g., "A crowded medieval pub and inn"). This helps distinguish the location semantically.
-4. atmosphere: 2-3 sentences of pure visual/sensory detail for an image generator. Focus on lighting, materials, and mood. Do not mention characters.
+2. Provide the information using the exact labels below:
+   Name: A short, formal label (e.g., "The Silver Swan Tavern").
+   Definition: A brief, conceptual definition of what this place is. This helps distinguish the location semantically for search logic.
+   Visuals: 2-3 sentences of pure visual/sensory detail for an image generator. Focus on lighting, materials, and mood. Do not mention characters.
 
-### OUTPUT FORMAT — JSON only, no markdown fences, no other text:
-{"name": "", "essence": "", "atmosphere": ""}`
+### OUTPUT FORMAT:
+Name: [Location Name]
+Definition: [Logical Definition]
+Visuals: [Image Generation Prompt]`

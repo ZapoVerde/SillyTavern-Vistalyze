@@ -1,7 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/reconstruction.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
- * @version 1.0.0
  * @architectural-role State Derivation (Pure)
  * @description
  * Derives all Localyze runtime state from a single forward pass over the chat

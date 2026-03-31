@@ -1,13 +1,12 @@
 /**
  * @file imageCache.js
  * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
- * @version 1.2.1
  * @architectural-role Image IO
  * @description
  * Owns all image-related IO. Refactored to use the profile-aware getSettings() 
  * accessor for prompts, models, and dev mode flags.
  * 
- * Version 1.2.1 Updates:
+ * Updates:
  * - Migrated from direct extension_settings access to getSettings().
  * - Standardized usage of profile-level configuration.
  *

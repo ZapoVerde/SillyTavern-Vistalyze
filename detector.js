@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/detector.js
- * @stamp {"utc":"2026-04-01T15:10:00.000Z"}
- * @version 1.1.2
+ * @stamp {"utc":"2025-05-15T11:00:00.000Z"}
  * @architectural-role LLM IO
  * @description
  * Owns the three LLM detection calls in the per-turn pipeline.
  * 
- * Version 1.1.2 Updates:
- * - Hardened dispatch debugging to log the raw response object for diagnostic clarity.
- * - Simplified response_format to 'json_object' for broader provider compatibility.
- * - Improved safeParseJSON to handle non-string or already-parsed inputs.
+ * Updates:
+ * - Removed JSON parsing for Step 3 (Describer).
+ * - Implemented robust CNZ-style Marker Extraction (Regex) for Name/Definition/Visuals.
+ * - Improved resilience against AI preambles and markdown formatting.
  *
  * @api-declaration
  * detectBoolean(messageText, currentLocation, ...) → boolean
@@ -25,33 +24,42 @@
 import { generateQuietPrompt } from '../../../../script.js'
 import { ConnectionManagerRequestService } from '../../shared.js'
 
-/**
- * Simplified JSON Object request for broader compatibility across backends.
- */
-const DESCRIBER_FORMAT = { type: "json_object" };
-
 function interpolate(template, vars) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '')
 }
 
 /**
- * Robust JSON parser that handles markdown fences and already-parsed objects.
+ * Robust Marker Extractor (CNZ Pattern).
+ * Scans for Name:, Definition:, and Visuals: labels and captures the content.
+ * Handles bolding (**Name:**) and trailing AI chatter.
  */
-function safeParseJSON(raw) {
-    if (typeof raw === 'object' && raw !== null) return raw;
-    try {
-        const str = String(raw || '').trim();
-        if (!str) return null;
-        
-        const stripped = str
-            .replace(/^```(?:json)?\s*/i, '')
-            .replace(/\s*```$/, '')
-            .trim();
-        return JSON.parse(stripped);
-    } catch (err) {
-        console.warn('[Localyze:JSON] Parse failed:', err.message);
+function extractMarkerData(raw) {
+    const text = String(raw || '');
+    const fieldMap = {
+        name: 'Name',
+        essence: 'Definition',
+        atmosphere: 'Visuals'
+    };
+    const result = {};
+
+    for (const [key, marker] of Object.entries(fieldMap)) {
+        // Regex: finds "Marker:" (allowing for optional bolding asterisks) 
+        // and captures everything until the next marker or end of string.
+        const regex = new RegExp(`\\*?\\*?${marker}\\*?\\*?:\\s*([\\s\\S]*?)(?=\\n\\*?\\*?(?:Name|Definition|Visuals)\\*?\\*?:|$)`, 'i');
+        const match = text.match(regex);
+        if (match) {
+            // Trim and clean up any lingering markdown artifacts
+            result[key] = match[1].trim().replace(/^\*+|\*+$/g, '');
+        }
+    }
+
+    // Validation: ensure we have at least a Name and Visuals to proceed
+    if (!result.name || !result.atmosphere) {
+        console.warn('[Localyze:Parser] Incomplete marker data found:', result);
         return null;
     }
+
+    return result;
 }
 
 /**
@@ -133,15 +141,14 @@ export async function detectDescriber(contextText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, { context: contextText })
     
     const raw = await dispatch(prompt, profileId, 'Describer', { 
-        response_format: DESCRIBER_FORMAT,
         temperature: 0.1 
     })
     
-    const parsed = safeParseJSON(raw)
+    const parsed = extractMarkerData(raw)
     if (parsed === null) {
-        console.error('[Localyze:Describer] Final JSON check failed. Raw input was:', raw)
+        console.error('[Localyze:Describer] Marker extraction failed. Raw input was:', raw)
     } else {
-        console.debug('[Localyze:Describer] Final Parsed Object:', parsed)
+        console.debug('[Localyze:Describer] Final Extracted Object:', parsed)
     }
     return parsed
 }
