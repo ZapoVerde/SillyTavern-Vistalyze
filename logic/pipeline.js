@@ -1,14 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-01T15:40:00.000Z"}
- * @version 1.2.1
+ * @stamp {"utc":"2026-04-01T16:15:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
- * Version 1.2.1 Updates:
- * - Enhanced 'descriptiveList' formatting for robust Step 2 classification.
- * - Uses clear ID: [key] markers to help LLM distinguish identifiers.
+ * Updates:
+ * - Standardized terminology: removed 'essence' and 'atmosphere' in favor of 
+ *   'description' and 'imagePrompt' to match detector/UI standardization.
+ * - Simplified handleUnknownLocation object construction.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -65,7 +65,6 @@ export async function runPipeline(messageId) {
     // Step 2: Classifier
     if (locationKeys.length > 0) {
         // Build a highly-structured Search Index for the LLM
-        // Format: ID: [key] | Name: Location Name | Essence: Semantic Identity
         const descriptiveList = Object.entries(state.locations)
             .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Essence: ${loc.description ?? 'Unknown'}`)
             .join('\n');
@@ -136,17 +135,16 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
+    // Construct the definition using standardized keys directly from detector
     const def = {
         ...rawDef,
-        key: slugify(rawDef.name),
-        description: rawDef.essence,
-        imagePrompt: rawDef.atmosphere
+        key: slugify(rawDef.name)
     };
 
     const confirmed = await callPopup(
         `<h3>New location detected: ${escapeHtml(def.name)}</h3>
         <p><em>${escapeHtml(def.description)}</em></p>
-        <p style="font-size:0.9em; opacity:0.8;">${escapeHtml(rawDef.atmosphere)}</p>`,
+        <p style="font-size:0.9em; opacity:0.8;">${escapeHtml(def.imagePrompt)}</p>`,
         'confirm'
     );
 

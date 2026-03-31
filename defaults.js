@@ -1,14 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2025-05-15T10:00:00.000Z"}
+ * @stamp {"utc":"2026-04-01T16:30:00.000Z"}
  * @architectural-role Default Configuration
  * @description
  * Default prompt strings and API constants for Localyze.
  * 
  * Updates:
- * - Removed JSON formatting from Step 3 (Describer).
- * - Implemented "Name / Definition / Visuals" text-marker pattern.
- * - Updated terminology for better AI clarity and Step 2 classification.
+ * - Updated Step 2 (Classifier) prompt to use 'Definition' instead of 'Essence' 
+ *   for cross-pipeline terminology consistency.
+ * - Confirmed Step 3 (Describer) markers align with detector.js labels.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -48,7 +48,7 @@ export const POLLINATIONS_MODELS =[
 export const DEFAULT_IMAGE_MODEL = 'flux'
 
 /** Image prompt template. Interpolated by imageCache.js. */
-export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{atmosphere}}, landscape, cinematic lighting, detailed environment'
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{image_prompt}}, landscape, cinematic lighting, detailed environment'
 
 /** Dev mode — generates recognizable but low-cost images. */
 export const DEFAULT_DEV_MODE = false
@@ -83,7 +83,7 @@ LATEST MESSAGE:
 {{message}}
 
 INSTRUCTIONS:
-1. Compare the message to the Name and Essence of each location.
+1. Compare the message to the Name and Definition of each location.
 2. If a match is found, reply with only the ID portion of the location (the text inside the brackets).
 3. If no match is found, reply with: NULL`
 

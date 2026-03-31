@@ -1,14 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/detector.js
- * @stamp {"utc":"2025-05-15T11:00:00.000Z"}
+ * @stamp {"utc":"2026-04-01T16:25:00.000Z"}
  * @architectural-role LLM IO
  * @description
  * Owns the three LLM detection calls in the per-turn pipeline.
  * 
  * Updates:
- * - Removed JSON parsing for Step 3 (Describer).
- * - Implemented robust CNZ-style Marker Extraction (Regex) for Name/Definition/Visuals.
- * - Improved resilience against AI preambles and markdown formatting.
+ * - Standardized property names: 'essence' becomes 'description', 'atmosphere' becomes 'imagePrompt'.
+ * - Maintained "Definition" and "Visuals" as the AI-facing markers for Step 3.
  *
  * @api-declaration
  * detectBoolean(messageText, currentLocation, ...) → boolean
@@ -31,14 +30,14 @@ function interpolate(template, vars) {
 /**
  * Robust Marker Extractor (CNZ Pattern).
  * Scans for Name:, Definition:, and Visuals: labels and captures the content.
- * Handles bolding (**Name:**) and trailing AI chatter.
+ * Maps these to internal keys: name, description, imagePrompt.
  */
 function extractMarkerData(raw) {
     const text = String(raw || '');
     const fieldMap = {
         name: 'Name',
-        essence: 'Definition',
-        atmosphere: 'Visuals'
+        description: 'Definition',
+        imagePrompt: 'Visuals'
     };
     const result = {};
 
@@ -53,8 +52,8 @@ function extractMarkerData(raw) {
         }
     }
 
-    // Validation: ensure we have at least a Name and Visuals to proceed
-    if (!result.name || !result.atmosphere) {
+    // Validation: ensure we have at least a Name and Visuals (imagePrompt) to proceed
+    if (!result.name || !result.imagePrompt) {
         console.warn('[Localyze:Parser] Incomplete marker data found:', result);
         return null;
     }

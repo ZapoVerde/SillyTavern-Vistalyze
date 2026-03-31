@@ -1,16 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
- * @stamp {"utc":"2026-03-31T06:35:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-04-01T16:20:00.000Z"}
  * @architectural-role Orchestrator / Maintenance Logic
  * @description
  * Manages manual updates to the location library. This module bridges 
  * user intent (via UI modals) with the DNA Chain persistence and 
  * asset generation.
  * 
- * Version 1.1.0 Updates:
- * - Added handleManualDescriber() orchestrator for manual Step 3 invocation.
- * - Implements Two-Write Pattern for manually detected locations.
+ * Updates:
+ * - Standardized terminology: removed 'essence' and 'atmosphere' mapping logic.
+ * - Expects standardized keys (description, imagePrompt) from detector.js.
  * 
  * @api-declaration
  * handleEditLocation(key) -> Promise<void>
@@ -26,7 +25,7 @@
 import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { getSettings } from '../settings/data.js';
-import { buildDescriberContext } from '../utils/history.js';
+import { buildDescriberContext, slugify } from '../utils/history.js';
 import { detectDescriber } from '../detector.js';
 import { openEditModal } from '../ui/editModal.js';
 import { openAddModal } from '../ui/addModal.js';
@@ -83,7 +82,7 @@ export async function handleEditLocation(key) {
 
 /**
  * Manually invokes the Describer (Step 3) to extract a new location from context.
- * Triggered by the "Force Detect Location" button in the settings panel.
+ * Triggered by the "Force Detect Location" button in the picker.
  */
 export async function handleManualDescriber() {
     const context = getContext();
@@ -97,12 +96,18 @@ export async function handleManualDescriber() {
     
     // 1. Build context and call LLM
     const contextText = buildDescriberContext(context.chat, lastMsgId, s.describerHistory ?? 0);
-    const def = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
+    const rawDef = await detectDescriber(contextText, s.describerPrompt, s.describerProfileId);
 
-    if (!def) {
+    if (!rawDef) {
         if (window.toastr) window.toastr.warning('Could not detect a new location from context.', 'Localyze');
         return;
     }
+
+    // Standardize object with the required key
+    const def = {
+        ...rawDef,
+        key: slugify(rawDef.name)
+    };
 
     // 2. User Review/Edit
     const approved = await openAddModal(def);
