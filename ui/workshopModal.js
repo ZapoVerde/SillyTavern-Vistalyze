@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshopModal.js
  * @stamp {"utc":"2026-04-01T20:00:00.000Z"}
- * @version 1.0.0
+ * @version 1.0.1
  * @architectural-role UI Orchestrator / Workshop View
  * @description
  * Implements the Location Workshop UI. Replaces the fragmented Picker, Add, 
@@ -20,7 +20,7 @@
  *   assertions:
  *     purity: Stateful UI Orchestrator
  *     state_ownership: [DOM visibility, Active Tab State]
- *     external_io: [maintenance.js, commit.js, DOM Manipulation]
+ *     external_io:[maintenance.js, commit.js, DOM Manipulation]
  */
 
 import { state } from '../state.js';
@@ -167,8 +167,9 @@ async function renderArchitect() {
     $('#lz-arch-visuals').val(draft.imagePrompt);
 
     // Update Preview Before
-    if (state.currentImage) {
-        $('#lz-preview-before').attr('src', `backgrounds/${encodeURIComponent(state.currentImage)}`).show();
+    const filename = `localyze_${state.sessionId}_${key}.png`;
+    if (state.fileIndex.has(filename)) {
+        $('#lz-preview-before').attr('src', `backgrounds/${encodeURIComponent(filename)}`).show();
     } else {
         $('#lz-preview-before').hide();
     }
@@ -223,6 +224,7 @@ function bindEvents() {
     $('.lz-library-list').on('click', '.lz-lib-edit', function(e) {
         e.stopPropagation();
         state._activeWorkshopKey = $(this).closest('.lz-library-item').data('key');
+        state._proposedImageBlob = null; // Prevent preview bleeding
         switchTab('architect');
     });
 
@@ -303,6 +305,7 @@ function bindEvents() {
         try {
             const key = await discoverySearch(keywords);
             if (key) {
+                state._proposedImageBlob = null; // Prevent preview bleeding
                 switchTab('architect');
                 $('#lz-explorer-keywords').val('');
             } else {

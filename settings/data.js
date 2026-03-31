@@ -1,14 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-04-01T21:15:00.000Z"}
- * @version 1.2.3
+ * @stamp {"utc":"2026-04-01T21:30:00.000Z"}
+ * @version 1.2.4
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle. Implements a profile-based system 
  * (profiles, currentProfileName, activeState).
  * 
- * Version 1.2.3 Updates:
- * - Fixed incorrect import path for saveSettingsDebounced (moved from extensions.js to script.js).
+ * Version 1.2.4 Updates:
+ * - Fixed path depth for script.js (5 levels deep from subfolder).
+ * - Added robustness to initSettings for existing profile recovery.
  *
  * @api-declaration
  * getSettings()     — returns the activeState object for the current profile.
@@ -22,7 +23,7 @@
  *     external_io: [saveSettingsDebounced]
  */
 
-import { saveSettingsDebounced } from '../../../../script.js';
+import { saveSettingsDebounced } from '../../../../../script.js';
 import { extension_settings } from '../../../../extensions.js';
 import {
     DEFAULT_BOOLEAN_PROMPT,
@@ -108,10 +109,18 @@ export function initSettings() {
         root.activeState = structuredClone(defaultProfile);
 
         // PERSISTENCE LOCK: Immediately save the newly created structure to the server.
-        // This prevents the "Fresh Install" state from being re-triggered on next reload.
         saveSettingsDebounced(); 
     } else {
-        // Structure already exists; ensure activeState has all current default keys
+        // Structure already exists; ensure vital pointers and objects are healthy
+        if (!root.currentProfileName) {
+            root.currentProfileName = Object.keys(root.profiles)[0];
+        }
+        
+        if (!root.activeState) {
+            root.activeState = structuredClone(root.profiles[root.currentProfileName]);
+        }
+
+        // Back-fill any new default keys into the active state
         root.activeState = Object.assign({}, PROFILE_DEFAULTS, root.activeState);
     }
 

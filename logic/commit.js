@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/commit.js
- * @stamp {"utc":"2026-04-01T19:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-04-01T21:00:00.000Z"}
+ * @version 1.0.1
  * @architectural-role IO Executor / Finalizer
  * @description
  * Handles the "Commit Phase" of the Location Workshop. This module is 
@@ -95,18 +95,22 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     const context = getContext();
     const lastMsgId = Math.max(0, context.chat.length - 1);
     const draftDef = state._draftLocations[targetKey];
+    const original = state.locations[targetKey];
+
+    // Principle: Detect visual drift BEFORE committing draft to memory
+    const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
 
     // 1. Sync the library first (Write 1)
     await commitDraftLibrary();
 
     // 2. Determine if we need to generate a new image
     const filename = `localyze_${state.sessionId}_${targetKey}.png`;
-    const needsGeneration = forceRegen || !state.fileIndex.has(filename);
+    const needsGeneration = forceRegen || visualsModified || !state.fileIndex.has(filename);
 
     if (needsGeneration) {
         if (window.toastr) window.toastr.info(`Generating background for "${draftDef.name}"...`, 'Localyze');
 
-        // Write the Scene record with image: null (Intent to transition)
+        // Write the Scene record with image: null (Intent to transition / Write 1 of 2)
         await lockedWriteSceneRecord(lastMsgId, { 
             location: targetKey, 
             image: null, 
@@ -119,7 +123,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
             .then(async newFile => {
                 state.fileIndex.add(newFile);
                 
-                // Finalize the Scene record (Patch Write)
+                // Finalize the Scene record (Patch Write / Write 2 of 2)
                 await lockedPatchSceneImage(lastMsgId, newFile);
                 
                 // Apply UI
@@ -133,7 +137,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
                 if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
             });
     } else {
-        // Image already exists — Immediate transition
+        // Image already exists and prompt hasn't drifted — Immediate transition
         setBg(filename);
         await lockedWriteSceneRecord(lastMsgId, { 
             location: targetKey, 

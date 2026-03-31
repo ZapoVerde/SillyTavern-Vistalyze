@@ -1,12 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/templates.js
- * @stamp {"utc":"2026-04-01T14:00:00.000Z"}
+ * @stamp {"utc":"2026-04-01T22:15:00.000Z"}
+ * @version 1.4.2
  * @architectural-role Pure UI Templates
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
  * Updates:
- * - Removed 'Force Detect Location' button (relocating to Picker Modal).
+ * - Hardened XSS protection: All dynamic attributes and values are now escaped.
+ * - Renamed class 'lz-profile-select' to 'lz-step-profile-select' to prevent ID/Class selector collision.
  *
  * @api-declaration
  * buildPanelHTML(meta, models) -> string
@@ -43,11 +45,15 @@ export function escapeHtml(str) {
  * @returns {string} HTML string.
  */
 export function buildCallRow(id, label, promptKey, profileKey, historyKey = null) {
+    const safeId = escapeHtml(id);
+    const safePromptKey = escapeHtml(promptKey);
+    const safeProfileKey = escapeHtml(profileKey);
+
     const historyRow = historyKey ? `
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
             <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;">History:</label>
-            <input id="lz-history-${id}" type="number" min="0" step="1"
-                class="text_pole lz-history-input" data-history-key="${historyKey}"
+            <input id="lz-history-${safeId}" type="number" min="0" step="1"
+                class="text_pole lz-history-input" data-history-key="${escapeHtml(historyKey)}"
                 style="width:60px;" />
             <span style="font-size:0.83em;opacity:0.6;">pairs (0 = off)</span>
         </div>` : '';
@@ -55,12 +61,12 @@ export function buildCallRow(id, label, promptKey, profileKey, historyKey = null
     return `
     <div class="lz-call-row" style="margin-bottom:16px;padding:12px;border:1px solid var(--SmartThemeBorderColor,#555);border-radius:6px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <strong style="font-size:0.95em;">${label}</strong>
-            <button class="menu_button lz-open-prompt" data-prompt-key="${promptKey}" style="font-size:0.8em;padding:2px 8px;">Edit Prompt</button>
+            <strong style="font-size:0.95em;">${escapeHtml(label)}</strong>
+            <button class="menu_button lz-open-prompt" data-prompt-key="${safePromptKey}" style="font-size:0.8em;padding:2px 8px;">Edit Prompt</button>
         </div>
         <div class="lz-profile-row" style="display:flex;align-items:center;gap:8px;">
             <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;">Connection:</label>
-            <select id="lz-profile-${id}" class="text_pole lz-profile-select" data-profile-key="${profileKey}" style="flex:1;"></select>
+            <select id="lz-profile-${safeId}" class="text_pole lz-step-profile-select" data-profile-key="${safeProfileKey}" style="flex:1;"></select>
         </div>
         ${historyRow}
     </div>`;
@@ -73,6 +79,10 @@ export function buildCallRow(id, label, promptKey, profileKey, historyKey = null
  * @returns {string} Full HTML layout string.
  */
 export function buildPanelHTML(meta, availableModels) {
+    const modelOptions = Array.isArray(availableModels) 
+        ? availableModels.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
+        : '';
+
     return `
     <div id="lz-settings" class="extension_settings">
         <div class="inline-drawer">
@@ -125,7 +135,7 @@ export function buildPanelHTML(meta, availableModels) {
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <label style="font-size:0.85em;opacity:0.75;white-space:nowrap;min-width:80px;">Model:</label>
                         <select id="lz-image-model" class="text_pole" style="flex:1;">
-                            ${availableModels.map(m => `<option value="${m}">${m}</option>`).join('')}
+                            ${modelOptions}
                         </select>
                     </div>
 
