@@ -21,7 +21,7 @@
  */
 
 import { callPopup } from '../../../../../../script.js';
-import { writeSecret, secret_state } from '../../../secrets.js';
+import { writeSecret, secret_state } from '../../../../../secrets.js';
 import { fetchPreviewBlob } from '../../imageCache.js';
 
 const SECRET_KEY_NAME = 'api_key_pollinations';

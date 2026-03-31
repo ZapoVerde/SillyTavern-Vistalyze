@@ -20,7 +20,7 @@
  *     external_io: [#extensions_settings DOM, saveSettingsDebounced]
  */
 
-import { saveSettingsDebounced } from '../../../../script.js';
+import { saveSettingsDebounced } from '../../../../../script.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
 import { getSettings, getMetaSettings, initSettings } from './data.js';
 import { 
