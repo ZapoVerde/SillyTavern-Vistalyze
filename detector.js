@@ -1,13 +1,11 @@
 /**
  * @file data/default-user/extensions/localyze/detector.js
- * @stamp {"utc":"2026-04-01T16:25:00.000Z"}
- * @architectural-role LLM IO
+ * @stamp {"utc":"2026-04-02T15:00:00.000Z"}
+ * @architectural-role LLM IO / Parser
  * @description
- * Owns the three LLM detection calls in the per-turn pipeline.
- * 
- * @updates
- * - Standardized property names: 'essence' becomes 'description', 'atmosphere' becomes 'imagePrompt'.
- * - Maintained "Definition" and "Visuals" as the AI-facing markers for Step 3.
+ * Handles all LLM detection calls. Features robust heuristic parsing for 
+ * non-standard AI replies (markdown, punctuation, etc.) and verbose 
+ * raw-output logging for debugging.
  *
  * @api-declaration
  * detectBoolean(messageText, currentLocation, ...) → boolean
@@ -18,7 +16,7 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: []
- *     external_io: [generateQuietPrompt, ConnectionManagerRequestService]
+ *     external_io: [generateQuietPrompt, ConnectionManagerRequestService, console.debug]
  */
 import { generateQuietPrompt } from '../../../../script.js'
 import { ConnectionManagerRequestService } from '../../shared.js'
@@ -29,8 +27,7 @@ function interpolate(template, vars) {
 
 /**
  * Robust Marker Extractor (CNZ Pattern).
- * Scans for Name:, Definition:, and Visuals: labels and captures the content.
- * Maps these to internal keys: name, description, imagePrompt.
+ * Scans for Name:, Definition:, and Visuals: labels.
  */
 function extractMarkerData(raw) {
     const text = String(raw || '');
@@ -42,19 +39,14 @@ function extractMarkerData(raw) {
     const result = {};
 
     for (const [key, marker] of Object.entries(fieldMap)) {
-        // Regex: finds "Marker:" (allowing for optional bolding asterisks) 
-        // and captures everything until the next marker or end of string.
         const regex = new RegExp(`\\*?\\*?${marker}\\*?\\*?:\\s*([\\s\\S]*?)(?=\\n\\*?\\*?(?:Name|Definition|Visuals)\\*?\\*?:|$)`, 'i');
         const match = text.match(regex);
         if (match) {
-            // Trim and clean up any lingering markdown artifacts
             result[key] = match[1].trim().replace(/^\*+|\*+$/g, '');
         }
     }
 
-    // Validation: ensure we have at least a Name and Visuals (imagePrompt) to proceed
     if (!result.name || !result.imagePrompt) {
-        console.warn('[Localyze:Parser] Incomplete marker data found:', result);
         return null;
     }
 
@@ -62,16 +54,15 @@ function extractMarkerData(raw) {
 }
 
 /**
- * Dispatches the prompt to the LLM.
+ * Dispatches the prompt to the LLM with Verbose Raw Logging.
  */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
-    console.debug(`[Localyze:${label}] Prompt Sent:\n${prompt}`);
+    console.debug(`[Localyze:${label}] --- PROMPT SENT --- \n${prompt}`);
     
     let result;
     if (profileId) {
         try {
             result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions);
-            console.debug(`[Localyze:${label}] Raw result object (ConnectionManager):`, result);
         } catch (err) {
             console.warn(`[Localyze:${label}] ConnectionManager failed, falling back:`, err);
         }
@@ -84,7 +75,6 @@ async function dispatch(prompt, profileId, label, extraOptions = {}) {
                 removeReasoning: true,
                 ...extraOptions 
             });
-            console.debug(`[Localyze:${label}] Raw result object (generateQuietPrompt):`, result);
         } catch (err) {
             console.error(`[Localyze:${label}] generateQuietPrompt failed:`, err);
             throw err;
@@ -92,22 +82,41 @@ async function dispatch(prompt, profileId, label, extraOptions = {}) {
     }
 
     const text = result?.content ?? result;
-    console.debug(`[Localyze:${label}] Extracted Text Output:\n${text}`);
+    
+    // VISIBILITY: Show exactly what the AI said before we touch it
+    console.debug(`[Localyze:${label}] --- RAW AI RESPONSE --- \n${text}`);
+    
     return text;
 }
 
+/**
+ * Step 1: Boolean Gate.
+ * Uses Regex to handle "noisy" YES/NO replies from chatty models.
+ */
 export async function detectBoolean(messageText, currentLocation, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         current_location: currentLocation,
         history: historyText,
         message: messageText,
     })
-    const text = await dispatch(prompt, profileId, 'Boolean', { temperature: 0.1 })
-    const answer = String(text).trim().toUpperCase().startsWith('YES')
-    console.debug(`[Localyze:Boolean] → ${answer ? 'YES (location changed)' : 'NO (same location)'}`)
-    return answer
+    
+    const text = await dispatch(prompt, profileId, 'Boolean', { temperature: 0.1 });
+    const cleanText = String(text).toUpperCase();
+
+    // Heuristic: Use Word-Boundary Regex to find YES or NO anywhere in the string
+    const hasYes = /\bYES\b/.test(cleanText);
+    const hasNo  = /\bNO\b/.test(cleanText);
+
+    // Prioritize YES if both exist, otherwise default to NO (false)
+    const result = hasYes && !cleanText.includes("NOT YES"); // Basic negation check
+    
+    console.debug(`[Localyze:Boolean] Result interpreted as: ${result ? 'YES (Changed)' : 'NO (Same)'}`);
+    return result;
 }
 
+/**
+ * Step 2: Classifier.
+ */
 export async function detectClassifier(messageText, locationKeys, historyText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, {
         key_list: locationKeys.join(', '),
@@ -119,35 +128,25 @@ export async function detectClassifier(messageText, locationKeys, historyText, p
     const cleanedText = String(text).trim()
 
     if (!cleanedText || cleanedText.toUpperCase().includes('NULL')) {
-        console.debug('[Localyze:Classifier] → NULL (no match indicated)')
         return null
     }
 
+    // Heuristic: Check for exact key match within the reply
     for (const key of locationKeys) {
         const regex = new RegExp(`\\b${key}\\b`, 'i');
         if (regex.test(cleanedText)) {
-            console.debug(`[Localyze:Classifier] → Found key match: ${key}`)
             return key;
         }
     }
 
-    const fallback = locationKeys.find(k => k === cleanedText.replace(/[^a-z0-9_]/gi, '').toLowerCase()) ?? null
-    console.debug(`[Localyze:Classifier] → Final Match Result: ${fallback}`)
-    return fallback
+    return null;
 }
 
+/**
+ * Step 3: Describer.
+ */
 export async function detectDescriber(contextText, promptTemplate, profileId) {
     const prompt = interpolate(promptTemplate, { context: contextText })
-    
-    const raw = await dispatch(prompt, profileId, 'Describer', { 
-        temperature: 0.1 
-    })
-    
-    const parsed = extractMarkerData(raw)
-    if (parsed === null) {
-        console.error('[Localyze:Describer] Marker extraction failed. Raw input was:', raw)
-    } else {
-        console.debug('[Localyze:Describer] Final Extracted Object:', parsed)
-    }
-    return parsed
+    const raw = await dispatch(prompt, profileId, 'Describer', { temperature: 0.1 });
+    return extractMarkerData(raw);
 }
