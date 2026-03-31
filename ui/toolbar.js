@@ -1,18 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-04-01T23:59:00.000Z"}
- * @version 1.6.0
+ * @stamp {"utc":"2026-04-02T10:05:00.000Z"}
+ * @version 1.6.1
  * @architectural-role Toolbar UI
  * @description
  * Injects management buttons into the ST extensions panel (#extensionsMenu).
  *
  * Updates:
- * - Unhooked pickerModal.js (Ghost removal).
- * - "Localyze" button now opens Workshop Library directly.
- * - Added "Discovery" button to open Workshop Explorer directly.
+ * - Added onOpenLibrary callback to ensure data sync before showing UI.
+ * - "Localyze" button now triggers the provided callback.
  *
  * @api-declaration
- * injectToolbar(onEdit, onManualDetect) — Injects Localyze, Discovery, and Audit buttons.
+ * injectToolbar(onOpenLibrary, onEdit, onManualDetect) — Injects Localyze, Discovery, and Audit buttons.
  * showOrphanBadge(count) — shows red count badge on audit button.
  * clearOrphanBadge()     — hides badge.
  *
@@ -30,10 +29,11 @@ import { getMetaSettings } from '../settings/data.js';
 
 /**
  * Injects the Localyze suite buttons into the ST extension menu.
+ * @param {Function} onOpenLibrary Callback to sync and open library.
  * @param {Function} onEdit Callback for Architect mode.
  * @param {Function} onManualDetect Callback for Discovery/Explorer mode.
  */
-export function injectToolbar(onEdit, onManualDetect) {
+export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
     // Cleanup for hot-reloads
     $('#lz-toolbar-btn').remove();
     $('#lz-explorer-btn').remove();
@@ -47,7 +47,11 @@ export function injectToolbar(onEdit, onManualDetect) {
         </div>
     `);
     pickerBtn.on('click', () => {
-        openWorkshop('library');
+        if (typeof onOpenLibrary === 'function') {
+            onOpenLibrary();
+        } else {
+            openWorkshop('library');
+        }
     });
 
     // 2. Discovery Button (Force Detect replacement)

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
  * @stamp {"utc":"2026-04-01T23:55:00.000Z"}
- * @version 1.5.1
+ * @version 1.5.2
  * @architectural-role Orchestrator / Workshop Controller
  * @description
  * Manages the logic for the unified Location Workshop. This module acts as the
@@ -10,10 +10,12 @@
  * changes to the chat DNA.
  *
  * Updates:
+ * - Added handleOpenLibrary() to ensure draft state is synced before UI display.
  * - Implemented dual-mode discoverySearch (Passive vs Targeted).
  * - Targeted mode uses Step 4 settings and interpolates {{keywords}}.
  *
  * @api-declaration
+ * handleOpenLibrary()           — entry point to open workshop in Library mode.
  * handleEditLocation(key)      — entry point to open workshop in Architect mode.
  * handleManualDescriber()      — entry point to open workshop in Explorer mode.
  * syncDraftState()             — clones live locations into the draft dictionary.
@@ -45,6 +47,17 @@ export function syncDraftState() {
     state._draftLocations = structuredClone(state.locations);
     state._proposedImageBlob = null;
     state._activeWorkshopKey = null;
+}
+
+/**
+ * Entry point for the "Library" action from the toolbar.
+ * Ensures data is synced before opening the UI.
+ */
+export async function handleOpenLibrary() {
+    syncDraftState();
+    
+    const { openWorkshop } = await import('../ui/workshopModal.js');
+    openWorkshop('library');
 }
 
 /**

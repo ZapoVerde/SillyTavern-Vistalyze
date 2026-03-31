@@ -1,24 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
- * @stamp {"utc":"2026-04-01T18:00:00.000Z"}
- * @version 1.0.39
+ * @stamp {"utc":"2026-04-02T10:00:00.000Z"}
+ * @version 1.0.40
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * SillyTavern Location Engine (Localyze) — extension entry point and session
  * orchestrator. This module coordinates the lifecycle of the "Falling Water"
  * detection pipeline, UI injection, and state management.
  *
- * This version adopts the CNZ Async Initialization Pattern to prevent settings
- * data loss. It ensures the SillyTavern environment and extension_settings 
- * object are fully settled before attempting to bootstrap the location library.
- *
- * @core-principles
- * 1. ASYNC INIT: initialization is gated behind an async init() call to prevent
- *    race conditions with the ST settings loader.
- * 2. EVENT ROUTING: index.js performs no business logic; it routes host events 
- *    (MESSAGE_RECEIVED, CHAT_CHANGED) to the appropriate logic modules.
- * 3. STAGED STATE: Supports the transition toward a unified "Workshop" modal 
- *    by centralizing the boot and reset sequences.
+ * Updates:
+ * - Wired handleOpenLibrary to the injectToolbar call.
  *
  * @api-declaration
  * handleMessageReceived(messageId) — routes new AI messages to the pipeline.
@@ -37,7 +28,7 @@ import { resetState } from './state.js';
 import { initSettings } from './settings/data.js';
 import { runBoot } from './logic/bootstrapper.js';
 import { runPipeline } from './logic/pipeline.js';
-import { handleEditLocation, handleManualDescriber } from './logic/maintenance.js';
+import { handleOpenLibrary, handleEditLocation, handleManualDescriber } from './logic/maintenance.js';
 import { injectToolbar } from './ui/toolbar.js';
 import { injectSettingsPanel } from './settings/panel.js';
 
@@ -81,9 +72,8 @@ async function init() {
         console.debug('[Localyze] Settings initialized.');
 
         // 2. UI Layer - Inject persistent elements into the ST DOM.
-        // handleEditLocation and handleManualDescriber are passed as delegates
-        // for the toolbar and picker actions.
-        injectToolbar(handleEditLocation, handleManualDescriber);
+        // Delegates are passed for the toolbar and picker actions.
+        injectToolbar(handleOpenLibrary, handleEditLocation, handleManualDescriber);
         injectSettingsPanel();
         console.debug('[Localyze] UI elements injected.');
 
