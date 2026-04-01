@@ -1,16 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshopModal.js
- * @stamp {"utc":"2026-04-02T14:30:00.000Z"}
+ * @stamp {"utc":"2026-04-03T10:20:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
- * High-level coordinator for the Location Workshop. Updated to fix the 
- * "tiny modal" bug by ensuring the flexbox chain is maintained during 
- * tab switching.
+ * High-level coordinator for the Location Workshop. 
  *
  * @updates
+ * - Standardized Cache Busting: Updated renderArchitect to use the 'v=' timestamp parameter.
+ * - This ensures that if a background is overwritten (same filename, new content), the preview updates instantly.
  * - Synchronized tab active classes with style.css (.lz-active).
- * - Hardened panel visibility logic to ensure display:flex is inherited correctly.
- * - Optimized re-rendering triggers.
  *
  * @api-declaration
  * renderLibrary()   — updates the Library tab content.
@@ -60,10 +58,13 @@ export async function renderArchitect() {
     }
 
     const filename = `localyze_${state.sessionId}_${key}.png`;
-    // Use cache-busting timestamp to ensure regenerated images show up
+    
+    // Cache-busting: Use a timestamp to force the browser to ignore its cache.
+    // This is vital because we use static filenames (overwriting the file on server).
     const currentImgUrl = state.fileIndex.has(filename) 
-        ? `backgrounds/${encodeURIComponent(filename)}?t=${Date.now()}` 
+        ? `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}` 
         : '';
+        
     const proposedImgUrl = state._proposedImageBlob ?? '';
 
     $container.html(getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl));

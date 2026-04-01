@@ -1,14 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-01T16:15:00.000Z"}
+ * @stamp {"utc":"2026-04-03T11:15:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
  * @updates
- * - Standardized terminology: removed 'essence' and 'atmosphere' in favor of 
- *   'description' and 'imagePrompt' to match detector/UI standardization.
- * - Simplified handleUnknownLocation object construction.
+ * - Standardized terminology: strictly uses 'description' and 'imagePrompt' 
+ *   throughout the automated detection flow.
+ * - Robust UI Refresh: Ensures all transitions (known or new) trigger the 
+ *   cache-busting setBg() in background.js.
+ * - Centralized Generation Logic: Aligned with commit.js to ensure consistency 
+ *   between automated detection and manual workshop edits.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -66,7 +69,7 @@ export async function runPipeline(messageId) {
     if (locationKeys.length > 0) {
         // Build a highly-structured Search Index for the LLM
         const descriptiveList = Object.entries(state.locations)
-            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Essence: ${loc.description ?? 'Unknown'}`)
+            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Definition: ${loc.description ?? 'Unknown'}`)
             .join('\n');
 
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
@@ -96,6 +99,8 @@ async function handleKnownLocation(messageId, key) {
     const def = state.locations[key];
 
     if (state.fileIndex.has(filename)) {
+        // Use the cache-busting setBg to ensure the UI updates 
+        // if the file was recently overwritten.
         setBg(filename);
         await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false });
         updateState(key, filename);
@@ -109,6 +114,8 @@ async function handleKnownLocation(messageId, key) {
             .then(async newFile => {
                 state.fileIndex.add(newFile);
                 await lockedPatchSceneImage(capturedId, newFile);
+                
+                // Finalize background with cache-busting timestamp
                 setBg(newFile);
                 state.currentImage = newFile;
             })
@@ -180,6 +187,8 @@ async function handleUnknownLocation(messageId, context) {
         .then(async newFile => {
             state.fileIndex.add(newFile);
             await lockedPatchSceneImage(capturedId, newFile);
+            
+            // Finalize background with cache-busting timestamp
             setBg(newFile);
             state.currentImage = newFile;
         })

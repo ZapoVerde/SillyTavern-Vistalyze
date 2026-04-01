@@ -1,11 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/ui/addModal.js
- * @stamp {"utc":"2026-04-02T15:40:00.000Z"}
+ * @stamp {"utc":"2026-04-03T11:30:00.000Z"}
  * @architectural-role New Location Review UI
  * @description
  * Modal for reviewing, editing, and approving a new location definition.
- * Updated to match the standardized field names (description, imagePrompt)
- * and labels used in the Location Workshop.
+ * Updated to match standardized field names (description, imagePrompt)
+ * and labels used throughout the engine.
+ *
+ * @updates
+ * - Standardized Field Mapping: Uses 'description' and 'imagePrompt' to ensure
+ *   data consistency with logic/commit.js and logic/pipeline.js.
+ * - Standardized Labels: Renamed UI labels to "Definition" and "Visuals".
+ * - Preview Support: Correctly utilizes the 'visuals' textarea for fetchPreviewBlob.
  *
  * @api-declaration
  * openAddModal(def) → Promise<{ name, key, description, imagePrompt } | null>

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
- * @stamp {"utc":"2026-04-02T14:40:00.000Z"}
- * @version 1.5.3
+ * @stamp {"utc":"2026-04-03T11:45:00.000Z"}
+ * @version 1.5.4
  * @architectural-role Orchestrator / Workshop Controller
  * @description
  * Manages the logic for the unified Location Workshop. This module acts as the
@@ -10,9 +10,12 @@
  * changes to the chat DNA.
  *
  * @updates
- * - Standardized field names to 'description' and 'imagePrompt' to match UI/Detector.
- * - Refined discoverySearch to properly handle the new Workshop tab flow.
- * - Hardened regenField to handle partial AI responses without crashing.
+ * - Standardized Field Mapping: Strictly uses 'description' and 'imagePrompt' 
+ *   to maintain consistency across the engine.
+ * - Discovery Synchronization: Ensures discovery results are staged with the 
+ *   correct internal keys so they can be finalized by commit.js.
+ * - Refined Regeneration: Hardened regenField to handle targeted AI updates 
+ *   without affecting other metadata.
  *
  * @api-declaration
  * handleOpenLibrary()           — entry point to open workshop in Library mode.
@@ -87,6 +90,9 @@ export async function handleManualDescriber() {
  * Targeted Regeneration.
  * Uses the current transcript to re-extract either the Description (logic)
  * or the Visuals (image prompt) for a specific location.
+ * 
+ * @param {string} key The draft location key.
+ * @param {string} field 'description' or 'imagePrompt'
  */
 export async function regenField(key, field) {
     const draft = state._draftLocations[key];
@@ -101,6 +107,7 @@ export async function regenField(key, field) {
     
     try {
         const result = await detectDescriber(augmentedContext, s.describerPrompt, s.describerProfileId);
+        // The detector returns { name, description, imagePrompt }
         if (result && result[field]) {
             draft[field] = result[field];
             return true;
@@ -160,9 +167,12 @@ export async function discoverySearch(keywords = '') {
 
     if (result) {
         const key = slugify(result.name);
+        // Ensure result maps directly to our standardized keys
         state._draftLocations[key] = {
-            ...result,
             key,
+            name: result.name,
+            description: result.description,
+            imagePrompt: result.imagePrompt,
             sessionId: state.sessionId
         };
         state._activeWorkshopKey = key;

@@ -1,17 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/background.js
- * @stamp {"utc":"2026-04-02T17:20:00.000Z"}
+ * @stamp {"utc":"2026-04-03T10:15:00.000Z"}
  * @architectural-role ST Background API Wrapper
  * @description
  * Sets and clears the ST background using the chat_metadata lock mechanism.
  * 
  * @updates
- * - Added strict Guard: set() now immediately aborts if filename is null or empty.
- * - This prevents malformed CSS url() properties and 404 console errors.
- * - Synchronized fade transition timing for smoother visual swaps.
+ * - Implemented URL Cache Busting: Appends a timestamp (?v=) to background URLs.
+ * - This ensures the UI updates immediately when an image is overwritten on the server.
+ * - Maintains static filenames to prevent folder clutter.
  *
  * @api-declaration
- * set(filename)           — applies background with fade, sets managed lock
+ * set(filename)           — applies background with fade and cache-busting, sets managed lock
  * clear()                 — removes background with fade, releases lock
  * isManagedByLocalyze()   — true if the current bg lock was set by us
  *
@@ -54,7 +54,12 @@ export function set(filename) {
         return;
     }
 
-    const cssUrl = `url("backgrounds/${encodeURIComponent(filename)}")`
+    // 3. Cache Busting: Append a timestamp to the URL.
+    // This forces the browser to re-download the image even if the filename is identical 
+    // to a previously cached version (useful for overwrites).
+    const cacheBuster = `v=${Date.now()}`;
+    const cssUrl = `url("backgrounds/${encodeURIComponent(filename)}?${cacheBuster}")`
+    
     chat_metadata[BG_KEY] = cssUrl
     chat_metadata[MANAGED_KEY] = true
 

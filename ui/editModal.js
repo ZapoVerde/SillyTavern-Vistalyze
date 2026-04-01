@@ -1,14 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/ui/editModal.js
- * @stamp {"utc":"2026-04-02T15:50:00.000Z"}
+ * @stamp {"utc":"2026-04-03T10:45:00.000Z"}
  * @architectural-role Location Maintenance UI
  * @description
- * Modal for editing existing location metadata. Standardized to match
- * the workshop's "Architect" tab field names and labels.
+ * Modal for editing existing location metadata. 
  *
  * @updates
- * - Renamed labels to "Definition" and "Visuals" for functional clarity.
- * - Updated internal field mapping (description, imagePrompt).
+ * - Standardized Field Mapping: Uses 'description' and 'imagePrompt' to match the 
+ *   rest of the engine and prevent data loss during manual edits.
+ * - Integrated Preview: Allows users to see a 320x180 preview of their visual 
+ *   prompt changes before committing.
+ * - Cache-Busting Awareness: Encourages "Update Background Image" selection 
+ *   when visual prompts are changed.
  *
  * @api-declaration
  * openEditModal(def) → Promise<{ key, name, description, imagePrompt, regenRequested } | null>
@@ -47,7 +50,7 @@ export async function openEditModal(def) {
 
         <div style="margin-top:12px; display:flex; align-items:center; gap:10px;">
             <button class="menu_button" id="lz-edit-preview-btn">Regenerate Preview</button>
-            <label class="checkbox_label" style="font-size:0.85em; cursor:pointer;" title="If checked, a new high-res background will be generated on save.">
+            <label class="checkbox_label" style="font-size:0.85em; cursor:pointer;" title="If checked, the background will be overwritten with a new generation on save.">
                 <input type="checkbox" id="lz-edit-regen-check" />
                 <span>Update Background Image</span>
             </label>
@@ -77,7 +80,9 @@ export async function openEditModal(def) {
             const objectUrl = await fetchPreviewBlob(visuals)
             $('#lz-edit-preview-container').show()
             $('#lz-edit-preview-img').attr('src', objectUrl)
-            // If the user previews, they likely want to regenerate the real file too
+            
+            // UX optimization: If the user explicitly previews, they almost 
+            // certainly want to regenerate the high-res file on save.
             $('#lz-edit-regen-check').prop('checked', true)
         } catch (err) {
             console.error('[Localyze:Edit] Preview failed:', err)

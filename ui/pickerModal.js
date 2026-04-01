@@ -1,83 +1,33 @@
 /**
  * @file data/default-user/extensions/localyze/ui/pickerModal.js
- * @stamp {"utc":"2026-04-01T14:10:00.000Z"}
+ * @stamp {"utc":"2026-04-03T11:00:00.000Z"}
  * @architectural-role Manual Override UI
  * @description
- * Searchable location picker modal. Allows the user to manually set the
- * active location or launch the location editor.
+ * Searchable location picker modal. Refactored to eliminate redundant 
+ * IO logic and leverage the centralized Workshop Commit pipeline.
  * 
  * @updates
- * - Added "Force Detect New Location" button to the bottom of the picker.
- * - Updated openPickerModal signature to support manual detection callback.
+ * - Removed local IO functions (writeSceneRecord, applyLocation).
+ * - Integrated with logic/commit.js: Now uses handleFinalizeWorkshop to 
+ *   ensure cache-busting and DNA consistency.
+ * - Integrated with logic/maintenance.js: Syncs draft state before opening 
+ *   to ensure the picker operates on the latest library data.
  *
  * @api-declaration
  * openPickerModal(onEditCallback, onManualDetectCallback) — opens the picker.
  *
  * @contract
  *   assertions:
- *     purity: IO
- *     state_ownership: [state.currentLocation, state.currentImage]
- *     external_io: [message.extra.localyze (write), saveChatConditional(),
- *       generate(), set/clear, callPopup]
+ *     purity: UI / Orchestrator
+ *     state_ownership: [state.currentLocation]
+ *     external_io: [callPopup, maintenance.syncDraftState, commit.handleFinalizeWorkshop]
  */
-import { saveChatConditional, callPopup } from '../../../../../script.js';
-import { getContext } from '../../../../extensions.js';
-import { state, updateState } from '../state.js'
-import { set as setBg, clear as clearBg } from '../background.js'
-import { generate } from '../imageCache.js'
 
-function escapeHtml(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-async function writeSceneRecord(messageId, record) {
-    const context = getContext()
-    const message = context.chat[messageId]
-    if (!message) return
-    message.extra = message.extra ?? {}
-    message.extra.localyze = { type: 'scene', ...record }
-    await saveChatConditional()
-}
-
-async function patchScene(messageId, filename) {
-    const context = getContext()
-    const message = context.chat[messageId]
-    if (!message) return
-    if (message.extra?.localyze) {
-        message.extra.localyze.image = filename
-        await saveChatConditional()
-    }
-}
-
-async function applyLocation(key) {
-    const filename = `localyze_${state.sessionId}_${key}.png`
-    const def = state.locations[key]
-    const context = getContext()
-    const lastMsgId = context.chat.length - 1
-
-    if (state.fileIndex.has(filename)) {
-        setBg(filename)
-        await writeSceneRecord(lastMsgId, { location: key, image: filename, bg_declined: false })
-        updateState(key, filename)
-    } else {
-        clearBg()
-        await writeSceneRecord(lastMsgId, { location: key, image: null, bg_declined: false })
-        updateState(key, null)
-
-        const capturedId = lastMsgId
-        generate(key, def, state.sessionId)
-            .then(filename => {
-                state.fileIndex.add(filename)
-                patchScene(capturedId, filename)
-                setBg(filename)
-                state.currentImage = filename
-            })
-            .catch(err => {
-                console.error('[Localyze] Picker generate failed:', err)
-                if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze')
-            })
-    }
-}
+import { callPopup } from '../../../../../script.js';
+import { state } from '../state.js';
+import { escapeHtml } from '../utils/history.js';
+import { syncDraftState } from '../logic/maintenance.js';
+import { handleFinalizeWorkshop } from '../logic/commit.js';
 
 /**
  * Opens the location picker.
@@ -85,7 +35,12 @@ async function applyLocation(key) {
  * @param {Function} onManualDetect Callback triggered when the "Force Detect" button is clicked.
  */
 export async function openPickerModal(onEdit, onManualDetect) {
-    const locationEntries = Object.entries(state.locations)
+    // Ensure the workshop draft state is synchronized with the live library 
+    // before we allow selection. This ensures handleFinalizeWorkshop has 
+    // access to the definitions it needs.
+    syncDraftState();
+
+    const locationEntries = Object.entries(state.locations);
     const listHtml = locationEntries.length > 0 
         ? locationEntries
             .map(([key, loc]) => `
@@ -101,7 +56,7 @@ export async function openPickerModal(onEdit, onManualDetect) {
                     </div>
                 </div>
             `).join('')
-        : '<p style="text-align:center; opacity:0.5; padding:20px;">Library is empty.</p>'
+        : '<p style="text-align:center; opacity:0.5; padding:20px;">Library is empty.</p>';
 
     const popupPromise = callPopup(
         `<h3>Location Library</h3>
@@ -120,56 +75,62 @@ export async function openPickerModal(onEdit, onManualDetect) {
             </p>
         </div>`,
         'confirm',
-    )
+    );
 
     // Selection state
-    let selectedKey = state.currentLocation
+    let selectedKey = state.currentLocation;
 
     function updateSelectionUI() {
-        $('.lz-picker-item').css('background', 'transparent')
+        $('.lz-picker-item').css('background', 'transparent');
         if (selectedKey) {
-            $(`.lz-picker-item[data-key="${CSS.escape(selectedKey)}"]`).css('background', 'var(--SmartThemeQuoteColor)')
+            $(`.lz-picker-item[data-key="${CSS.escape(selectedKey)}"]`).css('background', 'var(--SmartThemeQuoteColor)');
         }
     }
 
     // Bind item clicks
-    $('#lz-picker-list').on('click', '.lz-picker-item', function(e) {
-        selectedKey = $(this).data('key')
-        updateSelectionUI()
-    })
+    $('#lz-picker-list').on('click', '.lz-picker-item', function() {
+        selectedKey = $(this).data('key');
+        updateSelectionUI();
+    });
 
     // Bind edit clicks
     $('#lz-picker-list').on('click', '.lz-edit-trigger', function(e) {
-        e.stopPropagation()
-        const key = $(this).data('key')
-        $('#dialog_overlay .menu_button:last').click() // Close picker
-        if (typeof onEdit === 'function') onEdit(key)
-    })
+        e.stopPropagation();
+        const key = $(this).data('key');
+        $('#dialog_overlay .menu_button:last').click(); // Close picker
+        if (typeof onEdit === 'function') onEdit(key);
+    });
 
     // Bind Force Detect click
     $('#lz-picker-manual').on('click', async function() {
-        $('#dialog_overlay .menu_button:last').click() // Close picker
+        $('#dialog_overlay .menu_button:last').click(); // Close picker
         if (typeof onManualDetect === 'function') {
             await onManualDetect();
         }
-    })
+    });
 
     // Search filter
     $('#lz-picker-search').on('input', function () {
-        const query = this.value.toLowerCase()
+        const query = this.value.toLowerCase();
         $('.lz-picker-item').each(function () {
-            const text = $(this).find('.lz-picker-label span').text().toLowerCase()
-            const key = $(this).data('key').toLowerCase()
-            $(this).toggle(text.includes(query) || key.includes(query))
-        })
-    })
+            const text = $(this).find('.lz-picker-label span').text().toLowerCase();
+            const key = $(this).data('key').toLowerCase();
+            $(this).toggle(text.includes(query) || key.includes(query));
+        });
+    });
 
     // Initial UI state
-    setTimeout(updateSelectionUI, 10)
+    setTimeout(updateSelectionUI, 10);
 
-    const confirmed = await popupPromise
+    const confirmed = await popupPromise;
 
-    if (!confirmed || !selectedKey) return
-
-    await applyLocation(selectedKey)
+    if (confirmed && selectedKey) {
+        try {
+            // Use the centralized workshop commit logic.
+            // This handles DNA writing, cache-busting setBg, and generation if missing.
+            await handleFinalizeWorkshop(selectedKey);
+        } catch (err) {
+            console.error('[Localyze:Picker] Failed to apply selection:', err);
+        }
+    }
 }

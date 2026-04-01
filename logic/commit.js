@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/commit.js
- * @stamp {"utc":"2026-04-02T14:50:00.000Z"}
- * @version 1.0.2
+ * @stamp {"utc":"2026-04-03T10:30:00.000Z"}
+ * @version 1.0.3
  * @architectural-role IO Executor / Finalizer
  * @description
  * Handles the "Commit Phase" of the Location Workshop. Responsible for 
@@ -9,9 +9,11 @@
  * the chat history and filesystem.
  *
  * @updates
- * - Integrated with the new Workshop UI flow.
- * - Ensures the Workshop modal closes cleanly after a successful commit.
- * - Standardized field names (description, imagePrompt).
+ * - Integrated Cache-Busting: handleFinalizeWorkshop now ensures setBg is called 
+ *   after generation, triggering the timestamp-based refresh in background.js.
+ * - Standardized Visual Change Detection: Explicitly checks imagePrompt diffs 
+ *   to force a regeneration/overwrite of the existing background asset.
+ * - Maintained Overwrite Strategy: Keeps static filenames to prevent folder clutter.
  *
  * @api-declaration
  * handleFinalizeWorkshop(targetKey) — Persists a draft and applies it as the active scene.
@@ -85,20 +87,20 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     const draftDef = state._draftLocations[targetKey];
     const original = state.locations[targetKey];
 
-    // Detect if the visual prompt changed (requires new image)
+    // Detect if the visual prompt changed (requires overwriting the current image)
     const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
 
     // 1. Sync the library (Write 1)
     await commitDraftLibrary();
 
-    // 2. Determine if generation is required
+    // 2. Determine if generation is required (Missing file OR explicit change/force)
     const filename = `localyze_${state.sessionId}_${targetKey}.png`;
     const needsGeneration = forceRegen || visualsModified || !state.fileIndex.has(filename);
 
     if (needsGeneration) {
         if (window.toastr) window.toastr.info(`Generating background for "${draftDef.name}"...`, 'Localyze');
 
-        // Transition intent (Write 1 of 2)
+        // Transition intent (Write 1 of 2: Mark as "Pending" in DNA)
         await lockedWriteSceneRecord(lastMsgId, { 
             location: targetKey, 
             image: null, 
@@ -106,12 +108,18 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
         });
         updateState(targetKey, null);
 
-        // Start high-res generation
+        // Start high-res generation (Overwrites existing file on server)
         generate(targetKey, draftDef, state.sessionId)
             .then(async newFile => {
                 state.fileIndex.add(newFile);
+                
+                // Finalize intent (Write 2 of 2: Record the actual filename)
                 await lockedPatchSceneImage(lastMsgId, newFile);
+                
+                // Apply to UI. Because background.js now uses timestamps, 
+                // this will force a refresh even if the filename is identical.
                 setBg(newFile);
+                
                 state.currentImage = newFile;
                 if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
             })
@@ -120,7 +128,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
                 if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
             });
     } else {
-        // Immediate transition
+        // Immediate transition (No visuals change, just switching or minor metadata edit)
         setBg(filename);
         await lockedWriteSceneRecord(lastMsgId, { 
             location: targetKey, 
