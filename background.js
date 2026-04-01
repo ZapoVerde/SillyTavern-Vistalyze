@@ -1,14 +1,23 @@
 /**
  * @file data/default-user/extensions/localyze/background.js
- * @stamp {"utc":"2026-04-03T10:15:00.000Z"}
- * @architectural-role ST Background API Wrapper
+ * @stamp {"utc":"2026-04-01T12:00:00.000Z"}
+ * @architectural-role IO Executor
  * @description
  * Sets and clears the ST background using the chat_metadata lock mechanism.
- * 
+ * When parallax is enabled in settings, delegates image display to
+ * ui/parallax.js via an injected <img> child. When disabled, falls back to
+ * the CSS background-image approach so existing behaviour is preserved exactly.
+ *
  * @updates
  * - Implemented URL Cache Busting: Appends a timestamp (?v=) to background URLs.
- * - This ensures the UI updates immediately when an image is overwritten on the server.
- * - Maintains static filenames to prevent folder clutter.
+ *   This ensures the UI updates immediately when an image is overwritten on the server.
+ *   Maintains static filenames to prevent folder clutter.
+ * - Parallax integration: set() delegates to attachParallax() when enabled,
+ *   falls back to CSS background-image when disabled. set() always calls
+ *   detachParallax() first so no stale <img> lingers if the setting is toggled
+ *   between transitions. detachParallax() and background-image clearing are
+ *   both deferred to inside the fade-out window, so the outgoing image always
+ *   fades smoothly before teardown.
  *
  * @api-declaration
  * set(filename)           — applies background with fade and cache-busting, sets managed lock
@@ -21,12 +30,17 @@
  *     state_ownership: []
  *     external_io: [chat_metadata['custom_background'] (write),
  *       chat_metadata['localyze_managed'] (write),
- *       #bg1 DOM (write), saveMetadataDebounced()]
+ *       #bg1 DOM (write — CSS or via parallax delegate),
+ *       saveMetadataDebounced(),
+ *       attachParallax() (delegate), detachParallax() (delegate),
+ *       getMetaSettings() (read)]
  */
 import { chat_metadata } from '../../../../script.js'
 import { saveMetadataDebounced } from '../../../extensions.js'
+import { attachParallax, detachParallax } from './ui/parallax.js'
+import { getMetaSettings } from './settings/data.js'
 
-const BG_KEY = 'custom_background'
+const BG_KEY      = 'custom_background'
 const MANAGED_KEY = 'localyze_managed'
 
 /**
@@ -58,7 +72,8 @@ export function set(filename) {
     // This forces the browser to re-download the image even if the filename is identical
     // to a previously cached version (useful for overwrites).
     const cacheBuster = `v=${Date.now()}`;
-    const cssUrl = `url("backgrounds/${encodeURIComponent(filename)}?${cacheBuster}")`
+    const rawUrl  = `backgrounds/${encodeURIComponent(filename)}?${cacheBuster}`
+    const cssUrl  = `url("${rawUrl}")`
 
     // NOTE: We intentionally do NOT write to chat_metadata[BG_KEY] (ST's native
     // 'custom_background' key). If we did, ST would apply the URL on next startup
@@ -67,12 +82,23 @@ export function set(filename) {
     // background restoration after filesystem verification.
     chat_metadata[MANAGED_KEY] = true
 
-    // UI Fade Sequence
+    // UI Fade Sequence — image is applied while #bg1 is at opacity:0 so it is
+    // positioned and ready before the fade-in begins.
     $('#bg1').addClass('localyze-fade-out')
     setTimeout(() => {
-        $('#bg1').css('background-image', cssUrl)
+        // Always tear down any previous parallax instance first. Safe no-op if
+        // none is active; cleans up stale <img> if setting was toggled.
+        detachParallax()
+
+        if (getMetaSettings().parallaxEnabled) {
+            $('#bg1').css('background-image', '')
+            attachParallax(rawUrl)
+        } else {
+            $('#bg1').css('background-image', cssUrl)
+        }
+
         $('#bg1').removeClass('localyze-fade-out').addClass('localyze-fade-in')
-        
+
         // Cleanup transition classes after animation completes (~600ms total)
         setTimeout(() => $('#bg1').removeClass('localyze-fade-in'), 600)
     }, 300)
@@ -92,6 +118,9 @@ export function clear() {
 
     $('#bg1').addClass('localyze-fade-out')
     setTimeout(() => {
+        // Tear down parallax (no-op if not active) and clear CSS path together,
+        // both deferred so the outgoing image fades before removal.
+        detachParallax()
         $('#bg1').css('background-image', '')
         $('#bg1').removeClass('localyze-fade-out')
     }, 300)

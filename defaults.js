@@ -53,6 +53,9 @@ export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{image_prompt}}, landscape, cinem
 
 /** Dev mode — generates recognizable but low-cost images. */
 export const DEFAULT_DEV_MODE = false
+
+/** Parallax — horizontal panning effect on wide background images. Off by default. */
+export const DEFAULT_PARALLAX_ENABLED = false
 export const DEV_IMAGE_WIDTH  = 320
 export const DEV_IMAGE_HEIGHT = 180
 

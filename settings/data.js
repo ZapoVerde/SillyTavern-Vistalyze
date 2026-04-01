@@ -8,6 +8,7 @@
  * 
  * @updates
  * - Added Discovery settings (Prompt, ProfileId, History) to the profile blueprint.
+ * - Added parallaxEnabled as a meta (global) key, initialized in initSettings().
  *
  * @api-declaration
  * getSettings()     — returns the activeState object for the current profile.
@@ -35,6 +36,7 @@ import {
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_DEV_MODE,
+    DEFAULT_PARALLAX_ENABLED,
 } from '../defaults.js';
 
 const EXT_NAME = 'localyze';
@@ -128,6 +130,10 @@ export function initSettings() {
     }
 
     // 3. Global (Meta) Key Initialization
+    if (typeof root.parallaxEnabled !== 'boolean') {
+        root.parallaxEnabled = DEFAULT_PARALLAX_ENABLED
+    }
+
     if (!Array.isArray(root.knownSessions)) {
         root.knownSessions = [];
     }

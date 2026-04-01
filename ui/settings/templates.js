@@ -6,8 +6,9 @@
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
- * @Updates
+ * @updates
  * - Added Step 4 (Targeted Discovery) to the settings panel layout.
+ * - Added parallax feature toggle checkbox at the top of the panel.
  *
  * @api-declaration
  * buildPanelHTML(meta, models) -> string
@@ -90,6 +91,15 @@ export function buildPanelHTML(meta, availableModels) {
                 <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
             </div>
             <div class="inline-drawer-content">
+                <!-- Feature Toggles -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--SmartThemeBorderColor,#444);">
+                    <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
+                        <input type="checkbox" id="lz-parallax-enabled" />
+                        <span>Parallax backgrounds</span>
+                    </label>
+                    <span style="font-size:0.78em;opacity:0.55;">Pans wide images horizontally with mouse or tilt on narrow screens</span>
+                </div>
+
                 <!-- Profile Management Bar -->
                 <div class="lz-profile-bar" style="display:flex;align-items:center;gap:4px;margin-bottom:12px;">
                     <select id="lz-profile-select" class="text_pole" style="flex:1;" title="Active settings profile"></select>

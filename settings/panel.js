@@ -7,6 +7,7 @@
  *
  * @updates
  * - Added Step 4 (Targeted Discovery) to dropdown and prompt editor bindings.
+ * - Added parallax feature toggle: populate on load, persist on change.
  *
  * @api-declaration
  * injectSettingsPanel() — Main entry point for extension settings init.
@@ -89,6 +90,7 @@ function populateInputs() {
 
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL);
     $('#lz-dev-mode').prop('checked', s.devMode ?? false);
+    $('#lz-parallax-enabled').prop('checked', getMetaSettings().parallaxEnabled ?? false);
     
     $('#lz-pollinations-status').text('');
     updateKeyStatusIndicator();
@@ -163,6 +165,13 @@ function bindHandlers() {
         getSettings().devMode = $(this).prop('checked');
         saveSettingsDebounced();
         updateDirtyIndicator(meta);
+    });
+
+    // parallaxEnabled is a global preference, not profile-level — writes to
+    // meta directly and does not dirty the profile indicator.
+    $('#lz-settings').on('change', '#lz-parallax-enabled', function () {
+        getMetaSettings().parallaxEnabled = $(this).prop('checked');
+        saveSettingsDebounced();
     });
 }
 
