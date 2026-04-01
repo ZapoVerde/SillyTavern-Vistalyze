@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/profileController.js
- * @stamp {"utc":"2026-04-03T17:00:00.000Z"}
+ * @stamp {"utc":"2026-04-03T18:45:00.000Z"}
  * @architectural-role UI Controller / Profile Logic
  * @description
  * Manages the logic for settings profiles and "dirty" state tracking.
@@ -8,9 +8,9 @@
  * profile dictionary in settings/data.js.
  *
  * @updates
+ * - Fix: Corrected relative import path for settings/data.js to resolve 404 error.
  * - Migration: Replaced direct mutation of extension_settings with switchProfile,
  *   saveCurrentProfile, createProfile, renameCurrentProfile, and deleteCurrentProfile.
- * - Decoupling: The controller now purely coordinates UI events and calls setters.
  *
  * @api-declaration
  * isStateDirty(meta) -> boolean
@@ -36,7 +36,7 @@ import {
     createProfile, 
     renameCurrentProfile, 
     deleteCurrentProfile 
-} from '../data.js';
+} from '../../settings/data.js';
 
 /**
  * Compares the active temporary state against the saved profile data.
