@@ -132,19 +132,21 @@ export function bindWorkshopEvents(handlers) {
         }
     });
 
-    // Finalize Draft: Commits changes to DNA and applies scene
+    // Finalize Draft: Generates full-res image, commits to DNA, applies scene.
+    // Modal stays open until generation is confirmed on the server.
     $overlay.on('click', '#lz-arch-finalize', async function() {
         const key = state._activeWorkshopKey;
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
         const $btn = $(this);
 
-        $btn.prop('disabled', true).text('Finalizing...');
+        $btn.prop('disabled', true).text('Generating...');
         try {
             await handleFinalizeWorkshop(key);
             $overlay.addClass('lz-hidden');
         } catch (err) {
             $btn.prop('disabled', false).text('Finalize & Apply');
             console.error('[Localyze:Workshop] Commit failed:', err);
+            if (window.toastr) window.toastr.error('Generation failed: ' + err.message, 'Localyze');
         }
     });
 

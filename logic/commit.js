@@ -9,9 +9,11 @@
  * the chat history and filesystem.
  *
  * @updates
- * - Integrated Cache-Busting: handleFinalizeWorkshop now ensures setBg is called 
- *   after generation, triggering the timestamp-based refresh in background.js.
- * - Standardized Visual Change Detection: Explicitly checks imagePrompt diffs 
+ * - Awaited Generation: generate() is now fully awaited so the caller (modal) holds
+ *   open until the image is confirmed on the server — no more fire-and-forget.
+ * - Simplified Write Path: collapsed the two-write (null → patch) pattern into a
+ *   single lockedWriteSceneRecord call after generation succeeds.
+ * - Standardized Visual Change Detection: Explicitly checks imagePrompt diffs
  *   to force a regeneration/overwrite of the existing background asset.
  * - Maintained Overwrite Strategy: Keeps static filenames to prevent folder clutter.
  *
@@ -31,10 +33,9 @@ import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
 import { generate } from '../imageCache.js';
 import { set as setBg } from '../background.js';
-import { 
-    lockedWriteLocationDef, 
-    lockedWriteSceneRecord, 
-    lockedPatchSceneImage 
+import {
+    lockedWriteLocationDef,
+    lockedWriteSceneRecord
 } from '../io/dnaWriter.js';
 
 /**
@@ -98,35 +99,25 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     const needsGeneration = forceRegen || visualsModified || !state.fileIndex.has(filename);
 
     if (needsGeneration) {
-        if (window.toastr) window.toastr.info(`Generating background for "${draftDef.name}"...`, 'Localyze');
+        // Await full-res generation — caller holds the modal open until this resolves.
+        // Throws on failure, which propagates to the UI so the modal stays open.
+        const newFile = await generate(targetKey, draftDef, state.sessionId);
 
-        // Transition intent (Write 1 of 2: Mark as "Pending" in DNA)
-        await lockedWriteSceneRecord(lastMsgId, { 
-            location: targetKey, 
-            image: null, 
-            bg_declined: false 
+        state.fileIndex.add(newFile);
+
+        // Single write: record the real filename now that the image is confirmed on server.
+        await lockedWriteSceneRecord(lastMsgId, {
+            location: targetKey,
+            image: newFile,
+            bg_declined: false
         });
-        updateState(targetKey, null);
+        updateState(targetKey, newFile);
 
-        // Start high-res generation (Overwrites existing file on server)
-        generate(targetKey, draftDef, state.sessionId)
-            .then(async newFile => {
-                state.fileIndex.add(newFile);
-                
-                // Finalize intent (Write 2 of 2: Record the actual filename)
-                await lockedPatchSceneImage(lastMsgId, newFile);
-                
-                // Apply to UI. Because background.js now uses timestamps, 
-                // this will force a refresh even if the filename is identical.
-                setBg(newFile);
-                
-                state.currentImage = newFile;
-                if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
-            })
-            .catch(err => {
-                console.error('[Localyze:Commit] Generation failed:', err);
-                if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
-            });
+        // Apply to UI. background.js uses timestamps to bust cache even on same filename.
+        setBg(newFile);
+
+        state.currentImage = newFile;
+        if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
     } else {
         // Immediate transition (No visuals change, just switching or minor metadata edit)
         setBg(filename);
