@@ -1,13 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
- * @stamp {"utc":"2026-04-01T23:45:00.000Z"}
+ * @stamp {"utc":"2026-04-03T17:30:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
  * The primary entry point for the Localyze settings UI. 
  *
  * @updates
- * - Added Step 4 (Targeted Discovery) to dropdown and prompt editor bindings.
- * - Added parallax feature toggle: populate on load, persist on change.
+ * - Migration: Replaced all direct setting mutations with updateActiveSetting, 
+ *   updateMetaSetting, and switchProfile setters.
+ * - Standardized Flow: UI events now trigger data updates through protected gatekeepers.
  *
  * @api-declaration
  * injectSettingsPanel() — Main entry point for extension settings init.
@@ -16,12 +17,19 @@
  *   assertions:
  *     purity: UI Orchestrator
  *     state_ownership: [none]
- *     external_io: [#extensions_settings DOM, saveSettingsDebounced]
+ *     external_io: [#extensions_settings DOM, settings/data.js]
  */
 
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
-import { getSettings, getMetaSettings, initSettings } from './data.js';
+import { 
+    getSettings, 
+    getMetaSettings, 
+    initSettings, 
+    updateActiveSetting, 
+    updateMetaSetting, 
+    switchProfile 
+} from './data.js';
 import { 
     DEFAULT_BOOLEAN_PROMPT, 
     DEFAULT_CLASSIFIER_PROMPT, 
@@ -65,8 +73,8 @@ function initDropdowns() {
                 selector,
                 s[key] ?? '',
                 (profile) => {
-                    s[key] = profile?.id ?? null;
-                    saveSettingsDebounced();
+                    // Protected Update: Set connection profile ID
+                    updateActiveSetting(key, profile?.id ?? null);
                     updateDirtyIndicator(getMetaSettings());
                 },
             );
@@ -90,7 +98,7 @@ function populateInputs() {
 
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL);
     $('#lz-dev-mode').prop('checked', s.devMode ?? false);
-    $('#lz-parallax-enabled').prop('checked', getMetaSettings().parallaxEnabled ?? false);
+    $('#lz-parallax-enabled').prop('checked', meta.parallaxEnabled ?? false);
     
     $('#lz-pollinations-status').text('');
     updateKeyStatusIndicator();
@@ -124,9 +132,9 @@ function bindHandlers() {
     $('#lz-settings').on('change', '#lz-profile-select', function() {
         const newName = $(this).val();
         if (!meta.profiles[newName]) return;
-        meta.currentProfileName = newName;
-        meta.activeState = structuredClone(meta.profiles[newName]);
-        saveSettingsDebounced();
+        
+        // Protected Update: Switch profile via Setter API
+        switchProfile(newName);
         refreshPanel();
     });
 
@@ -143,8 +151,10 @@ function bindHandlers() {
 
     $('#lz-settings').on('input', '.lz-history-input', function () {
         const key = $(this).data('history-key');
-        getSettings()[key] = Math.max(0, parseInt($(this).val()) || 0);
-        saveSettingsDebounced();
+        const val = Math.max(0, parseInt($(this).val()) || 0);
+        
+        // Protected Update: Update numeric setting
+        updateActiveSetting(key, val);
         updateDirtyIndicator(meta);
     });
 
@@ -156,22 +166,26 @@ function bindHandlers() {
     $('#lz-settings').on('click', '#lz-pollinations-check', () => testPollinationsConnection());
 
     $('#lz-settings').on('change', '#lz-image-model', function () {
-        getSettings().imageModel = $(this).val() || DEFAULT_IMAGE_MODEL;
-        saveSettingsDebounced();
+        const val = $(this).val() || DEFAULT_IMAGE_MODEL;
+        
+        // Protected Update: Update active model
+        updateActiveSetting('imageModel', val);
         updateDirtyIndicator(meta);
     });
 
     $('#lz-settings').on('change', '#lz-dev-mode', function () {
-        getSettings().devMode = $(this).prop('checked');
-        saveSettingsDebounced();
+        const val = $(this).prop('checked');
+        
+        // Protected Update: Update boolean flag
+        updateActiveSetting('devMode', val);
         updateDirtyIndicator(meta);
     });
 
-    // parallaxEnabled is a global preference, not profile-level — writes to
-    // meta directly and does not dirty the profile indicator.
     $('#lz-settings').on('change', '#lz-parallax-enabled', function () {
-        getMetaSettings().parallaxEnabled = $(this).prop('checked');
-        saveSettingsDebounced();
+        const val = $(this).prop('checked');
+        
+        // Protected Update: Update global feature flag
+        updateMetaSetting('parallaxEnabled', val);
     });
 }
 

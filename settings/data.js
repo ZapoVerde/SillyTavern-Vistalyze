@@ -1,25 +1,26 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-04-01T23:20:00.000Z"}
+ * @stamp {"utc":"2026-04-03T17:15:00.000Z"}
  * @architectural-role Stateful Owner (Settings)
  * @description
- * Manages the Localyze settings lifecycle. Implements a profile-based system 
- * (profiles, currentProfileName, activeState).
+ * Manages the Localyze settings lifecycle and profile-based configuration.
  * 
- * @updates
- * - Added Discovery settings (Prompt, ProfileId, History) to the profile blueprint.
- * - Added parallaxEnabled as a meta (global) key, initialized in initSettings().
+ * STRICT CONTRACT:
+ * 1. This module is the ONLY module permitted to mutate 'extension_settings.localyze'.
+ * 2. External modules MUST use the provided Setter API for updates.
+ * 3. External modules may READ from getSettings() or getMetaSettings() directly.
  *
  * @api-declaration
- * getSettings()     — returns the activeState object for the current profile.
- * getMetaSettings() — returns the root extension settings object (global keys).
- * initSettings()    — initializes the structure and handles migration.
- *
- * @contract
- *   assertions:
- *     purity: mutates
- *     state_ownership: [extension_settings.localyze]
- *     external_io: [saveSettingsDebounced]
+ * getSettings()               — Returns activeState for the current profile (Read-Only).
+ * getMetaSettings()           — Returns root metadata object (Read-Only).
+ * updateActiveSetting(k, v)   — Updates a key in the current active profile.
+ * updateMetaSetting(k, v)     — Updates a global meta key (e.g., parallaxEnabled).
+ * switchProfile(name)         — Changes the active profile and updates activeState.
+ * saveCurrentProfile()        — Commits activeState to the profiles dictionary.
+ * createProfile(name)         — Creates a new profile from current activeState.
+ * renameCurrentProfile(name)  — Renames the active profile.
+ * deleteCurrentProfile()      — Removes the active profile.
+ * initSettings()              — Initializes structure and performs migrations.
  */
 
 import { saveSettingsDebounced } from '../../../../../script.js';
@@ -43,7 +44,6 @@ const EXT_NAME = 'localyze';
 
 /**
  * Blueprint for profile-level settings.
- * Any key added here will be included in every profile.
  */
 export const PROFILE_DEFAULTS = Object.freeze({
     booleanPrompt:        DEFAULT_BOOLEAN_PROMPT,
@@ -65,87 +65,151 @@ export const PROFILE_DEFAULTS = Object.freeze({
 
 /**
  * Returns the active configuration for the current profile.
- * All engine components should read from here.
+ * @returns {object}
  */
 export function getSettings() {
     return extension_settings[EXT_NAME].activeState;
 }
 
 /**
- * Returns the root settings object. 
- * Used for global (meta) keys like knownSessions and auditCache.
+ * Returns the root settings object for global metadata.
+ * @returns {object}
  */
 export function getMetaSettings() {
     return extension_settings[EXT_NAME];
 }
 
+// ─── Setter API ────────────────────────────────────────────────────────────
+
+/**
+ * Updates a specific key in the active profile settings.
+ * @param {string} key 
+ * @param {any} value 
+ */
+export function updateActiveSetting(key, value) {
+    const active = getSettings();
+    if (Object.prototype.hasOwnProperty.call(PROFILE_DEFAULTS, key)) {
+        active[key] = value;
+        saveSettingsDebounced();
+    } else {
+        console.warn(`[Localyze:Settings] Attempted to update invalid profile key: ${key}`);
+    }
+}
+
+/**
+ * Updates a global (meta) setting.
+ * @param {string} key 
+ * @param {any} value 
+ */
+export function updateMetaSetting(key, value) {
+    const meta = getMetaSettings();
+    meta[key] = value;
+    saveSettingsDebounced();
+}
+
+/**
+ * Switches the active profile and synchronizes the activeState.
+ * @param {string} profileName 
+ */
+export function switchProfile(profileName) {
+    const meta = getMetaSettings();
+    if (meta.profiles[profileName]) {
+        meta.currentProfileName = profileName;
+        meta.activeState = structuredClone(meta.profiles[profileName]);
+        saveSettingsDebounced();
+    }
+}
+
+/**
+ * Saves the current activeState into the profiles dictionary.
+ */
+export function saveCurrentProfile() {
+    const meta = getMetaSettings();
+    meta.profiles[meta.currentProfileName] = structuredClone(meta.activeState);
+    saveSettingsDebounced();
+}
+
+/**
+ * Creates a new profile using the current active state.
+ * @param {string} name 
+ */
+export function createProfile(name) {
+    const meta = getMetaSettings();
+    meta.profiles[name] = structuredClone(meta.activeState);
+    meta.currentProfileName = name;
+    saveSettingsDebounced();
+}
+
+/**
+ * Renames the active profile.
+ * @param {string} newName 
+ */
+export function renameCurrentProfile(newName) {
+    const meta = getMetaSettings();
+    const oldName = meta.currentProfileName;
+    meta.profiles[newName] = meta.profiles[oldName];
+    delete meta.profiles[oldName];
+    meta.currentProfileName = newName;
+    saveSettingsDebounced();
+}
+
+/**
+ * Deletes the active profile.
+ */
+export function deleteCurrentProfile() {
+    const meta = getMetaSettings();
+    const oldName = meta.currentProfileName;
+    delete meta.profiles[oldName];
+    
+    // Pick first remaining profile
+    const remaining = Object.keys(meta.profiles);
+    meta.currentProfileName = remaining[0];
+    meta.activeState = structuredClone(meta.profiles[remaining[0]]);
+    saveSettingsDebounced();
+}
+
+// ─── Initialization ────────────────────────────────────────────────────────
+
 /**
  * Initializes the settings structure.
- * Performs a one-time migration from flat root keys to the profiles dictionary.
  */
 export function initSettings() {
-    // 1. Ensure the root object exists
     if (!extension_settings[EXT_NAME]) {
         extension_settings[EXT_NAME] = {};
     }
 
     const root = extension_settings[EXT_NAME];
 
-    // 2. Structural Initialization & Migration
     if (!root.profiles) {
         console.log('[Localyze] Creating fresh profile-based settings structure...');
 
-        // Harvest legacy flat keys from root if they exist
         const legacyConfig = {};
         for (const key of Object.keys(PROFILE_DEFAULTS)) {
             if (Object.prototype.hasOwnProperty.call(root, key)) {
                 legacyConfig[key] = root[key];
-                delete root[key]; // Clean up root
+                delete root[key];
             }
         }
 
-        // Create the initial "Default" profile using legacy values or defaults
         const defaultProfile = Object.assign({}, PROFILE_DEFAULTS, legacyConfig);
 
-        root.profiles = {
-            'Default': defaultProfile,
-        };
+        root.profiles = { 'Default': defaultProfile };
         root.currentProfileName = 'Default';
         root.activeState = structuredClone(defaultProfile);
-
-        // PERSISTENCE LOCK
         saveSettingsDebounced(); 
     } else {
-        // Structure already exists; ensure vital pointers and objects are healthy
-        if (!root.currentProfileName) {
-            root.currentProfileName = Object.keys(root.profiles)[0];
-        }
-        
-        if (!root.activeState) {
-            root.activeState = structuredClone(root.profiles[root.currentProfileName]);
-        }
-
-        // Back-fill any new default keys into the active state
+        if (!root.currentProfileName) root.currentProfileName = Object.keys(root.profiles)[0];
+        if (!root.activeState) root.activeState = structuredClone(root.profiles[root.currentProfileName]);
         root.activeState = Object.assign({}, PROFILE_DEFAULTS, root.activeState);
     }
 
-    // 3. Global (Meta) Key Initialization
-    if (typeof root.parallaxEnabled !== 'boolean') {
-        root.parallaxEnabled = DEFAULT_PARALLAX_ENABLED
-    }
-
-    if (!Array.isArray(root.knownSessions)) {
-        root.knownSessions = [];
-    }
+    if (typeof root.parallaxEnabled !== 'boolean') root.parallaxEnabled = DEFAULT_PARALLAX_ENABLED;
+    if (!Array.isArray(root.knownSessions)) root.knownSessions = [];
     if (!root.auditCache) {
-        root.auditCache = {
-            suspects: [],
-            lastAudit: null,
-            orphans: [],
-        };
+        root.auditCache = { suspects: [], lastAudit: null, orphans: [] };
     }
 
-    // 4. Security Cleanup (Legacy keys from previous versions)
+    // Clean legacy artifacts
     delete root.pollinationsKey;
     delete root.pollinationsSecretKey;
     delete root.localyze_pollinations_key;

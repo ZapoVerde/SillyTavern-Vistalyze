@@ -1,29 +1,27 @@
 /**
  * @file data/default-user/extensions/localyze/ui/orphanModal.js
- * @stamp {"utc":"2026-03-30T00:00:00.000Z"}
+ * @stamp {"utc":"2026-04-03T18:00:00.000Z"}
  * @architectural-role Orphan File Review UI
  * @description
  * Modal for reviewing and deleting orphaned Localyze background images.
- * Opened by toolbar.js after a full audit returns results. Shows a
- * checkbox table of orphan filenames with select-all support.
  *
  * @updates
- * - Refactored to use getMetaSettings() for clearing the global auditCache.
- * - Hardened deletion loop and success notifications.
+ * - Migration: Replaced direct mutation of getMetaSettings().auditCache 
+ *   with the updateMetaSetting() API.
+ * - Standardized Flow: Audit results are cleared via the Stateful Owner.
  *
  * @api-declaration
- * openOrphanModal(orphans) — opens the modal; toastr if orphans is empty.
+ * openOrphanModal(orphans) — opens the modal.
  *
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: [getMetaSettings().auditCache (write)]
- *     external_io: [POST /api/backgrounds/delete, saveSettingsDebounced(),
- *       clearOrphanBadge()]
+ *     state_ownership: [none]
+ *     external_io: [POST /api/backgrounds/delete, updateMetaSetting, clearOrphanBadge]
  */
-import { getRequestHeaders, saveSettingsDebounced, callPopup } from '../../../../../script.js'
+import { getRequestHeaders, callPopup } from '../../../../../script.js'
 import { clearOrphanBadge } from './toolbar.js'
-import { getMetaSettings } from '../settings/data.js'
+import { updateMetaSetting } from '../settings/data.js'
 
 function escapeHtml(str) {
     return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -31,7 +29,7 @@ function escapeHtml(str) {
 
 export async function openOrphanModal(orphans) {
     if (!orphans || orphans.length === 0) {
-        toastr.success('No orphaned images found.', 'Localyze')
+        if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze')
         return
     }
 
@@ -47,17 +45,19 @@ export async function openOrphanModal(orphans) {
     const confirmed = await callPopup(
         `<h3>Orphaned Localyze Images (${orphans.length})</h3>
         <p style="opacity:0.65;font-size:0.88em;">These files belong to sessions not found in any known chat.</p>
-        <table style="width:100%;border-collapse:collapse;font-size:0.88em;">
-            <thead>
-                <tr>
-                    <th style="width:32px;text-align:center;">
-                        <input type="checkbox" id="lz-orphan-select-all" title="Select All" checked />
-                    </th>
-                    <th style="text-align:left;">Filename</th>
-                </tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-        </table>`,
+        <div style="max-height:300px; overflow-y:auto; border:1px solid var(--SmartThemeBorderColor); border-radius:4px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.88em;">
+                <thead>
+                    <tr>
+                        <th style="width:32px;text-align:center;">
+                            <input type="checkbox" id="lz-orphan-select-all" title="Select All" checked />
+                        </th>
+                        <th style="text-align:left;">Filename</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`,
         'confirm',
     )
 
@@ -70,7 +70,7 @@ export async function openOrphanModal(orphans) {
 
     const selected = $('.lz-orphan-check:checked').map(function () { return this.value }).get()
     if (selected.length === 0) {
-        toastr.warning('No files selected.', 'Localyze')
+        if (window.toastr) window.toastr.warning('No files selected.', 'Localyze')
         return
     }
 
@@ -88,20 +88,19 @@ export async function openOrphanModal(orphans) {
         }
     }
 
-    // Reset the global audit cache in meta settings
-    const meta = getMetaSettings()
-    meta.auditCache = {
+    // Protected Update: Reset the global audit cache via Setter API
+    const cleanAuditCache = {
         suspects: [],
         lastAudit: new Date().toISOString(),
         orphans: []
     }
+    updateMetaSetting('auditCache', cleanAuditCache);
     
-    saveSettingsDebounced()
     clearOrphanBadge()
 
     if (failed > 0) {
-        toastr.warning(`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
+        if (window.toastr) window.toastr.warning(`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
     } else {
-        toastr.success(`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
+        if (window.toastr) window.toastr.success(`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
     }
 }

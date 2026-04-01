@@ -1,15 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshop/listeners.js
- * @stamp {"utc":"2026-04-02T15:00:00.000Z"}
+ * @stamp {"utc":"2026-04-03T16:45:00.000Z"}
  * @architectural-role UI Event Listeners
  * @description
  * Centralizes all DOM event bindings for the Location Workshop modal.
- * Acts as the behavioral bridge between the UI Shell and Controller logic.
  *
  * @updates
- * - Standardized field mapping to 'description' and 'imagePrompt'.
- * - Added explicit visibility handling for the flexbox body to prevent collapse.
- * - Optimized event delegation for dynamically rendered library items.
+ * - Migration: Replaced direct state mutations with setWorkshopKey, 
+ *   setProposedBlob, and updateDraftField setters.
+ * - Optimized Syncing: UI input now flows through state.js gatekeepers.
  *
  * @api-declaration
  * bindWorkshopEvents(handlers) -> void
@@ -17,11 +16,11 @@
  * @contract
  *   assertions:
  *     purity: IO
- *     state_ownership: []
+ *     state_ownership: [state (mutates via setters)]
  *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js]
  */
 
-import { state } from '../../state.js';
+import { state, setWorkshopKey, setProposedBlob, updateDraftField } from '../../state.js';
 import {
     regenField,
     discoverySearch,
@@ -56,8 +55,12 @@ export function bindWorkshopEvents(handlers) {
     $overlay.on('click', '.lz-lib-edit', function(e) {
         e.stopPropagation();
         const key = $(this).closest('.lz-library-item').data('key');
-        state._activeWorkshopKey = key;
-        state._proposedImageBlob = null;
+        
+        // Protected Update: Activate for editing and clear stale previews
+        setWorkshopKey(key);
+        setProposedBlob('thumbnail', null);
+        setProposedBlob('full', null);
+        
         switchTab('architect');
     });
 
@@ -90,7 +93,6 @@ export function bindWorkshopEvents(handlers) {
     // ─── Architect Tab Listeners ──────────────────────────────────────────
     
     // Live Input Syncing: Updates state._draftLocations as user types.
-    // Editing the visuals prompt invalidates any existing proposed preview.
     $overlay.on('input', '#lz-arch-name, #lz-arch-definition, #lz-arch-visuals', function() {
         const key = state._activeWorkshopKey;
         if (!key || !state._draftLocations[key]) return;
@@ -100,11 +102,12 @@ export function bindWorkshopEvents(handlers) {
             'lz-arch-definition': 'description',
             'lz-arch-visuals': 'imagePrompt'
         };
-        state._draftLocations[key][fieldMap[this.id]] = $(this).val();
+
+        // Protected Update: Synced field value.
+        // updateDraftField handles the nulling of blobs if imagePrompt changes.
+        updateDraftField(key, fieldMap[this.id], $(this).val());
 
         if (this.id === 'lz-arch-visuals') {
-            state._proposedImageBlob = null;
-            state._proposedFullBlob = null;
             $('#lz-preview-after').attr('src', '').hide();
         }
     });
@@ -124,8 +127,7 @@ export function bindWorkshopEvents(handlers) {
         }
     });
 
-    // Full-Resolution Preview: generates and uploads the full-res image.
-    // Finalize & Apply will skip generation if this is still valid.
+    // Full-Resolution Preview
     $overlay.on('click', '#lz-arch-generate-full-btn', async function() {
         const key = state._activeWorkshopKey;
         const $btn = $(this);
@@ -161,7 +163,6 @@ export function bindWorkshopEvents(handlers) {
     });
 
     // Finalize Draft: Generates full-res image, commits to DNA, applies scene.
-    // Modal stays open until generation is confirmed on the server.
     $overlay.on('click', '#lz-arch-finalize', async function() {
         const key = state._activeWorkshopKey;
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
@@ -192,8 +193,11 @@ export function bindWorkshopEvents(handlers) {
         try {
             const key = await discoverySearch(keywords);
             if (key) {
-                // Success: Jump straight to Architect for refinement
-                state._proposedImageBlob = null;
+                // Success: Discovery logic handles key setting.
+                // Reset previews for the new discovery.
+                setProposedBlob('thumbnail', null);
+                setProposedBlob('full', null);
+                
                 switchTab('architect');
                 $('#lz-explorer-keywords').val('');
             } else {

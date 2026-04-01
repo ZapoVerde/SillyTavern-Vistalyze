@@ -1,20 +1,17 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-04-02T15:10:00.000Z"}
- * @version 1.6.2
+ * @stamp {"utc":"2026-04-03T18:10:00.000Z"}
+ * @version 1.7.0
  * @architectural-role Toolbar UI
  * @description
  * Injects management buttons into the ST extensions panel (#extensionsMenu).
- * Updated to ensure the correct controller callbacks are used to prevent
- * data-desync and UI collapse.
  *
  * @updates
- * - Standardized callbacks to use logic/maintenance.js controllers.
- * - Added explicit cleanup to prevent button duplication on hot-reloads.
- * - Integrated orphan badge logic with the global audit cache.
+ * - Migration: Replaced direct mutation of auditCache with the updateMetaSetting() API.
+ * - Standardized Callbacks: Uses logic/maintenance.js controllers for all entries.
  *
  * @api-declaration
- * injectToolbar(onOpenLibrary, onEdit, onManualDetect) — Injects Localyze, Discovery, and Audit buttons.
+ * injectToolbar(onOpenLibrary, onEdit, onManualDetect) — Injects toolbar buttons.
  * showOrphanBadge(count) — shows red count badge on audit button.
  * clearOrphanBadge()     — hides badge.
  *
@@ -22,12 +19,12 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [none]
- *     external_io: [#extensionsMenu DOM, runFullAudit, maintenance.js]
+ *     external_io: [#extensionsMenu DOM, updateMetaSetting, maintenance.js]
  */
-import { getRequestHeaders, saveSettingsDebounced } from '../../../../../script.js';
+import { getRequestHeaders } from '../../../../../script.js';
 import { openOrphanModal } from './orphanModal.js';
 import { runFullAudit } from '../orphanDetector.js';
-import { getMetaSettings } from '../settings/data.js';
+import { updateMetaSetting } from '../settings/data.js';
 
 /**
  * Injects the Localyze suite buttons into the ST extension menu.
@@ -36,12 +33,12 @@ import { getMetaSettings } from '../settings/data.js';
  * @param {Function} onManualDetect Callback for Discovery/Explorer mode.
  */
 export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
-    // 1. Cleanup for hot-reloads or re-initialization
+    // 1. Cleanup for hot-reloads
     $('#lz-toolbar-btn').remove();
     $('#lz-explorer-btn').remove();
     $('#lz-audit-btn').remove();
 
-    // 2. Library Button (Primary entry)
+    // 2. Library Button
     const pickerBtn = $(`
         <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" title="Localyze: Library">
             <i class="fa-solid fa-location-dot"></i>
@@ -50,12 +47,10 @@ export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
     `);
     
     pickerBtn.on('click', () => {
-        if (typeof onOpenLibrary === 'function') {
-            onOpenLibrary(); // Triggers syncDraftState() then openWorkshop('library')
-        }
+        if (typeof onOpenLibrary === 'function') onOpenLibrary();
     });
 
-    // 3. Discovery Button (Explorer entry)
+    // 3. Discovery Button
     const explorerBtn = $(`
         <div id="lz-explorer-btn" class="list-group-item flex-container flexGap5" title="Localyze: Discover New Location">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -64,12 +59,10 @@ export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
     `);
     
     explorerBtn.on('click', async () => {
-        if (typeof onManualDetect === 'function') {
-            await onManualDetect(); // Triggers syncDraftState() then openWorkshop('explorer')
-        }
+        if (typeof onManualDetect === 'function') await onManualDetect();
     });
 
-    // 4. Audit Button (Maintenance entry)
+    // 4. Audit Button
     const auditBtn = $(`
         <div id="lz-audit-btn" class="list-group-item flex-container flexGap5" title="Localyze: Audit Images">
             <i class="fa-solid fa-trash-can"></i>
@@ -79,13 +72,11 @@ export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
     `);
     
     auditBtn.on('click', async () => {
-        const $badge = $('#lz-orphan-badge');
         const originalHtml = auditBtn.find('span:first').html();
         
         try {
             auditBtn.find('span:first').text('Auditing...');
             
-            // Fetch all backgrounds to find potential orphans
             const res = await fetch('/api/backgrounds/all', {
                 method: 'POST',
                 headers: getRequestHeaders(),
@@ -94,17 +85,16 @@ export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
             const data = await res.json();
             const images = data.images ?? [];
 
-            // Perform deep audit (scanning all characters/chats)
+            // Perform deep audit
             const orphans = await runFullAudit(images);
 
-            // Update Global Cache
-            const meta = getMetaSettings();
-            meta.auditCache = meta.auditCache ?? {};
-            meta.auditCache.lastAudit = new Date().toISOString();
-            meta.auditCache.orphans = orphans;
-            meta.auditCache.suspects = orphans;
-            
-            saveSettingsDebounced();
+            // Protected Update: Update Global Cache via Setter API
+            const newAuditCache = {
+                lastAudit: new Date().toISOString(),
+                orphans: orphans,
+                suspects: orphans
+            };
+            updateMetaSetting('auditCache', newAuditCache);
 
             if (orphans.length > 0) {
                 openOrphanModal(orphans);
@@ -130,7 +120,6 @@ export function injectToolbar(onOpenLibrary, onEdit, onManualDetect) {
 
 /**
  * Updates the visual badge for orphan detection results.
- * Called by bootstrapper.js during fast-audit.
  * @param {number} count 
  */
 export function showOrphanBadge(count) {
@@ -142,7 +131,7 @@ export function showOrphanBadge(count) {
 }
 
 /**
- * Hides the badge after cleanup or successful audit.
+ * Hides the badge.
  */
 export function clearOrphanBadge() {
     $('#lz-orphan-badge').hide().text('');

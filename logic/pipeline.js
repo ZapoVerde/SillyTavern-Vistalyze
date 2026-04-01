@@ -1,17 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-03T11:15:00.000Z"}
+ * @stamp {"utc":"2026-04-03T16:00:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
  * @updates
- * - Standardized terminology: strictly uses 'description' and 'imagePrompt' 
- *   throughout the automated detection flow.
- * - Robust UI Refresh: Ensures all transitions (known or new) trigger the 
- *   cache-busting setBg() in background.js.
- * - Centralized Generation Logic: Aligned with commit.js to ensure consistency 
- *   between automated detection and manual workshop edits.
+ * - Migration: Replaced all direct state mutations with upsertLocation, 
+ *   addToFileIndex, and updateState setters.
+ * - Standardized Visual Change Detection: Aligned with commit.js to ensure 
+ *   consistency between automated detection and manual workshop edits.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -19,13 +17,13 @@
  * @contract
  *   assertions:
  *     purity: Stateful IO
- *     state_ownership: [state (mutates via updateState)]
+ *     state_ownership: [state (mutates via setters)]
  *     external_io: [LLM Calls, Chat Writes, Image Generation, Background UI]
  */
 
 import { callPopup } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
-import { state, updateState } from '../state.js';
+import { state, updateState, upsertLocation, addToFileIndex } from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { buildHistoryText, buildDescriberContext, escapeHtml, slugify } from '../utils/history.js';
 import { detectBoolean, detectClassifier, detectDescriber } from '../detector.js';
@@ -99,12 +97,12 @@ async function handleKnownLocation(messageId, key) {
     const def = state.locations[key];
 
     if (state.fileIndex.has(filename)) {
-        // Use the cache-busting setBg to ensure the UI updates 
-        // if the file was recently overwritten.
+        // Apply background and update scene state via setter
         setBg(filename);
         await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false });
         updateState(key, filename);
     } else {
+        // Transition recorded but image is missing: clear and generate
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: key, image: null, bg_declined: false });
         updateState(key, null);
@@ -112,12 +110,13 @@ async function handleKnownLocation(messageId, key) {
         const capturedId = messageId;
         generate(key, def, state.sessionId)
             .then(async newFile => {
-                state.fileIndex.add(newFile);
+                // Protected Update: Record asset creation
+                addToFileIndex(newFile);
                 await lockedPatchSceneImage(capturedId, newFile);
                 
-                // Finalize background with cache-busting timestamp
+                // Protected Update: Apply final visual state
+                updateState(key, newFile);
                 setBg(newFile);
-                state.currentImage = newFile;
             })
             .catch(err => {
                 console.error('[Localyze:Pipeline] Known location generate failed:', err);
@@ -142,7 +141,7 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    // Construct the definition using standardized keys directly from detector
+    // Construct the definition using standardized keys
     const def = {
         ...rawDef,
         key: slugify(rawDef.name)
@@ -174,23 +173,28 @@ async function handleUnknownLocation(messageId, context) {
     const defMsgId = messageId > 0 ? messageId - 1 : messageId;
     await lockedWriteLocationDef(defMsgId, approved, state.sessionId);
     
-    state.locations[approved.key] = approved;
+    // Protected Update: Persist the new definition to live memory
+    upsertLocation(approved);
+    
     clearBg();
     
     if (defMsgId !== messageId) {
         await lockedWriteSceneRecord(messageId, { location: approved.key, image: null, bg_declined: false });
     }
+    
+    // Protected Update: Set scene intent
     updateState(approved.key, null);
 
     const capturedId = messageId;
     generate(approved.key, approved, state.sessionId)
         .then(async newFile => {
-            state.fileIndex.add(newFile);
+            // Protected Update: Record asset creation
+            addToFileIndex(newFile);
             await lockedPatchSceneImage(capturedId, newFile);
             
-            // Finalize background with cache-busting timestamp
+            // Protected Update: Apply final visual state
+            updateState(approved.key, newFile);
             setBg(newFile);
-            state.currentImage = newFile;
         })
         .catch(err => {
             console.error('[Localyze:Pipeline] Generate failed after approve:', err);

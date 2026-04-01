@@ -1,21 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
- * @stamp {"utc":"2026-04-03T11:45:00.000Z"}
- * @version 1.5.4
+ * @stamp {"utc":"2026-04-03T18:30:00.000Z"}
+ * @version 1.7.0
  * @architectural-role Orchestrator / Workshop Controller
  * @description
- * Manages the logic for the unified Location Workshop. This module acts as the
- * controller for the "Staged" workflow, allowing users to browse, discover, 
- * and refine locations in a temporary "Draft" state before committing 
- * changes to the chat DNA.
+ * Manages the logic for the unified Location Workshop.
  *
  * @updates
- * - Standardized Field Mapping: Strictly uses 'description' and 'imagePrompt' 
- *   to maintain consistency across the engine.
- * - Discovery Synchronization: Ensures discovery results are staged with the 
- *   correct internal keys so they can be finalized by commit.js.
- * - Refined Regeneration: Hardened regenField to handle targeted AI updates 
- *   without affecting other metadata.
+ * - Migration: Replaced final direct draft mutations with stageDiscovery() and removeDraft().
+ * - Full Compliance: The maintenance module is now 100% compliant with the Gatekeeper Architecture.
  *
  * @api-declaration
  * handleOpenLibrary()           — entry point to open workshop in Library mode.
@@ -30,12 +23,20 @@
  * @contract
  *   assertions:
  *     purity: Stateful Controller
- *     state_ownership: [state._draftLocations, state._activeWorkshopKey, state._proposedImageBlob]
+ *     state_ownership: [state (mutates via setters)]
  *     external_io: [LLM Detector, Image Cache, UI Workshop Modal]
  */
 
 import { getContext } from '../../../../extensions.js';
-import { state } from '../state.js';
+import { 
+    state, 
+    syncDrafts, 
+    setWorkshopKey, 
+    updateDraftField, 
+    setProposedBlob, 
+    stageDiscovery, 
+    removeDraft 
+} from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { detectDescriber } from '../detector.js';
 import { fetchPreviewBlob, fetchFullBlob } from '../imageCache.js';
@@ -45,13 +46,9 @@ import { buildDescriberContext, slugify } from '../utils/history.js';
 
 /**
  * Prepares the Workshop by cloning the current library into a draft state.
- * This is called before the UI is shown to ensure edits don't affect live state.
  */
 export function syncDraftState() {
-    state._draftLocations = structuredClone(state.locations);
-    state._proposedImageBlob = null;
-    state._proposedFullBlob = null;
-    state._activeWorkshopKey = null;
+    syncDrafts();
 }
 
 /**
@@ -69,7 +66,9 @@ export async function handleOpenLibrary() {
  */
 export async function handleEditLocation(key) {
     syncDraftState();
-    state._activeWorkshopKey = key;
+    
+    // Protected Update: Set editing target
+    setWorkshopKey(key);
     
     const { openWorkshop } = await import('../ui/workshopModal.js');
     openWorkshop('architect');
@@ -89,9 +88,6 @@ export async function handleManualDescriber() {
 
 /**
  * Targeted Regeneration.
- * Uses the current transcript to re-extract either the Description (logic)
- * or the Visuals (image prompt) for a specific location.
- * 
  * @param {string} key The draft location key.
  * @param {string} field 'description' or 'imagePrompt'
  */
@@ -108,9 +104,9 @@ export async function regenField(key, field) {
     
     try {
         const result = await detectDescriber(augmentedContext, s.describerPrompt, s.describerProfileId);
-        // The detector returns { name, description, imagePrompt }
         if (result && result[field]) {
-            draft[field] = result[field];
+            // Protected Update: Update the staged field
+            updateDraftField(key, field, result[field]);
             return true;
         }
     } catch (err) {
@@ -121,8 +117,7 @@ export async function regenField(key, field) {
 }
 
 /**
- * Visual Preview Logic.
- * Generates a low-res preview of the draft's visual prompt.
+ * Visual Preview Logic (Dev Mode).
  */
 export async function previewProposedImage(key) {
     const draft = state._draftLocations[key];
@@ -130,7 +125,9 @@ export async function previewProposedImage(key) {
 
     try {
         const blobUrl = await fetchPreviewBlob(draft.imagePrompt);
-        state._proposedImageBlob = blobUrl;
+        
+        // Protected Update: Cache the thumbnail blob
+        setProposedBlob('thumbnail', blobUrl);
         return blobUrl;
     } catch (err) {
         console.error('[Localyze:Preview] Workshop preview failed:', err);
@@ -140,19 +137,16 @@ export async function previewProposedImage(key) {
 
 /**
  * Full-Resolution Preview.
- * Generates and uploads the full-res image for a draft, storing the filename
- * so Finalize & Apply can skip generation if the prompt hasn't changed.
- *
- * @param {string} key The draft location key.
  */
 export async function generateFullPreview(key) {
     const draft = state._draftLocations[key];
     if (!draft || !draft.imagePrompt) return null;
 
     try {
-        // Fetch only — no upload. The blob is a nameless candidate until Finalize & Apply.
         const blobUrl = await fetchFullBlob(draft);
-        state._proposedFullBlob = blobUrl;
+        
+        // Protected Update: Cache the full-res blob
+        setProposedBlob('full', blobUrl);
         return blobUrl;
     } catch (err) {
         console.error('[Localyze:Preview] Full preview generation failed:', err);
@@ -164,10 +158,6 @@ export async function generateFullPreview(key) {
 
 /**
  * The "Discovery Search" logic.
- * 
- * Logic:
- * 1. If keywords are provided: Use Step 4 (Discovery) configuration.
- * 2. If keywords are empty: Use Step 3 (Describer) configuration.
  */
 export async function discoverySearch(keywords = '') {
     const context = getContext();
@@ -175,12 +165,10 @@ export async function discoverySearch(keywords = '') {
     const lastMsgId = context.chat.length - 1;
     const hasKeywords = keywords.trim().length > 0;
 
-    // Determine config based on mode
     const historyLen = hasKeywords ? (s.discoveryHistory ?? 3) : (s.describerHistory ?? 3);
     const profileId  = hasKeywords ? s.discoveryProfileId : s.describerProfileId;
     let promptTemplate = hasKeywords ? s.discoveryPrompt : s.describerPrompt;
 
-    // If targeted, pre-interpolate keywords into the template
     if (hasKeywords) {
         promptTemplate = promptTemplate.replace(/\{\{keywords\}\}/g, keywords);
     }
@@ -190,15 +178,19 @@ export async function discoverySearch(keywords = '') {
 
     if (result) {
         const key = slugify(result.name);
-        // Ensure result maps directly to our standardized keys
-        state._draftLocations[key] = {
+        const stagedDef = {
             key,
             name: result.name,
             description: result.description,
             imagePrompt: result.imagePrompt,
             sessionId: state.sessionId
         };
-        state._activeWorkshopKey = key;
+        
+        // Protected Update: Inject new discovery into draft memory
+        stageDiscovery(stagedDef);
+        
+        // Protected Update: Activate it for editing
+        setWorkshopKey(key);
         return key;
     }
     
@@ -210,10 +202,11 @@ export async function discoverySearch(keywords = '') {
  */
 export function deleteDraftLocation(key) {
     if (state._draftLocations[key]) {
-        delete state._draftLocations[key];
+        // Protected Update: Remove from staged draft
+        removeDraft(key);
+        
         if (state._activeWorkshopKey === key) {
-            state._activeWorkshopKey = null;
-            state._proposedImageBlob = null;
+            setWorkshopKey(null);
         }
         return true;
     }

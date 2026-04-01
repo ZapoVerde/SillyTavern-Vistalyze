@@ -1,23 +1,27 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/promptModal.js
- * @stamp {"utc":"2026-04-01T13:10:00.000Z"}
+ * @stamp {"utc":"2026-04-03T17:40:00.000Z"}
  * @architectural-role UI Component / Prompt Editor
  * @description
- * Orchestrates the prompt editing modal. This component handles the 
- * display, reset logic, and persistence of LLM prompt templates.
+ * Orchestrates the prompt editing modal. Handles display, reset logic, 
+ * and persistence of LLM prompt templates via the established Setter API.
  * 
+ * @updates
+ * - Migration: Replaced direct mutation of getSettings() with updateActiveSetting().
+ * - Standardized Persistence: Delegate saving to the Stateful Owner.
+ *
  * @api-declaration
  * openPromptModal(settingsKey, title, defaultValue) -> Promise<boolean>
  *
  * @contract
  *   assertions:
  *     purity: UI Executor
- *     state_ownership: [extension_settings.localyze.activeState (write)]
- *     external_io: [callPopup, saveSettingsDebounced]
+ *     state_ownership: [none]
+ *     external_io: [callPopup, settings/data.js]
  */
 
-import { saveSettingsDebounced, callPopup } from '../../../../../../script.js';
-import { getSettings } from '../../settings/data.js';
+import { callPopup } from '../../../../../../script.js';
+import { getSettings, updateActiveSetting } from '../../settings/data.js';
 import { escapeHtml } from './templates.js';
 
 /**
@@ -42,8 +46,7 @@ export async function openPromptModal(settingsKey, title, defaultValue) {
         'text',
     );
 
-    // Bind reset logic immediately. 
-    // callPopup renders the DOM synchronously before the promise resolves.
+    // Bind reset logic
     $('#lz-prompt-reset').on('click', () => {
         $('#lz-prompt-editor').val(defaultValue);
     });
@@ -53,10 +56,10 @@ export async function openPromptModal(settingsKey, title, defaultValue) {
 
     const newValue = ($('#lz-prompt-editor').val() ?? '').trim();
     
-    // Only update and save if the value actually changed
+    // Only update if the value actually changed
     if (newValue !== current) {
-        s[settingsKey] = newValue || defaultValue;
-        saveSettingsDebounced();
+        // Protected Update: Delegate update and persistence to Stateful Owner
+        updateActiveSetting(settingsKey, newValue || defaultValue);
         return true;
     }
 

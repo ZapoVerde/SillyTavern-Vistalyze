@@ -1,16 +1,15 @@
 /**
  * @file data/default-user/extensions/localyze/logic/bootstrapper.js
- * @stamp {"utc":"2026-04-02T17:10:00.000Z"}
- * @version 1.0.2
+ * @stamp {"utc":"2026-04-03T15:30:00.000Z"}
+ * @version 1.1.0
  * @architectural-role Orchestrator / Boot Sequence
  * @description
  * Manages the initialization of the Localyze environment for a specific chat.
  * 
  * @updates
- * - Hardened Self-Healing: Prevents 404 errors by checking state.fileIndex 
- *   before calling setBg().
- * - Proactive UI Clearing: Calls clearBg() if the DNA-specified image is missing.
- * - Enhanced Logging: Provides clarity on why regenerations are triggered.
+ * - Migration: Replaced all direct state mutations with bulkInitState, 
+ *   setFileIndex, addToFileIndex, and updateState setters.
+ * - Standardized Metadata: Uses updateMetaSetting for global audit cache updates.
  *
  * @api-declaration
  * runBoot() -> Promise<void>
@@ -18,20 +17,20 @@
  * @contract
  *   assertions:
  *     purity: Stateful IO
- *     state_ownership: [state (mutates via reset/update)]
+ *     state_ownership: [state (mutates via setters only)]
  *     external_io: [session, reconstruction, imageCache, background, orphanDetector]
  */
 
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
-import { state } from '../state.js';
+import { state, bulkInitState, setFileIndex, addToFileIndex, updateState } from '../state.js';
 import { initSession } from '../session.js';
 import { reconstruct } from '../reconstruction.js';
 import { fetchFileIndex, generate } from '../imageCache.js';
 import { set as setBg, clear as clearBg } from '../background.js';
 import { fastDiff } from '../orphanDetector.js';
 import { showOrphanBadge } from '../ui/toolbar.js';
-import { getMetaSettings } from '../settings/data.js';
+import { getMetaSettings, updateMetaSetting } from '../settings/data.js';
 
 /**
  * Executes the full boot sequence for the current chat context.
@@ -48,18 +47,22 @@ export async function runBoot() {
     // 1. Session & DNA Reconstruction
     // Derives the library and the "last known scene" from the chat JSONL.
     initSession();
-    const { locations, transitions, currentLocation, currentImage } = reconstruct(context.chat);
     
-    state.locations = locations;
-    state.currentLocation = currentLocation;
-    state.currentImage = currentImage;
-    console.debug(`[Localyze:Boot] DNA Reconstructed: ${Object.keys(locations).length} locations found.`);
+    const reconstructed = reconstruct(context.chat);
+    
+    // Protected Update: Hydrate live state from reconstructed DNA
+    bulkInitState(reconstructed);
+    
+    console.debug(`[Localyze:Boot] DNA Reconstructed: ${Object.keys(state.locations).length} locations found.`);
 
     // 2. Filesystem Reconciliation
     // Fetch the list of actual background files present on the server.
     const { fileIndex, allImages } = await fetchFileIndex(state.sessionId);
-    state.fileIndex = fileIndex;
-    console.debug(`[Localyze:Boot] File Index: ${fileIndex.size} managed files detected.`);
+    
+    // Protected Update: Update the server asset cache
+    setFileIndex(fileIndex);
+    
+    console.debug(`[Localyze:Boot] File Index: ${state.fileIndex.size} managed files detected.`);
 
     // 3. 404 Prevention & Self-Healing Queue
     const queue = [];
@@ -73,7 +76,7 @@ export async function runBoot() {
         }
     }
 
-    // Identify if the CURRENT scene's image is missing (The "Ridge House" Fix)
+    // Identify if the CURRENT scene's image is missing
     const isCurrentImageMissing = state.currentImage && !state.fileIndex.has(state.currentImage);
 
     // 4. UI Restoration
@@ -98,7 +101,9 @@ export async function runBoot() {
             
             generate(key, def, state.sessionId)
                 .then(async filename => {
-                    state.fileIndex.add(filename);
+                    // Protected Update: Add the new file to the index
+                    addToFileIndex(filename);
+                    
                     // If the regenerated file is the one we should be looking at, apply it now
                     if (filename === state.currentImage) {
                         console.log(`[Localyze:Boot] Active background regenerated: ${filename}. Applying to UI.`);
@@ -113,9 +118,13 @@ export async function runBoot() {
     const meta = getMetaSettings();
     const suspects = fastDiff(allImages, meta?.knownSessions ?? []);
     if (suspects.length > 0) {
-        meta.auditCache = meta.auditCache ?? {};
-        meta.auditCache.suspects = suspects;
-        saveSettingsDebounced();
+        // Protected Update: Update global audit metadata
+        const newAuditCache = {
+            ...(meta.auditCache ?? {}),
+            suspects: suspects
+        };
+        updateMetaSetting('auditCache', newAuditCache);
+        
         showOrphanBadge(suspects.length);
     }
 }

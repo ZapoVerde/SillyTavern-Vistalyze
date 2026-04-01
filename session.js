@@ -1,24 +1,21 @@
 /**
- * @file session.js
- * @stamp {"utc":"2026-04-02T17:30:00.000Z"}
+ * @file data/default-user/extensions/localyze/session.js
+ * @stamp {"utc":"2026-04-03T15:20:00.000Z"}
  * @architectural-role Session Identity
  * @description
- * Manages the per-chat sessionId and initializes extension settings using 
- * the profile-aware data layer. This ensures every chat has a unique 
- * identifier for background file organization.
+ * Manages the per-chat sessionId and initializes extension settings.
  * 
- * @updates:
- * - Delegated settings initialization and migration to settings/data.js.
- * - Switched to getMetaSettings() for session registration in knownSessions.
- * - Hardened chat_metadata access to prevent errors on empty metadata.
+ * @updates
+ * - Migration: Replaced direct mutation of state.sessionId with setSessionId().
+ * - Standardized access to meta settings via getMetaSettings().
  *
  * @api-declaration
- * initSession() — idempotent; reads or generates sessionId, registers it.
+ * initSession() — Idempotent; reads or generates sessionId, registers it.
  *
  * @contract
  *   assertions:
- *     purity: stateful/IO
- *     state_ownership: [state.sessionId]
+ *     purity: Stateful/IO
+ *     state_ownership: [state.sessionId (via setter)]
  *     external_io: [chat_metadata.localyze (read/write),
  *       getMetaSettings().knownSessions (write),
  *       saveMetadataDebounced(), saveSettingsDebounced()]
@@ -26,7 +23,7 @@
 
 import { chat_metadata, saveSettingsDebounced } from '../../../../script.js'
 import { saveMetadataDebounced } from '../../../extensions.js'
-import { state } from './state.js'
+import { state, setSessionId } from './state.js'
 import { initSettings, getMetaSettings } from './settings/data.js'
 
 /**
@@ -43,13 +40,11 @@ function generateSessionId() {
  * This is called by the bootstrapper on every CHAT_CHANGED.
  */
 export function initSession() {
-    // 1. Initialize the profile-based settings structure
-    // This handles migrations from old flat-key versions if necessary.
+    // 1. Initialize settings structure
     initSettings()
 
     // 2. Handle sessionId generation/persistence
     // The sessionId is stored in chat_metadata (the specific .jsonl file) 
-    // to ensure the link between a chat and its backgrounds survives renames.
     if (!chat_metadata.localyze) {
         chat_metadata.localyze = {};
     }
@@ -61,16 +56,18 @@ export function initSession() {
         saveMetadataDebounced();
     }
 
-    // Sync runtime state
-    state.sessionId = chat_metadata.localyze.sessionId;
+    // Sync runtime state using the Setter API (Stateful Owner Principle)
+    setSessionId(chat_metadata.localyze.sessionId);
 
     // 3. Register the session in the global (meta) knownSessions registry
-    // This registry is used by the Orphan Detector to know which background 
-    // files are still "owned" by active chats.
     const root = getMetaSettings();
     if (!root.knownSessions.includes(state.sessionId)) {
         console.debug(`[Localyze:Session] Registering session ${state.sessionId} in knownSessions.`);
-        root.knownSessions.push(state.sessionId);
+        
+        // Update the array and persist via the meta setting route
+        const updatedSessions = [...root.knownSessions, state.sessionId];
+        root.knownSessions = updatedSessions;
+        
         saveSettingsDebounced();
     }
 }

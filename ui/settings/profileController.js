@@ -1,11 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/profileController.js
- * @stamp {"utc":"2026-04-01T13:30:00.000Z"}
- * @architectural-role Stateful Owner / Profile Logic
+ * @stamp {"utc":"2026-04-03T17:00:00.000Z"}
+ * @architectural-role UI Controller / Profile Logic
  * @description
  * Manages the logic for settings profiles and "dirty" state tracking.
  * Provides the bridge between the UI dropdown and the underlying 
  * profile dictionary in settings/data.js.
+ *
+ * @updates
+ * - Migration: Replaced direct mutation of extension_settings with switchProfile,
+ *   saveCurrentProfile, createProfile, renameCurrentProfile, and deleteCurrentProfile.
+ * - Decoupling: The controller now purely coordinates UI events and calls setters.
  *
  * @api-declaration
  * isStateDirty(meta) -> boolean
@@ -18,13 +23,20 @@
  *
  * @contract
  *   assertions:
- *     purity: Stateful Owner
- *     state_ownership: [extension_settings.localyze.profiles, .activeState]
- *     external_io: [saveSettingsDebounced, callPopup, toastr]
+ *     purity: UI Controller
+ *     state_ownership: [none]
+ *     external_io: [settings/data.js, callPopup, toastr]
  */
 
-import { saveSettingsDebounced, callPopup } from '../../../../../../script.js';
+import { callPopup } from '../../../../../../script.js';
 import { escapeHtml } from './templates.js';
+import { 
+    saveCurrentProfile, 
+    switchProfile, 
+    createProfile, 
+    renameCurrentProfile, 
+    deleteCurrentProfile 
+} from '../data.js';
 
 /**
  * Compares the active temporary state against the saved profile data.
@@ -72,8 +84,8 @@ export function refreshProfileDropdown(meta) {
  * @param {object} meta Root metadata object.
  */
 export function handleProfileSave(meta) {
-    meta.profiles[meta.currentProfileName] = structuredClone(meta.activeState);
-    saveSettingsDebounced();
+    // Protected Update: Delegate persistence to Stateful Owner
+    saveCurrentProfile();
     updateDirtyIndicator(meta);
     if (window.toastr) window.toastr.success(`Profile "${meta.currentProfileName}" saved.`, 'Localyze');
 }
@@ -91,9 +103,8 @@ export async function handleProfileAdd(meta, onRefresh) {
         return;
     }
 
-    meta.profiles[name] = structuredClone(meta.activeState);
-    meta.currentProfileName = name;
-    saveSettingsDebounced();
+    // Protected Update: Delegate creation to Stateful Owner
+    createProfile(name);
     onRefresh();
 }
 
@@ -110,10 +121,8 @@ export async function handleProfileRename(meta, onRefresh) {
         return;
     }
 
-    meta.profiles[newName] = meta.profiles[meta.currentProfileName];
-    delete meta.profiles[meta.currentProfileName];
-    meta.currentProfileName = newName;
-    saveSettingsDebounced();
+    // Protected Update: Delegate rename to Stateful Owner
+    renameCurrentProfile(newName);
     onRefresh();
 }
 
@@ -132,10 +141,7 @@ export async function handleProfileDelete(meta, onRefresh) {
     );
     if (!confirmed) return;
 
-    delete meta.profiles[meta.currentProfileName];
-    meta.currentProfileName = Object.keys(meta.profiles)[0];
-    meta.activeState = structuredClone(meta.profiles[meta.currentProfileName]);
-    
-    saveSettingsDebounced();
+    // Protected Update: Delegate deletion to Stateful Owner
+    deleteCurrentProfile();
     onRefresh();
 }
