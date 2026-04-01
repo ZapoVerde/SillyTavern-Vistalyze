@@ -12,4 +12,3 @@ chz_ledger_*.json
 # Node/Build junk (if applicable)
 node_modules/
 dist/
-docs/
