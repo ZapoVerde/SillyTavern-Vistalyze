@@ -38,7 +38,7 @@ import { getContext } from '../../../../extensions.js';
 import { state } from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { detectDescriber } from '../detector.js';
-import { fetchPreviewBlob, generate } from '../imageCache.js';
+import { fetchPreviewBlob, fetchFullBlob } from '../imageCache.js';
 import { buildDescriberContext, slugify } from '../utils/history.js';
 
 // ─── Session Management ──────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ import { buildDescriberContext, slugify } from '../utils/history.js';
 export function syncDraftState() {
     state._draftLocations = structuredClone(state.locations);
     state._proposedImageBlob = null;
-    state._proposedFullFile = null;
+    state._proposedFullBlob = null;
     state._activeWorkshopKey = null;
 }
 
@@ -150,10 +150,10 @@ export async function generateFullPreview(key) {
     if (!draft || !draft.imagePrompt) return null;
 
     try {
-        const filename = await generate(key, draft, state.sessionId);
-        state._proposedFullFile = filename;
-        state.fileIndex.add(filename);
-        return filename;
+        // Fetch only — no upload. The blob is a nameless candidate until Finalize & Apply.
+        const blobUrl = await fetchFullBlob(draft);
+        state._proposedFullBlob = blobUrl;
+        return blobUrl;
     } catch (err) {
         console.error('[Localyze:Preview] Full preview generation failed:', err);
         throw err;

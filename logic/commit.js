@@ -31,7 +31,7 @@
 import { saveChatConditional } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
 import { state, updateState } from '../state.js';
-import { generate } from '../imageCache.js';
+import { generate, uploadBlob } from '../imageCache.js';
 import { set as setBg } from '../background.js';
 import {
     lockedWriteLocationDef,
@@ -95,15 +95,18 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     await commitDraftLibrary();
 
     // 2. Determine if generation is required.
-    // Skipped if the user already generated a full-res preview for this exact draft.
+    // If the user pre-fetched a full-res blob via "Generate Full Image", upload that
+    // instead of hitting Pollinations again. Filename assigned here, at write time.
     const filename = `localyze_${state.sessionId}_${targetKey}.png`;
-    const hasPregeneratedImage = state._proposedFullFile === filename;
-    const needsGeneration = !hasPregeneratedImage && (forceRegen || visualsModified || !state.fileIndex.has(filename));
+    const hasPregeneratedBlob = state._proposedFullBlob !== null;
+    const needsGeneration = hasPregeneratedBlob || forceRegen || visualsModified || !state.fileIndex.has(filename);
 
     if (needsGeneration) {
-        // Await full-res generation — caller holds the modal open until this resolves.
-        // Throws on failure, which propagates to the UI so the modal stays open.
-        const newFile = await generate(targetKey, draftDef, state.sessionId);
+        // Upload the pre-fetched blob, or generate fresh if none exists.
+        // Caller holds the modal open until this resolves.
+        const newFile = hasPregeneratedBlob
+            ? await uploadBlob(state._proposedFullBlob, filename)
+            : await generate(targetKey, draftDef, state.sessionId);
 
         state.fileIndex.add(newFile);
 
@@ -136,5 +139,5 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     state._draftLocations = {};
     state._activeWorkshopKey = null;
     state._proposedImageBlob = null;
-    state._proposedFullFile = null;
+    state._proposedFullBlob = null;
 }

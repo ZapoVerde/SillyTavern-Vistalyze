@@ -89,11 +89,51 @@ async function validateImageResponse(response) {
 export async function fetchPreviewBlob(prompt) {
     const url = buildPollinationsUrl(prompt, { width: '320', height: '180' })
     const headers = await getAuthHeaders()
-    
+
     const res = await fetch(url, { headers })
     await validateImageResponse(res)
-    
+
     return URL.createObjectURL(await res.blob())
+}
+
+/**
+ * Fetches a full-resolution image from Pollinations using the same template
+ * as generate(), but returns a local blob URL instead of uploading to the server.
+ * The filename is assigned later, at upload time.
+ */
+export async function fetchFullBlob(locationDef) {
+    const template = getSettings().imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
+    const finalPrompt = interpolateImagePrompt(template, locationDef)
+    const url = buildPollinationsUrl(finalPrompt)
+    const headers = await getAuthHeaders()
+
+    const res = await fetch(url, { headers })
+    await validateImageResponse(res)
+
+    return URL.createObjectURL(await res.blob())
+}
+
+/**
+ * Uploads a pre-fetched blob URL to the server backgrounds store.
+ * Filename is assigned here — this is the "write" step.
+ */
+export async function uploadBlob(blobUrl, filename) {
+    const res = await fetch(blobUrl)
+    const blob = await res.blob()
+    const file = new File([blob], filename, { type: 'image/png' })
+
+    const formData = new FormData()
+    formData.append('avatar', file)
+
+    const uploadRes = await fetch('/api/backgrounds/upload', {
+        method: 'POST',
+        headers: getRequestHeaders({ omitContentType: true }),
+        body: formData,
+    })
+
+    if (!uploadRes.ok) throw new Error(`Background upload failed: ${uploadRes.status} ${uploadRes.statusText}`)
+
+    return filename
 }
 
 export async function fetchFileIndex(sessionId) {

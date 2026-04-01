@@ -68,8 +68,8 @@ export async function renderArchitect() {
     let proposedImgUrl = '';
     let proposedLabel = 'Proposed';
 
-    if (state._proposedFullFile) {
-        proposedImgUrl = `backgrounds/${encodeURIComponent(state._proposedFullFile)}?v=${Date.now()}`;
+    if (state._proposedFullBlob) {
+        proposedImgUrl = state._proposedFullBlob;
         proposedLabel = 'Full Resolution';
     } else if (state._proposedImageBlob) {
         proposedImgUrl = state._proposedImageBlob;

@@ -104,7 +104,7 @@ export function bindWorkshopEvents(handlers) {
 
         if (this.id === 'lz-arch-visuals') {
             state._proposedImageBlob = null;
-            state._proposedFullFile = null;
+            state._proposedFullBlob = null;
             $('#lz-preview-after').attr('src', '').hide();
         }
     });
