@@ -107,7 +107,7 @@ export function getLibraryListHTML(drafts, currentKey) {
 /**
  * Architect View: Grid Layout for editing.
  */
-export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl) {
+export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, proposedLabel = 'Proposed') {
     return `
     <div class="lz-architect-grid">
         <div class="lz-architect-fields">
@@ -121,7 +121,9 @@ export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl) {
             <textarea id="lz-arch-visuals" class="text_pole" rows="6" style="width:100%; font-family:monospace; font-size:0.9em;">${escapeHtml(draft.imagePrompt)}</textarea>
             
             <div class="lz-architect-actions">
-                <button id="lz-arch-preview-btn" class="menu_button">Regenerate Preview</button>
+                <button id="lz-arch-preview-btn" class="menu_button">Thumbnail Preview</button>
+                <button id="lz-arch-generate-full-btn" class="menu_button">Generate Full Image</button>
+                <span id="lz-generate-full-spinner" class="lz-hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
             </div>
         </div>
         
@@ -131,7 +133,7 @@ export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl) {
                 <img id="lz-preview-before" src="${currentImgUrl}" alt="No current BG" style="display: ${currentImgUrl ? 'block' : 'none'};" />
             </div>
             <div class="lz-preview-box">
-                <small>Proposed (Dev Mode)</small>
+                <small>${escapeHtml(proposedLabel)}</small>
                 <img id="lz-preview-after" src="${proposedImgUrl}" alt="No preview" style="display: ${proposedImgUrl ? 'block' : 'none'};" />
                 <div id="lz-preview-spinner" class="lz-hidden">
                     <i class="fa-solid fa-spinner fa-spin"></i>

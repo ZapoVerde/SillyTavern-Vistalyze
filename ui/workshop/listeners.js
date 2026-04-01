@@ -22,11 +22,12 @@
  */
 
 import { state } from '../../state.js';
-import { 
-    regenField, 
-    discoverySearch, 
-    previewProposedImage, 
-    deleteDraftLocation 
+import {
+    regenField,
+    discoverySearch,
+    previewProposedImage,
+    generateFullPreview,
+    deleteDraftLocation
 } from '../../logic/maintenance.js';
 
 /**
@@ -88,17 +89,24 @@ export function bindWorkshopEvents(handlers) {
 
     // ─── Architect Tab Listeners ──────────────────────────────────────────
     
-    // Live Input Syncing: Updates state._draftLocations as user types
+    // Live Input Syncing: Updates state._draftLocations as user types.
+    // Editing the visuals prompt invalidates any existing proposed preview.
     $overlay.on('input', '#lz-arch-name, #lz-arch-definition, #lz-arch-visuals', function() {
         const key = state._activeWorkshopKey;
         if (!key || !state._draftLocations[key]) return;
-        
-        const fieldMap = { 
-            'lz-arch-name': 'name', 
-            'lz-arch-definition': 'description', 
-            'lz-arch-visuals': 'imagePrompt' 
+
+        const fieldMap = {
+            'lz-arch-name': 'name',
+            'lz-arch-definition': 'description',
+            'lz-arch-visuals': 'imagePrompt'
         };
         state._draftLocations[key][fieldMap[this.id]] = $(this).val();
+
+        if (this.id === 'lz-arch-visuals') {
+            state._proposedImageBlob = null;
+            state._proposedFullFile = null;
+            $('#lz-preview-after').attr('src', '').hide();
+        }
     });
 
     // AI Refinement (The "Sparks"): Triggers targeted LLM extraction
@@ -116,7 +124,27 @@ export function bindWorkshopEvents(handlers) {
         }
     });
 
-    // Preview Generation (Dev Mode)
+    // Full-Resolution Preview: generates and uploads the full-res image.
+    // Finalize & Apply will skip generation if this is still valid.
+    $overlay.on('click', '#lz-arch-generate-full-btn', async function() {
+        const key = state._activeWorkshopKey;
+        const $btn = $(this);
+        const $spinner = $('#lz-generate-full-spinner');
+
+        $btn.prop('disabled', true);
+        $spinner.removeClass('lz-hidden');
+        try {
+            await generateFullPreview(key);
+            renderArchitect();
+        } catch (err) {
+            if (window.toastr) window.toastr.error('Full image generation failed: ' + err.message, 'Localyze');
+        } finally {
+            $btn.prop('disabled', false);
+            $spinner.addClass('lz-hidden');
+        }
+    });
+
+    // Thumbnail Preview (Dev Mode)
     $overlay.on('click', '#lz-arch-preview-btn', async function() {
         const key = state._activeWorkshopKey;
         const $spinner = $('#lz-preview-spinner');

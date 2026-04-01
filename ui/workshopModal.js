@@ -65,9 +65,18 @@ export async function renderArchitect() {
         ? `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}` 
         : '';
         
-    const proposedImgUrl = state._proposedImageBlob ?? '';
+    let proposedImgUrl = '';
+    let proposedLabel = 'Proposed';
 
-    $container.html(getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl));
+    if (state._proposedFullFile) {
+        proposedImgUrl = `backgrounds/${encodeURIComponent(state._proposedFullFile)}?v=${Date.now()}`;
+        proposedLabel = 'Full Resolution';
+    } else if (state._proposedImageBlob) {
+        proposedImgUrl = state._proposedImageBlob;
+        proposedLabel = 'Thumbnail Preview';
+    }
+
+    $container.html(getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, proposedLabel));
 }
 
 /**

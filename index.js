@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-04-02T17:00:00.000Z"}
- * @version 1.0.45
+ * @version 1.0.46
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * SillyTavern Location Engine (Localyze) — extension entry point.

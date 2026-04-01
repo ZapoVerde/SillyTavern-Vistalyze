@@ -55,12 +55,16 @@ export function set(filename) {
     }
 
     // 3. Cache Busting: Append a timestamp to the URL.
-    // This forces the browser to re-download the image even if the filename is identical 
+    // This forces the browser to re-download the image even if the filename is identical
     // to a previously cached version (useful for overwrites).
     const cacheBuster = `v=${Date.now()}`;
     const cssUrl = `url("backgrounds/${encodeURIComponent(filename)}?${cacheBuster}")`
-    
-    chat_metadata[BG_KEY] = cssUrl
+
+    // NOTE: We intentionally do NOT write to chat_metadata[BG_KEY] (ST's native
+    // 'custom_background' key). If we did, ST would apply the URL on next startup
+    // before this extension has a chance to verify the file still exists, causing
+    // a guaranteed 404. Localyze's boot sequence (bootstrapper.js) handles
+    // background restoration after filesystem verification.
     chat_metadata[MANAGED_KEY] = true
 
     // UI Fade Sequence

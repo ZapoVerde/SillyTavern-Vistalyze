@@ -94,9 +94,11 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     // 1. Sync the library (Write 1)
     await commitDraftLibrary();
 
-    // 2. Determine if generation is required (Missing file OR explicit change/force)
+    // 2. Determine if generation is required.
+    // Skipped if the user already generated a full-res preview for this exact draft.
     const filename = `localyze_${state.sessionId}_${targetKey}.png`;
-    const needsGeneration = forceRegen || visualsModified || !state.fileIndex.has(filename);
+    const hasPregeneratedImage = state._proposedFullFile === filename;
+    const needsGeneration = !hasPregeneratedImage && (forceRegen || visualsModified || !state.fileIndex.has(filename));
 
     if (needsGeneration) {
         // Await full-res generation — caller holds the modal open until this resolves.
@@ -134,4 +136,5 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     state._draftLocations = {};
     state._activeWorkshopKey = null;
     state._proposedImageBlob = null;
+    state._proposedFullFile = null;
 }

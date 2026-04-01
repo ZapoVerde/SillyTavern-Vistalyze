@@ -38,7 +38,7 @@ import { getContext } from '../../../../extensions.js';
 import { state } from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { detectDescriber } from '../detector.js';
-import { fetchPreviewBlob } from '../imageCache.js';
+import { fetchPreviewBlob, generate } from '../imageCache.js';
 import { buildDescriberContext, slugify } from '../utils/history.js';
 
 // ─── Session Management ──────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ import { buildDescriberContext, slugify } from '../utils/history.js';
 export function syncDraftState() {
     state._draftLocations = structuredClone(state.locations);
     state._proposedImageBlob = null;
+    state._proposedFullFile = null;
     state._activeWorkshopKey = null;
 }
 
@@ -133,6 +134,28 @@ export async function previewProposedImage(key) {
         return blobUrl;
     } catch (err) {
         console.error('[Localyze:Preview] Workshop preview failed:', err);
+        throw err;
+    }
+}
+
+/**
+ * Full-Resolution Preview.
+ * Generates and uploads the full-res image for a draft, storing the filename
+ * so Finalize & Apply can skip generation if the prompt hasn't changed.
+ *
+ * @param {string} key The draft location key.
+ */
+export async function generateFullPreview(key) {
+    const draft = state._draftLocations[key];
+    if (!draft || !draft.imagePrompt) return null;
+
+    try {
+        const filename = await generate(key, draft, state.sessionId);
+        state._proposedFullFile = filename;
+        state.fileIndex.add(filename);
+        return filename;
+    } catch (err) {
+        console.error('[Localyze:Preview] Full preview generation failed:', err);
         throw err;
     }
 }
