@@ -1,11 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshopModal.js
- * @stamp {"utc":"2026-04-02T14:00:00.000Z"}
+ * @stamp {"utc":"2026-04-02T14:30:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
- * High-level coordinator for the Location Workshop. Manages state-to-view 
- * transitions and orchestrates re-renders using pure templates and 
- * decoupled listeners.
+ * High-level coordinator for the Location Workshop. Updated to fix the 
+ * "tiny modal" bug by ensuring the flexbox chain is maintained during 
+ * tab switching.
+ *
+ * @updates
+ * - Synchronized tab active classes with style.css (.lz-active).
+ * - Hardened panel visibility logic to ensure display:flex is inherited correctly.
+ * - Optimized re-rendering triggers.
  *
  * @api-declaration
  * renderLibrary()   — updates the Library tab content.
@@ -32,6 +37,7 @@ import { bindWorkshopEvents } from './workshop/listeners.js';
 
 /**
  * Renders the Library list based on _draftLocations.
+ * Injects HTML into the .lz-library-list container.
  */
 export function renderLibrary() {
     const drafts = Object.entries(state._draftLocations);
@@ -41,6 +47,7 @@ export function renderLibrary() {
 
 /**
  * Renders the Architect tab for the current active workshop key.
+ * Handles the display of current background vs. proposed preview.
  */
 export async function renderArchitect() {
     const key = state._activeWorkshopKey;
@@ -53,6 +60,7 @@ export async function renderArchitect() {
     }
 
     const filename = `localyze_${state.sessionId}_${key}.png`;
+    // Use cache-busting timestamp to ensure regenerated images show up
     const currentImgUrl = state.fileIndex.has(filename) 
         ? `backgrounds/${encodeURIComponent(filename)}?t=${Date.now()}` 
         : '';
@@ -63,21 +71,27 @@ export async function renderArchitect() {
 
 /**
  * Switches the active tab and triggers the appropriate render logic.
- * @param {string} tabName 
+ * Ensures the flexbox chain is preserved by correctly toggling .lz-hidden.
+ * @param {string} tabName The ID suffix of the tab (library, architect, explorer)
  */
 export function switchTab(tabName) {
-    $('.lz-tab-btn').removeClass('menu_button_success').addClass('menu_button');
-    $(`.lz-tab-btn[data-tab="${tabName}"]`).removeClass('menu_button').addClass('menu_button_success');
+    // 1. Update Button States
+    $('.lz-tab-btn').removeClass('lz-active');
+    $(`.lz-tab-btn[data-tab="${tabName}"]`).addClass('lz-active');
     
+    // 2. Toggle Panel Visibility
+    // Removing lz-hidden allows .lz-tab-panel's display:flex to take over
     $('.lz-tab-panel').addClass('lz-hidden');
     $(`#lz-tab-${tabName}`).removeClass('lz-hidden');
 
+    // 3. Trigger Renderers
     if (tabName === 'library') renderLibrary();
     if (tabName === 'architect') renderArchitect();
 }
 
 /**
  * Entry point to inject the workshop and bind its listeners.
+ * Idempotent check prevents multiple injections.
  */
 export function injectWorkshop() {
     if ($('#lz-workshop-overlay').length) return;
@@ -93,6 +107,7 @@ export function injectWorkshop() {
 
 /**
  * Primary entry point to display the Workshop modal.
+ * Ensures the shell is injected before showing.
  * @param {string} tab Initial tab to display.
  */
 export function openWorkshop(tab = 'library') {

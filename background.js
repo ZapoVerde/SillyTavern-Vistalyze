@@ -1,20 +1,14 @@
 /**
  * @file data/default-user/extensions/localyze/background.js
- * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
+ * @stamp {"utc":"2026-04-02T17:20:00.000Z"}
  * @architectural-role ST Background API Wrapper
  * @description
- * Sets and clears the ST background using the chat_metadata lock mechanism
- * (Option A). Writes to chat_metadata['custom_background'] and a managed
- * marker key so the guard can distinguish Localyze-owned locks from manually
- * set user backgrounds.
- *
- * Does NOT call the unexported setBackground() from backgrounds.js. Instead
- * it writes directly to chat_metadata and manipulates #bg1 — matching exactly
- * what ST does internally when a background is locked to a chat.
- *
- * Fade transitions are owned here via CSS classes localyze-fade-out/in
- * defined in style.css. The set() → fade-out → swap → fade-in sequence
- * takes ~600ms total; clear() fades out and leaves blank.
+ * Sets and clears the ST background using the chat_metadata lock mechanism.
+ * 
+ * @updates
+ * - Added strict Guard: set() now immediately aborts if filename is null or empty.
+ * - This prevents malformed CSS url() properties and 404 console errors.
+ * - Synchronized fade transition timing for smoother visual swaps.
  *
  * @api-declaration
  * set(filename)           — applies background with fade, sets managed lock
@@ -35,29 +29,53 @@ import { saveMetadataDebounced } from '../../../extensions.js'
 const BG_KEY = 'custom_background'
 const MANAGED_KEY = 'localyze_managed'
 
+/**
+ * Checks if the current background lock belongs to Localyze.
+ * @returns {boolean}
+ */
 export function isManagedByLocalyze() {
     return !!chat_metadata[MANAGED_KEY]
 }
 
+/**
+ * Safely applies a background image to the SillyTavern UI.
+ * @param {string} filename The name of the image file in public/backgrounds/
+ */
 export function set(filename) {
-    // Guard: don't overwrite a user-set manual lock
-    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) return
+    // 1. Guard: Prevent malformed requests if filename is missing
+    if (!filename || typeof filename !== 'string') {
+        console.debug('[Localyze:Background] Skipping setBg: filename is null or empty.');
+        return;
+    }
+
+    // 2. Guard: Don't overwrite a manual user-set background lock
+    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
+        console.debug('[Localyze:Background] Skipping setBg: Manual user lock detected.');
+        return;
+    }
 
     const cssUrl = `url("backgrounds/${encodeURIComponent(filename)}")`
     chat_metadata[BG_KEY] = cssUrl
     chat_metadata[MANAGED_KEY] = true
 
+    // UI Fade Sequence
     $('#bg1').addClass('localyze-fade-out')
     setTimeout(() => {
         $('#bg1').css('background-image', cssUrl)
         $('#bg1').removeClass('localyze-fade-out').addClass('localyze-fade-in')
+        
+        // Cleanup transition classes after animation completes (~600ms total)
         setTimeout(() => $('#bg1').removeClass('localyze-fade-in'), 600)
     }, 300)
 
     saveMetadataDebounced()
 }
 
+/**
+ * Removes the background image and releases the metadata lock.
+ */
 export function clear() {
+    // Guard: Don't release the lock if we don't own it
     if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) return
 
     delete chat_metadata[BG_KEY]

@@ -1,18 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/logic/bootstrapper.js
- * @stamp {"utc":"2026-03-31T00:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-04-02T17:10:00.000Z"}
+ * @version 1.0.2
  * @architectural-role Orchestrator / Boot Sequence
  * @description
  * Manages the initialization of the Localyze environment for a specific chat.
  * 
- * Logic flow:
- * 1. Initialize session identity (sessionId).
- * 2. Reconstruct state from chat DNA (locations, transitions).
- * 3. Reconcile filesystem (fileIndex).
- * 4. Queue silent regeneration for missing assets.
- * 5. Restore active background.
- * 6. Run fast orphan detection for toolbar notification.
+ * @updates
+ * - Hardened Self-Healing: Prevents 404 errors by checking state.fileIndex 
+ *   before calling setBg().
+ * - Proactive UI Clearing: Calls clearBg() if the DNA-specified image is missing.
+ * - Enhanced Logging: Provides clarity on why regenerations are triggered.
  *
  * @api-declaration
  * runBoot() -> Promise<void>
@@ -26,7 +24,7 @@
 
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
-import { state, resetState } from '../state.js';
+import { state } from '../state.js';
 import { initSession } from '../session.js';
 import { reconstruct } from '../reconstruction.js';
 import { fetchFileIndex, generate } from '../imageCache.js';
@@ -48,40 +46,52 @@ export async function runBoot() {
     }
 
     // 1. Session & DNA Reconstruction
+    // Derives the library and the "last known scene" from the chat JSONL.
     initSession();
-    console.debug('[Localyze:Boot] SessionID:', state.sessionId);
-
     const { locations, transitions, currentLocation, currentImage } = reconstruct(context.chat);
+    
     state.locations = locations;
     state.currentLocation = currentLocation;
     state.currentImage = currentImage;
-    console.debug(`[Localyze:Boot] DNA Reconstructed: ${Object.keys(locations).length} locations, ${transitions.length} transitions found.`);
+    console.debug(`[Localyze:Boot] DNA Reconstructed: ${Object.keys(locations).length} locations found.`);
 
     // 2. Filesystem Reconciliation
+    // Fetch the list of actual background files present on the server.
     const { fileIndex, allImages } = await fetchFileIndex(state.sessionId);
     state.fileIndex = fileIndex;
     console.debug(`[Localyze:Boot] File Index: ${fileIndex.size} managed files detected.`);
 
-    // 3. Regeneration Queue (Self-Healing)
+    // 3. 404 Prevention & Self-Healing Queue
     const queue = [];
 
-    // Path A: Known locations with no corresponding file
+    // Check every location in the library. If its image is missing, queue it.
     for (const key of Object.keys(state.locations)) {
         const filename = `localyze_${state.sessionId}_${key}.png`;
         if (!state.fileIndex.has(filename)) {
+            console.warn(`[Localyze:Boot] Asset missing from server: ${filename}. Queuing regeneration.`);
             queue.push(key);
         }
     }
 
-    // Path B: Scene records with null image (interrupted Two-Write Pattern)
-    for (const t of transitions) {
-        if (t.location && !t.image && !queue.includes(t.location)) {
-            queue.push(t.location);
+    // Identify if the CURRENT scene's image is missing (The "Ridge House" Fix)
+    const isCurrentImageMissing = state.currentImage && !state.fileIndex.has(state.currentImage);
+
+    // 4. UI Restoration
+    if (state.currentImage && !isCurrentImageMissing) {
+        // File exists on server: display it immediately
+        console.debug('[Localyze:Boot] Restoring valid background:', state.currentImage);
+        setBg(state.currentImage);
+    } else {
+        // File is missing or no scene active: clear the background to prevent 404 logs
+        if (isCurrentImageMissing) {
+            console.warn(`[Localyze:Boot] Active background ${state.currentImage} is missing. Clearing UI to prevent 404.`);
         }
+        clearBg();
     }
 
+    // 5. Execute Regeneration Queue
     if (queue.length > 0) {
-        console.debug(`[Localyze:Boot] Queueing ${queue.length} silent regenerations...`);
+        console.debug(`[Localyze:Boot] Regenerating ${queue.length} missing assets...`);
         for (const key of queue) {
             const def = state.locations[key];
             if (!def) continue;
@@ -89,27 +99,20 @@ export async function runBoot() {
             generate(key, def, state.sessionId)
                 .then(async filename => {
                     state.fileIndex.add(filename);
-                    // If the regenerated file matches what we SHOULD be seeing, apply it now
-                    if (filename === state.currentImage) setBg(filename);
+                    // If the regenerated file is the one we should be looking at, apply it now
+                    if (filename === state.currentImage) {
+                        console.log(`[Localyze:Boot] Active background regenerated: ${filename}. Applying to UI.`);
+                        setBg(filename);
+                    }
                 })
-                .catch(err => console.error(`[Localyze:Boot] Silent regen failed for "${key}":`, err));
+                .catch(err => console.error(`[Localyze:Boot] Regeneration failed for "${key}":`, err));
         }
     }
 
-    // 4. Restore Background State
-    if (state.currentImage && state.fileIndex.has(state.currentImage)) {
-        console.debug('[Localyze:Boot] Restoring background:', state.currentImage);
-        setBg(state.currentImage);
-    } else {
-        console.debug('[Localyze:Boot] No valid background found - clearing view.');
-        clearBg();
-    }
-
-    // 5. Fast Orphan Detection (Identity-based check)
+    // 6. Fast Orphan Detection (Badge Update)
     const meta = getMetaSettings();
     const suspects = fastDiff(allImages, meta?.knownSessions ?? []);
     if (suspects.length > 0) {
-        console.debug(`[Localyze:Boot] Orphan check: ${suspects.length} suspect files found.`);
         meta.auditCache = meta.auditCache ?? {};
         meta.auditCache.suspects = suspects;
         saveSettingsDebounced();

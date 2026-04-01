@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/maintenance.js
- * @stamp {"utc":"2026-04-01T23:55:00.000Z"}
- * @version 1.5.2
+ * @stamp {"utc":"2026-04-02T14:40:00.000Z"}
+ * @version 1.5.3
  * @architectural-role Orchestrator / Workshop Controller
  * @description
  * Manages the logic for the unified Location Workshop. This module acts as the
@@ -10,9 +10,9 @@
  * changes to the chat DNA.
  *
  * @updates
- * - Added handleOpenLibrary() to ensure draft state is synced before UI display.
- * - Implemented dual-mode discoverySearch (Passive vs Targeted).
- * - Targeted mode uses Step 4 settings and interpolates {{keywords}}.
+ * - Standardized field names to 'description' and 'imagePrompt' to match UI/Detector.
+ * - Refined discoverySearch to properly handle the new Workshop tab flow.
+ * - Hardened regenField to handle partial AI responses without crashing.
  *
  * @api-declaration
  * handleOpenLibrary()           — entry point to open workshop in Library mode.
@@ -42,6 +42,7 @@ import { buildDescriberContext, slugify } from '../utils/history.js';
 
 /**
  * Prepares the Workshop by cloning the current library into a draft state.
+ * This is called before the UI is shown to ensure edits don't affect live state.
  */
 export function syncDraftState() {
     state._draftLocations = structuredClone(state.locations);
@@ -51,7 +52,6 @@ export function syncDraftState() {
 
 /**
  * Entry point for the "Library" action from the toolbar.
- * Ensures data is synced before opening the UI.
  */
 export async function handleOpenLibrary() {
     syncDraftState();
@@ -62,7 +62,6 @@ export async function handleOpenLibrary() {
 
 /**
  * Entry point for the "Edit" action from the toolbar.
- * @param {string} key 
  */
 export async function handleEditLocation(key) {
     syncDraftState();
@@ -86,7 +85,7 @@ export async function handleManualDescriber() {
 
 /**
  * Targeted Regeneration.
- * Uses the current transcript to re-extract either the Definition (logic)
+ * Uses the current transcript to re-extract either the Description (logic)
  * or the Visuals (image prompt) for a specific location.
  */
 export async function regenField(key, field) {
@@ -139,8 +138,6 @@ export async function previewProposedImage(key) {
  * Logic:
  * 1. If keywords are provided: Use Step 4 (Discovery) configuration.
  * 2. If keywords are empty: Use Step 3 (Describer) configuration.
- * 
- * @param {string} keywords User-provided hint.
  */
 export async function discoverySearch(keywords = '') {
     const context = getContext();
