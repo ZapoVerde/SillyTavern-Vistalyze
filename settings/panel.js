@@ -20,7 +20,9 @@
  *     external_io: [#extensions_settings DOM, settings/data.js]
  */
 
-import { saveSettingsDebounced } from '../../../../../script.js';
+import { getRequestHeaders } from '../../../../../script.js';
+import { runFullAudit } from '../orphanDetector.js';
+import { openOrphanModal } from '../ui/orphanModal.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
 import { 
     getSettings, 
@@ -128,6 +130,13 @@ function bindHandlers() {
         discoveryPrompt:     'Step 4 — Targeted Discovery',
         imagePromptTemplate: 'Image Prompt Template',
     };
+    const promptVariables = {
+        booleanPrompt:       ['current_location', 'history', 'message'],
+        classifierPrompt:    ['key_list', 'filtered_list', 'history', 'message'],
+        describerPrompt:     ['context'],
+        discoveryPrompt:     ['keywords', 'context'],
+        imagePromptTemplate: ['image_prompt', 'name', 'description'],
+    };
 
     $('#lz-settings').on('change', '#lz-profile-select', function() {
         const newName = $(this).val();
@@ -145,7 +154,7 @@ function bindHandlers() {
 
     $('#lz-settings').on('click', '.lz-open-prompt', async function () {
         const key = $(this).data('prompt-key');
-        const updated = await openPromptModal(key, promptTitles[key], promptDefaults[key]);
+        const updated = await openPromptModal(key, promptTitles[key], promptDefaults[key], promptVariables[key] ?? []);
         if (updated) updateDirtyIndicator(meta);
     });
 
@@ -183,9 +192,45 @@ function bindHandlers() {
 
     $('#lz-settings').on('change', '#lz-parallax-enabled', function () {
         const val = $(this).prop('checked');
-        
+
         // Protected Update: Update global feature flag
         updateMetaSetting('parallaxEnabled', val);
+    });
+
+    $('#lz-settings').on('click', '#lz-audit-btn', async function () {
+        const $btn = $(this);
+        const originalHtml = $btn.html();
+
+        try {
+            $btn.html('<i class="fa-solid fa-spinner fa-spin"></i> Auditing...');
+
+            const res = await fetch('/api/backgrounds/all', {
+                method: 'POST',
+                headers: getRequestHeaders(),
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            const images = data.images ?? [];
+
+            const orphans = await runFullAudit(images);
+
+            updateMetaSetting('auditCache', {
+                lastAudit: new Date().toISOString(),
+                orphans,
+                suspects: orphans,
+            });
+
+            if (orphans.length > 0) {
+                openOrphanModal(orphans);
+            } else {
+                if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze');
+            }
+        } catch (err) {
+            console.error('[Localyze] Audit failed:', err);
+            if (window.toastr) window.toastr.error('Audit failed. See console for details.', 'Localyze');
+        } finally {
+            $btn.html(originalHtml);
+        }
     });
 }
 

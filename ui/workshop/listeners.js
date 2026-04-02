@@ -25,7 +25,6 @@ import {
     regenField,
     discoverySearch,
     previewProposedImage,
-    generateFullPreview,
     deleteDraftLocation
 } from '../../logic/maintenance.js';
 
@@ -127,26 +126,7 @@ export function bindWorkshopEvents(handlers) {
         }
     });
 
-    // Full-Resolution Preview
-    $overlay.on('click', '#lz-arch-generate-full-btn', async function() {
-        const key = state._activeWorkshopKey;
-        const $btn = $(this);
-        const $spinner = $('#lz-generate-full-spinner');
-
-        $btn.prop('disabled', true);
-        $spinner.removeClass('lz-hidden');
-        try {
-            await generateFullPreview(key);
-            renderArchitect();
-        } catch (err) {
-            if (window.toastr) window.toastr.error('Full image generation failed: ' + err.message, 'Localyze');
-        } finally {
-            $btn.prop('disabled', false);
-            $spinner.addClass('lz-hidden');
-        }
-    });
-
-    // Thumbnail Preview (Dev Mode)
+    // Thumbnail Preview
     $overlay.on('click', '#lz-arch-preview-btn', async function() {
         const key = state._activeWorkshopKey;
         const $spinner = $('#lz-preview-spinner');
@@ -165,6 +145,10 @@ export function bindWorkshopEvents(handlers) {
     // Finalize Draft: Generates full-res image, commits to DNA, applies scene.
     $overlay.on('click', '#lz-arch-finalize', async function() {
         const key = state._activeWorkshopKey;
+        if (!key) {
+            if (window.toastr) window.toastr.warning('Select a location in the Architect tab first.', 'Localyze');
+            return;
+        }
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
         const $btn = $(this);
 
@@ -173,7 +157,7 @@ export function bindWorkshopEvents(handlers) {
             await handleFinalizeWorkshop(key);
             $overlay.addClass('lz-hidden');
         } catch (err) {
-            $btn.prop('disabled', false).text('Finalize & Apply');
+            $btn.prop('disabled', false).text('Apply and Finalize');
             console.error('[Localyze:Workshop] Commit failed:', err);
             if (window.toastr) window.toastr.error('Generation failed: ' + err.message, 'Localyze');
         }

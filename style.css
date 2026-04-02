@@ -167,14 +167,13 @@
 .lz-lib-edit:hover { color: #3498db; }
 .lz-lib-delete:hover { color: var(--SmartThemeErrorColor); }
 
-/* --- Architect Grid --- */
-.lz-architect-grid {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 20px;
+/* --- Architect Layout --- */
+.lz-architect-fields {
+    display: flex;
+    flex-direction: column;
 }
 
-.lz-architect-fields label {
+.lz-architect-fields > label {
     display: block;
     margin: 12px 0 4px;
     font-size: 0.85em;
@@ -193,11 +192,14 @@
 
 .lz-preview-pane {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 15px;
+    margin-top: 20px;
+    flex-shrink: 0;
 }
 
 .lz-preview-box {
+    flex: 1;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
@@ -247,7 +249,8 @@
 .lz-workshop-controls {
     padding: 10px 20px 20px;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    gap: 12px;
     flex-shrink: 0;
 }
 

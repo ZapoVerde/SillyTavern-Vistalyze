@@ -70,12 +70,19 @@ export async function runPipeline(messageId) {
             .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Definition: ${loc.description ?? 'Unknown'}`)
             .join('\n');
 
+        const filteredList = Object.entries(state.locations)
+            .filter(([key]) => key !== state.currentLocation)
+            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Definition: ${loc.description ?? 'Unknown'}`)
+            .join('\n');
+
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
         const matchedKey = await detectClassifier(
-            message.mes, 
-            locationKeys, 
+            message.mes,
+            locationKeys,
             historyText,
-            s.classifierPrompt.replace('{{key_list}}', descriptiveList),
+            s.classifierPrompt
+                .replace('{{key_list}}', descriptiveList)
+                .replace('{{filtered_list}}', filteredList),
             s.classifierProfileId
         );
         

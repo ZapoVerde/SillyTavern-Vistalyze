@@ -26,20 +26,25 @@ import { escapeHtml } from './templates.js';
 
 /**
  * Opens a modal to edit a specific prompt template.
- * 
+ *
  * @param {string} settingsKey The key in the activeState object to update.
  * @param {string} title The title to display in the modal.
  * @param {string} defaultValue The hardcoded default to use on reset.
+ * @param {string[]} [variables] Optional list of available {{placeholder}} names for this prompt.
  * @returns {Promise<boolean>} True if the prompt was updated and saved.
  */
-export async function openPromptModal(settingsKey, title, defaultValue) {
+export async function openPromptModal(settingsKey, title, defaultValue, variables = []) {
     const s = getSettings();
     const current = s[settingsKey] ?? defaultValue;
+
+    const variableHint = variables.length > 0
+        ? `<small style="opacity:0.65;">Available: ${variables.map(v => `<code>{{${escapeHtml(v)}}}</code>`).join(' ')}</small>`
+        : `<small style="opacity:0.65;">Use {{placeholders}} as shown in the default prompt.</small>`;
 
     const popupPromise = callPopup(
         `<div style="display:flex;flex-direction:column;gap:8px;">
             <strong>${title}</strong>
-            <small style="opacity:0.65;">Use {{placeholders}} as shown in the default prompt.</small>
+            ${variableHint}
             <textarea id="lz-prompt-editor" class="text_pole" rows="16" style="width:100%;font-family:monospace;font-size:0.88em;">${escapeHtml(current)}</textarea>
             <button id="lz-prompt-reset" class="menu_button" style="align-self:flex-start;">Reset to Default</button>
         </div>`,

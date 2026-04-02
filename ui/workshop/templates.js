@@ -67,7 +67,8 @@ export function getBaseWorkshopHTML(sessionId) {
             </div>
 
             <div class="lz-workshop-controls">
-                <button id="lz-workshop-close" class="menu_button">Close Workshop</button>
+                <button id="lz-workshop-close" class="menu_button">Cancel</button>
+                <button id="lz-arch-finalize" class="menu_button menu_button_success">Apply and Finalize</button>
             </div>
         </div>
     </div>`;
@@ -105,44 +106,51 @@ export function getLibraryListHTML(drafts, currentKey) {
 }
 
 /**
- * Architect View: Grid Layout for editing.
+ * Calculates the number of textarea rows needed to display text without scrolling.
+ * @param {string} text The textarea content.
+ * @param {number} charsPerRow Estimated characters per row.
+ * @param {number} minRows Minimum rows to show.
+ */
+function calcRows(text, charsPerRow = 65, minRows = 2) {
+    if (!text) return minRows;
+    const lines = text.split('\n');
+    const total = lines.reduce((sum, l) => sum + Math.max(1, Math.ceil(l.length / charsPerRow)), 0);
+    return Math.max(minRows, total);
+}
+
+/**
+ * Architect View: Vertical layout — text fields stacked, then images side-by-side.
  */
 export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, proposedLabel = 'Proposed') {
+    const defRows = calcRows(draft.description, 65, 2);
+    const visRows = calcRows(draft.imagePrompt, 65, 4);
+
     return `
-    <div class="lz-architect-grid">
-        <div class="lz-architect-fields">
-            <label>Location Name</label>
-            <input type="text" id="lz-arch-name" class="text_pole" style="width:100%;" value="${escapeHtml(draft.name)}" />
+    <div class="lz-architect-fields">
+        <label>Location Name</label>
+        <input type="text" id="lz-arch-name" class="text_pole" style="width:100%;" value="${escapeHtml(draft.name)}" />
 
-            <label>Definition (Logic) <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="description" title="Regenerate logic from context"></i></label>
-            <input type="text" id="lz-arch-definition" class="text_pole" style="width:100%;" value="${escapeHtml(draft.description)}" />
+        <label>Definition (Logic) <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="description" title="Regenerate logic from context"></i></label>
+        <textarea id="lz-arch-definition" class="text_pole" rows="${defRows}" style="width:100%; resize:vertical;">${escapeHtml(draft.description)}</textarea>
 
-            <label>Visuals (Image Prompt) <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="imagePrompt" title="Regenerate prompt from definition"></i></label>
-            <textarea id="lz-arch-visuals" class="text_pole" rows="6" style="width:100%; font-family:monospace; font-size:0.9em;">${escapeHtml(draft.imagePrompt)}</textarea>
-            
-            <div class="lz-architect-actions">
-                <button id="lz-arch-preview-btn" class="menu_button">Thumbnail Preview</button>
-                <button id="lz-arch-generate-full-btn" class="menu_button">Generate Full Image</button>
-                <span id="lz-generate-full-spinner" class="lz-hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
-            </div>
-        </div>
-        
-        <div class="lz-preview-pane">
-            <div class="lz-preview-box">
-                <small>Current Background</small>
-                <img id="lz-preview-before" src="${currentImgUrl}" alt="No current BG" style="display: ${currentImgUrl ? 'block' : 'none'};" />
-            </div>
-            <div class="lz-preview-box">
-                <small>${escapeHtml(proposedLabel)}</small>
-                <img id="lz-preview-after" src="${proposedImgUrl}" alt="No preview" style="display: ${proposedImgUrl ? 'block' : 'none'};" />
-                <div id="lz-preview-spinner" class="lz-hidden">
-                    <i class="fa-solid fa-spinner fa-spin"></i>
-                </div>
-            </div>
+        <label>Visuals (Image Prompt) <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="imagePrompt" title="Regenerate prompt from definition"></i></label>
+        <textarea id="lz-arch-visuals" class="text_pole" rows="${visRows}" style="width:100%; resize:vertical; font-family:monospace; font-size:0.9em;">${escapeHtml(draft.imagePrompt)}</textarea>
+
+        <div class="lz-architect-actions">
+            <button id="lz-arch-preview-btn" class="menu_button">Thumbnail Preview</button>
+            <span id="lz-preview-spinner" class="lz-hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </div>
     </div>
-    <div class="lz-workshop-footer" style="margin-top: auto;">
-        <button id="lz-arch-finalize" class="menu_button menu_button_success" style="padding: 8px 24px;">Finalize & Apply</button>
+
+    <div class="lz-preview-pane">
+        <div class="lz-preview-box">
+            <small>Current Background</small>
+            <img id="lz-preview-before" src="${currentImgUrl}" alt="No current BG" style="display: ${currentImgUrl ? 'block' : 'none'};" />
+        </div>
+        <div class="lz-preview-box">
+            <small>${escapeHtml(proposedLabel)}</small>
+            <img id="lz-preview-after" src="${proposedImgUrl}" alt="No preview" style="display: ${proposedImgUrl ? 'block' : 'none'};" />
+        </div>
     </div>`;
 }
 

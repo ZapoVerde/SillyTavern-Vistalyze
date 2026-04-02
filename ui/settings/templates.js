@@ -164,6 +164,20 @@ export function buildPanelHTML(meta, availableModels) {
                         <span style="font-size:0.78em;opacity:0.55;">Generates 320×180 preview images to save credits</span>
                     </div>
                 </div>
+
+                <!-- Maintenance -->
+                <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
+                    <strong style="font-size:0.95em;">Maintenance</strong>
+                    <p style="font-size:0.83em;opacity:0.65;margin:4px 0 12px;">
+                        Scan for background images no longer referenced by any location.
+                    </p>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button class="menu_button" id="lz-audit-btn">
+                            <i class="fa-solid fa-trash-can"></i> Audit Images
+                        </button>
+                        <span id="lz-orphan-badge" style="display:none;background:var(--SmartThemeErrorColor);color:white;padding:1px 6px;border-radius:10px;font-size:0.75em;"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>`;

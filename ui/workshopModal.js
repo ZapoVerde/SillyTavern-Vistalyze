@@ -24,7 +24,7 @@
  *     external_io: [JQuery DOM (write), templates.js, listeners.js]
  */
 
-import { state } from '../state.js';
+import { state, setWorkshopKey } from '../state.js';
 import { 
     getBaseWorkshopHTML, 
     getLibraryListHTML, 
@@ -48,6 +48,11 @@ export function renderLibrary() {
  * Handles the display of current background vs. proposed preview.
  */
 export async function renderArchitect() {
+    // Default to the current active scene location if no workshop key is explicitly set.
+    if (!state._activeWorkshopKey && state.currentLocation && state._draftLocations[state.currentLocation]) {
+        setWorkshopKey(state.currentLocation);
+    }
+
     const key = state._activeWorkshopKey;
     const draft = state._draftLocations[key];
     const $container = $('#lz-tab-architect');
