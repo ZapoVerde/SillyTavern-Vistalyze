@@ -23,7 +23,7 @@
  *     external_io: [eventSource (subscribe), UI Injections, Bootstrapper]
  */
 
-import { eventSource, event_types } from '../../../../script.js';
+import { eventSource, event_types, chat_metadata } from '../../../../script.js';
 import { getContext } from '../../../extensions.js';
 import { resetState } from './state.js';
 import { initSettings } from './settings/data.js';
@@ -76,6 +76,13 @@ function handleMessageSwiped(messageId) {
  */
 function handleChatChanged() {
     console.debug('[Localyze] Chat changed event detected.');
+    // DEBUG: Snapshot chat_metadata at the moment CHAT_CHANGED fires.
+    // If custom_background contains a localyze filename here, ST's onChatChanged
+    // will immediately apply it as CSS before runBoot() can verify the file exists.
+    console.debug('[Localyze:Debug] chat_metadata snapshot on CHAT_CHANGED:', {
+        custom_background: chat_metadata.custom_background ?? '(not set)',
+        localyze_managed:  chat_metadata.localyze_managed  ?? '(not set)',
+    });
     resetState();
     runBoot()
         .then(() => reinjectAllBadges())

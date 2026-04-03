@@ -111,7 +111,12 @@ export function set(filename) {
  */
 export function clear() {
     // Guard: Don't release the lock if we don't own it
-    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) return
+    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
+        // DEBUG: This fires when custom_background has a value we didn't set.
+        // If the value is a localyze filename, an old version likely wrote it directly.
+        console.debug('[Localyze:Debug] clear() guard blocked — custom_background is set but not owned:', chat_metadata[BG_KEY]);
+        return;
+    }
 
     delete chat_metadata[BG_KEY]
     delete chat_metadata[MANAGED_KEY]

@@ -21,7 +21,7 @@
  *     external_io: [session, reconstruction, imageCache, background, orphanDetector]
  */
 
-import { saveSettingsDebounced } from '../../../../../script.js';
+import { saveSettingsDebounced, chat_metadata } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
 import { state, bulkInitState, setFileIndex, addToFileIndex, updateState } from '../state.js';
 import { initSession } from '../session.js';
@@ -43,6 +43,13 @@ export async function runBoot() {
         console.debug('[Localyze:Boot] Abort: No active chatId found.');
         return;
     }
+
+    // DEBUG: Log metadata state at boot entry — tells us if custom_background is already
+    // set when we arrive, meaning ST's onChatChanged already applied it (and may have 404'd).
+    console.debug('[Localyze:Debug] runBoot() entry — chat_metadata:', {
+        custom_background: chat_metadata?.custom_background ?? '(not set)',
+        localyze_managed:  chat_metadata?.localyze_managed  ?? '(not set)',
+    });
 
     // 1. Session & DNA Reconstruction
     // Derives the library and the "last known scene" from the chat JSONL.
