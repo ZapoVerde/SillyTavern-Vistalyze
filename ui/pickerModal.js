@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/pickerModal.js
- * @stamp {"utc":"2026-04-03T11:00:00.000Z"}
+ * @stamp {"utc":"2026-04-03T18:30:00.000Z"}
  * @architectural-role Manual Override UI
  * @description
  * Searchable location picker modal. Refactored to eliminate redundant 
@@ -61,7 +61,7 @@ export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
     const popupPromise = callPopup(
         `<h3>Location Library</h3>
         <input type="text" id="lz-picker-search" class="text_pole" placeholder="Search locations..." style="width:100%; margin-bottom:10px;" />
-        <div id="lz-picker-list" style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:4px; padding:4px;">
+        <div id="lz-picker-list" style="max-height:300px; overflow-y:auto; background:var(--SmartThemeBlurTintColor); border:1px solid var(--SmartThemeBorderColor); border-radius:4px; padding:4px;">
             ${listHtml}
         </div>
         
@@ -99,7 +99,10 @@ export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
         e.stopPropagation();
         const key = $(this).data('key');
         $('#dialog_overlay .menu_button:last').click(); // Close picker
-        if (typeof onEdit === 'function') onEdit(key);
+        // Defer until the popup has fully closed before opening the workshop overlay
+        setTimeout(() => {
+            if (typeof onEdit === 'function') onEdit(key);
+        }, 50);
     });
 
     // Bind Force Detect click

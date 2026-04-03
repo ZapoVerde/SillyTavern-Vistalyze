@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/style.css
- * @stamp {"utc":"2026-04-02T14:15:00.000Z"}
+ * @stamp {"utc":"2026-04-03T18:30:00.000Z"}
  * @architectural-role UI Styling
  * @description
  * Primary stylesheet for Localyze. Handles background transitions, 
@@ -35,8 +35,8 @@
 }
 
 .lz-modal {
-    background: var(--mainColor);
-    color: var(--unselectedWhite);
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
     width: 900px;
     max-width: 95vw;
     height: 80vh; /* Fixed height prevents shrink-wrapping collapse */
@@ -70,7 +70,7 @@
 .lz-tab-btn {
     background: transparent;
     border: 1px solid var(--SmartThemeBorderColor);
-    color: var(--unselectedWhite);
+    color: var(--SmartThemeBodyColor);
     padding: 6px 15px;
     border-radius: 5px;
     cursor: pointer;
