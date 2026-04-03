@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-04-02T17:00:00.000Z"}
- * @version 1.1.7
+ * @version 1.1.8
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * SillyTavern Location Engine (Localyze) — extension entry point.
@@ -44,6 +44,27 @@ function handleMessageReceived(messageId) {
 }
 
 /**
+ * Swipe Dispatcher.
+ * Triggered when the user navigates to an existing swipe alternative.
+ * Skips if the swipe slot is unpopulated (new generation in progress —
+ * MESSAGE_RECEIVED will fire when that generation completes).
+ */
+function handleMessageSwiped(messageId) {
+    const context = getContext();
+    const message = context.chat[messageId];
+    if (!message || message.is_user) return;
+
+    // If the active swipe slot has no content yet, a new generation is
+    // starting. Don't run the pipeline here — MESSAGE_RECEIVED handles it.
+    const swipeContent = message.swipes?.[message.swipe_id];
+    if (typeof swipeContent !== 'string') return;
+
+    runPipeline(messageId).catch(err => {
+        console.error('[Localyze] Pipeline execution failed on swipe:', err);
+    });
+}
+
+/**
  * Session Lifecycle Manager.
  * Resets runtime state and initiates the boot sequence (DNA reconstruction)
  * whenever the active chat changes.
@@ -76,6 +97,7 @@ async function init() {
 
         // 3. Host Events - Bind core SillyTavern lifecycle events.
         eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageReceived);
+        eventSource.on(event_types.MESSAGE_SWIPED, handleMessageSwiped);
         eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
         console.debug('[Localyze] Listeners active.');
 
