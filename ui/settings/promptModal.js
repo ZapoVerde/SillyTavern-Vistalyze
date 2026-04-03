@@ -38,7 +38,14 @@ export async function openPromptModal(settingsKey, title, defaultValue, variable
     const current = s[settingsKey] ?? defaultValue;
 
     const variableHint = variables.length > 0
-        ? `<small style="opacity:0.65;">Available: ${variables.map(v => `<code>{{${escapeHtml(v)}}}</code>`).join(' ')}</small>`
+        ? `<div style="display:flex;flex-direction:column;gap:3px;">
+               <small style="opacity:0.65;font-weight:bold;">Available variables:</small>
+               ${variables.map(v => `
+               <div style="display:flex;align-items:baseline;gap:8px;">
+                   <code style="white-space:nowrap;">{{${escapeHtml(v.name)}}}</code>
+                   <small style="opacity:0.55;">${escapeHtml(v.description)}</small>
+               </div>`).join('')}
+           </div>`
         : `<small style="opacity:0.65;">Use {{placeholders}} as shown in the default prompt.</small>`;
 
     const popupPromise = callPopup(

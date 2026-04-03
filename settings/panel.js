@@ -131,11 +131,31 @@ function bindHandlers() {
         imagePromptTemplate: 'Image Prompt Template',
     };
     const promptVariables = {
-        booleanPrompt:       ['current_location', 'history', 'message'],
-        classifierPrompt:    ['key_list', 'filtered_list', 'history', 'message'],
-        describerPrompt:     ['context'],
-        discoveryPrompt:     ['keywords', 'context'],
-        imagePromptTemplate: ['image_prompt', 'name', 'description'],
+        booleanPrompt: [
+            { name: 'current_location', description: 'Display name of the current active location' },
+            { name: 'history',          description: 'Recent conversation turns (count set by History slider)' },
+            { name: 'message',          description: 'The latest AI message being evaluated' },
+        ],
+        classifierPrompt: [
+            { name: 'key_list',                description: 'All known locations — ID, name, and definition' },
+            { name: 'filtered_list',           description: 'All known locations except the current one' },
+            { name: 'history',                 description: 'Recent conversation turns (count set by History slider)' },
+            { name: 'message',                 description: 'The latest AI message being evaluated' },
+            { name: 'spatial_transitions',     description: 'Historical exit frequencies from the current location (raw list or Often / Sometimes / Seldom buckets)' },
+            { name: 'spatial_discovery_count', description: 'Number of new locations ever created from the current location' },
+        ],
+        describerPrompt: [
+            { name: 'context', description: 'Recent transcript used to identify and describe a new location' },
+        ],
+        discoveryPrompt: [
+            { name: 'keywords', description: 'User-supplied search keywords for targeted location creation' },
+            { name: 'context',  description: 'Recent transcript for world-consistency grounding' },
+        ],
+        imagePromptTemplate: [
+            { name: 'image_prompt', description: 'The location\'s raw visual description (Visuals field)' },
+            { name: 'name',         description: 'The location\'s display name' },
+            { name: 'description',  description: 'The location\'s conceptual definition' },
+        ],
     };
 
     $('#lz-settings').on('change', '#lz-profile-select', function() {
