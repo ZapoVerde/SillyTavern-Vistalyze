@@ -27,14 +27,14 @@ import { callPopup } from '../../../../../script.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils/history.js';
 import { syncDraftState } from '../logic/maintenance.js';
-import { handleFinalizeWorkshop } from '../logic/commit.js';
+import { handleFinalizeWorkshop, handleFinalizeWorkshopAtMessage } from '../logic/commit.js';
 
 /**
  * Opens the location picker.
  * @param {Function} onEdit Callback function(key) triggered when the edit icon is clicked.
  * @param {Function} onManualDetect Callback triggered when the "Force Detect" button is clicked.
  */
-export async function openPickerModal(onEdit, onManualDetect) {
+export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
     // Ensure the workshop draft state is synchronized with the live library 
     // before we allow selection. This ensures handleFinalizeWorkshop has 
     // access to the definitions it needs.
@@ -65,6 +65,7 @@ export async function openPickerModal(onEdit, onManualDetect) {
             ${listHtml}
         </div>
         
+        ${msgId === null ? `
         <div style="margin-top:16px; border-top:1px solid var(--SmartThemeBorderColor); padding-top:12px;">
             <button id="lz-picker-manual" class="menu_button" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -73,7 +74,7 @@ export async function openPickerModal(onEdit, onManualDetect) {
             <p style="font-size:0.75em; opacity:0.5; margin-top:6px; text-align:center;">
                 Analyze the current context to discover a new location automatically.
             </p>
-        </div>`,
+        </div>` : ''}`,
         'confirm',
     );
 
@@ -126,9 +127,11 @@ export async function openPickerModal(onEdit, onManualDetect) {
 
     if (confirmed && selectedKey) {
         try {
-            // Use the centralized workshop commit logic.
-            // This handles DNA writing, cache-busting setBg, and generation if missing.
-            await handleFinalizeWorkshop(selectedKey);
+            if (msgId !== null) {
+                await handleFinalizeWorkshopAtMessage(selectedKey, msgId);
+            } else {
+                await handleFinalizeWorkshop(selectedKey);
+            }
         } catch (err) {
             console.error('[Localyze:Picker] Failed to apply selection:', err);
         }

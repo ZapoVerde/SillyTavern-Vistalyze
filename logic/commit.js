@@ -153,3 +153,68 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     // Protected Update: Wipe temporary workshop memory
     clearWorkshop();
 }
+
+/**
+ * Retroactive location assignment.
+ * Writes a scene record at a specific historical message instead of lastMsgId.
+ * If the targeted message IS the last message, the background is also updated.
+ * Otherwise only the DNA chain is patched (no background change).
+ *
+ * @param {string} targetKey The slug of the location being applied.
+ * @param {number} msgId     The specific message index to tag.
+ */
+export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
+    if (!targetKey || !state._draftLocations[targetKey]) {
+        throw new Error(`[Localyze:Commit] Invalid target key: ${targetKey}`);
+    }
+
+    const context = getContext();
+    const lastMsgId = Math.max(0, context.chat.length - 1);
+    const draftDef = state._draftLocations[targetKey];
+    const isCurrentMessage = (msgId === lastMsgId);
+
+    // 1. Sync the library (definitions always written at lastMsgId)
+    await commitDraftLibrary();
+
+    // 2. Write the scene record at the specific message
+    await lockedWriteSceneRecord(msgId, {
+        location: targetKey,
+        image: null,
+        bg_declined: false
+    });
+
+    if (isCurrentMessage) {
+        // Active scene path — same image generation logic as handleFinalizeWorkshop
+        updateState(targetKey, null);
+
+        const original = state.locations[targetKey];
+        const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
+        const filename = `localyze_${state.sessionId}_${targetKey}.png`;
+        const needsGeneration = visualsModified || !state.fileIndex.has(filename);
+
+        if (needsGeneration) {
+            clearBg();
+            try {
+                const newFile = await generate(targetKey, draftDef, state.sessionId);
+                addToFileIndex(newFile);
+                await lockedPatchSceneImage(msgId, newFile);
+                updateState(targetKey, newFile);
+                setBg(newFile);
+                if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
+            } catch (err) {
+                console.error('[Localyze:Commit] Retroactive image gen failed:', err);
+                if (window.toastr) window.toastr.error(`Transition saved, but image failed: ${err.message}`, 'Localyze');
+            }
+        } else {
+            await lockedPatchSceneImage(msgId, filename);
+            updateState(targetKey, filename);
+            setBg(filename);
+            if (window.toastr) window.toastr.success(`Location switched to: ${draftDef.name}`, 'Localyze');
+        }
+    } else {
+        // Historical tag — DNA chain patched, background unchanged
+        if (window.toastr) window.toastr.info(`Tagged as: ${draftDef.name}`, 'Localyze');
+    }
+
+    clearWorkshop();
+}

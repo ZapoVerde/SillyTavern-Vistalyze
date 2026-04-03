@@ -32,15 +32,18 @@ import { runPipeline } from './logic/pipeline.js';
 import { handleOpenLibrary, handleEditLocation, handleManualDescriber } from './logic/maintenance.js';
 import { injectToolbar } from './ui/toolbar.js';
 import { injectSettingsPanel } from './settings/panel.js';
+import { injectMessageBadge, reinjectAllBadges } from './ui/messageBadge.js';
 
 /**
  * Pipeline Dispatcher.
  * Triggered whenever a new AI message is received.
  */
 function handleMessageReceived(messageId) {
-    runPipeline(messageId).catch(err => {
-        console.error('[Localyze] Pipeline execution failed:', err);
-    });
+    runPipeline(messageId)
+        .then(() => injectMessageBadge(messageId))
+        .catch(err => {
+            console.error('[Localyze] Pipeline execution failed:', err);
+        });
 }
 
 /**
@@ -59,9 +62,11 @@ function handleMessageSwiped(messageId) {
     const swipeContent = message.swipes?.[message.swipe_id];
     if (typeof swipeContent !== 'string') return;
 
-    runPipeline(messageId).catch(err => {
-        console.error('[Localyze] Pipeline execution failed on swipe:', err);
-    });
+    runPipeline(messageId)
+        .then(() => injectMessageBadge(messageId))
+        .catch(err => {
+            console.error('[Localyze] Pipeline execution failed on swipe:', err);
+        });
 }
 
 /**
@@ -72,9 +77,11 @@ function handleMessageSwiped(messageId) {
 function handleChatChanged() {
     console.debug('[Localyze] Chat changed event detected.');
     resetState();
-    runBoot().catch(err => {
-        console.error('[Localyze] Bootstrapper failed during chat change:', err);
-    });
+    runBoot()
+        .then(() => reinjectAllBadges())
+        .catch(err => {
+            console.error('[Localyze] Bootstrapper failed during chat change:', err);
+        });
 }
 
 /**
@@ -99,6 +106,7 @@ async function init() {
         eventSource.on(event_types.MESSAGE_RECEIVED, handleMessageReceived);
         eventSource.on(event_types.MESSAGE_SWIPED, handleMessageSwiped);
         eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
+        eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, injectMessageBadge);
         console.debug('[Localyze] Listeners active.');
 
         // 4. Conditional Initial Boot
@@ -108,6 +116,7 @@ async function init() {
         if (context && context.chatId) {
             console.debug('[Localyze] Active chat detected on init. Running boot sequence...');
             await runBoot();
+            reinjectAllBadges();
         } else {
             console.log('[Localyze] Standing by for chat selection.');
         }
