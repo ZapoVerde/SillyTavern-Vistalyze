@@ -66,14 +66,21 @@ export async function runPipeline(messageId) {
     // Step 2: Classifier
     if (locationKeys.length > 0) {
         // Build a highly-structured Search Index for the LLM
+        const formatEntry = ([key, loc]) =>
+            `${loc.name} — ${loc.description ?? 'Unknown'} (ID: [${key}])`;
+
         const descriptiveList = Object.entries(state.locations)
-            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Definition: ${loc.description ?? 'Unknown'}`)
+            .map(formatEntry)
             .join('\n');
 
         const filteredList = Object.entries(state.locations)
             .filter(([key]) => key !== state.currentLocation)
-            .map(([key, loc]) => `ID: [${key}] | Name: ${loc.name} | Definition: ${loc.description ?? 'Unknown'}`)
+            .map(formatEntry)
             .join('\n');
+
+        const currentLocationName = state.currentLocation
+            ? (state.locations[state.currentLocation]?.name ?? state.currentLocation)
+            : 'Unknown';
 
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
         const { spatial_transitions, spatial_discovery_count } = buildSpatialContext(
@@ -86,6 +93,7 @@ export async function runPipeline(messageId) {
             locationKeys,
             historyText,
             s.classifierPrompt
+                .replace('{{current_location}}', currentLocationName)
                 .replace('{{key_list}}', descriptiveList)
                 .replace('{{filtered_list}}', filteredList)
                 .replace('{{spatial_transitions}}', spatial_transitions)

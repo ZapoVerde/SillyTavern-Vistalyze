@@ -137,7 +137,8 @@ function bindHandlers() {
             { name: 'message',          description: 'The latest AI message being evaluated' },
         ],
         classifierPrompt: [
-            { name: 'key_list',                description: 'All known locations — ID, name, and definition' },
+            { name: 'current_location',        description: 'The active location the character is currently in' },
+            { name: 'key_list',                description: 'All known locations — name, definition, and ID' },
             { name: 'filtered_list',           description: 'All known locations except the current one' },
             { name: 'history',                 description: 'Recent conversation turns (count set by History slider)' },
             { name: 'message',                 description: 'The latest AI message being evaluated' },
