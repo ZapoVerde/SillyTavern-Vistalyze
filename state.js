@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/state.js
- * @stamp {"utc":"2026-04-03T18:20:00.000Z"}
+ * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
  * @architectural-role Stateful Owner (Runtime State)
  * @description
  * Single source of truth for all Localyze in-memory runtime state. 
@@ -15,7 +15,7 @@
  * state                          — Read-only access to runtime data.
  * setSessionId(id)               — Sets the unique 8-char session key.
  * updateState(location, image)   — Updates the active scene and background.
- * bulkInitState(data)            — Hydrates state from reconstruction pass.
+ * bulkInitState(data)            — Hydrates state from reconstruction pass (includes transitionsMap, newFromMap).
  * upsertLocation(def)            — Adds or updates a definition in the library.
  * removeLocation(key)            — Deletes a definition from the library.
  * setFileIndex(files)            — Overwrites the known background file list.
@@ -39,6 +39,10 @@ export const state = {
     currentLocation: null, // key
     currentImage: null,    // filename
 
+    // Markov Transition Graph (derived from DNA during reconstruction)
+    transitionsMap: {},    // { fromKey: { toKey: count } }
+    newFromMap: {},        // { fromKey: count } — creation events per origin
+
     // Filesystem Cache
     fileIndex: new Set(),  // Set of filenames on server
 
@@ -58,7 +62,9 @@ export function resetState() {
     state.currentLocation = null;
     state.currentImage = null;
     state.fileIndex = new Set();
-    
+    state.transitionsMap = {};
+    state.newFromMap = {};
+
     clearWorkshop();
 }
 
@@ -84,10 +90,12 @@ export function updateState(location, image) {
  * Performs a bulk update of the core library and scene.
  * Usually called after DNA reconstruction.
  */
-export function bulkInitState({ locations, currentLocation, currentImage }) {
+export function bulkInitState({ locations, currentLocation, currentImage, transitionsMap, newFromMap }) {
     state.locations = structuredClone(locations);
     state.currentLocation = currentLocation;
     state.currentImage = currentImage;
+    state.transitionsMap = structuredClone(transitionsMap ?? {});
+    state.newFromMap = structuredClone(newFromMap ?? {});
 }
 
 /**

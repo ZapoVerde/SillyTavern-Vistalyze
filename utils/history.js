@@ -1,20 +1,22 @@
 /**
  * @file data/default-user/extensions/localyze/utils/history.js
- * @stamp {"utc":"2026-04-01T12:05:00.000Z"}
+ * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
  * @architectural-role Pure Functions / Text Processor
  * @description
  * Pure string and array manipulation utilities for the Localyze pipeline.
- * Contains logic for escaping HTML in UI elements, building history 
+ * Contains logic for escaping HTML in UI elements, building history
  * transcripts for LLM context windows, and deterministic slugification.
- * 
+ *
  * @updates
  * - Added slugify() for programmatic location key generation.
+ * - Added buildSpatialContext() for Dynamic Markov Injection into Step 2.
  *
  * @api-declaration
  * escapeHtml(str) -> string
  * slugify(name) -> string
  * buildHistoryText(chat, beforeIndex, numPairs) -> string
  * buildDescriberContext(chat, messageId, numPairs) -> string
+ * buildSpatialContext(currentLocation, transitionsMap, newFromMap) -> { spatial_transitions, spatial_discovery_count }
  *
  * @contract
  *   assertions:
@@ -73,6 +75,80 @@ export function buildHistoryText(chat, beforeIndex, numPairs) {
         .join('\n\n');
         
     return `Preceding turns:\n${transcript}\n\n`;
+}
+
+/** Minimum departures from a location before switching to bucket display. */
+const SPATIAL_THRESHOLD = 5
+
+/**
+ * Builds the spatial context strings for Dynamic Markov Injection into Step 2.
+ *
+ * Below the threshold: lists all known destinations by name with counts.
+ * Above the threshold: groups destinations into Often / Sometimes / Seldom buckets.
+ * "New location (N)" competes for a bucket slot using the creation event count.
+ * Returns a neutral string when no transition history exists.
+ *
+ * @param {string|null} currentLocation  The active location key.
+ * @param {object} transitionsMap        { fromKey: { toKey: count } }
+ * @param {object} newFromMap            { fromKey: count }
+ * @returns {{ spatial_transitions: string, spatial_discovery_count: string }}
+ */
+export function buildSpatialContext(currentLocation, transitionsMap, newFromMap) {
+    const NEUTRAL = 'No historical transitions recorded from this location.'
+
+    if (!currentLocation) {
+        return { spatial_transitions: NEUTRAL, spatial_discovery_count: '0' }
+    }
+
+    const knownDepartures = transitionsMap[currentLocation] ?? {}
+    const discoveryCount = newFromMap[currentLocation] ?? 0
+    const entries = Object.entries(knownDepartures)
+    const totalDepartures = entries.reduce((sum, [, count]) => sum + count, 0)
+
+    if (totalDepartures === 0) {
+        return { spatial_transitions: NEUTRAL, spatial_discovery_count: '0' }
+    }
+
+    // Raw mode: below threshold, list all destinations by name
+    if (totalDepartures <= SPATIAL_THRESHOLD) {
+        const list = entries
+            .sort((a, b) => b[1] - a[1])
+            .map(([key, count]) => `${key} (${count})`)
+            .join(', ')
+        return {
+            spatial_transitions: list,
+            spatial_discovery_count: String(discoveryCount),
+        }
+    }
+
+    // Bucket mode: above threshold
+    const buckets = { often: [], sometimes: [], seldom: [] }
+
+    for (const [key, count] of entries) {
+        const ratio = count / totalDepartures
+        if (ratio >= 0.5)       buckets.often.push(`${key} (${count})`)
+        else if (ratio >= 0.1)  buckets.sometimes.push(`${key} (${count})`)
+        else if (count > 1)     buckets.seldom.push(`${key} (${count})`)
+    }
+
+    // "New location" competes for a bucket slot based on its discovery ratio
+    if (discoveryCount > 0) {
+        const newRatio = discoveryCount / totalDepartures
+        const newEntry = `New location (${discoveryCount})`
+        if (newRatio >= 0.5)        buckets.often.unshift(newEntry)
+        else if (newRatio >= 0.1)   buckets.sometimes.unshift(newEntry)
+        else if (discoveryCount > 1) buckets.seldom.unshift(newEntry)
+    }
+
+    const lines = []
+    if (buckets.often.length)     lines.push(`Often: ${buckets.often.join(', ')}`)
+    if (buckets.sometimes.length) lines.push(`Sometimes: ${buckets.sometimes.join(', ')}`)
+    if (buckets.seldom.length)    lines.push(`Seldom: ${buckets.seldom.join(', ')}`)
+
+    return {
+        spatial_transitions: lines.length ? lines.join('\n') : NEUTRAL,
+        spatial_discovery_count: String(discoveryCount),
+    }
 }
 
 /**

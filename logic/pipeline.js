@@ -25,7 +25,7 @@ import { callPopup } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
 import { state, updateState, upsertLocation, addToFileIndex } from '../state.js';
 import { getSettings } from '../settings/data.js';
-import { buildHistoryText, buildDescriberContext, escapeHtml, slugify } from '../utils/history.js';
+import { buildHistoryText, buildDescriberContext, buildSpatialContext, escapeHtml, slugify } from '../utils/history.js';
 import { detectBoolean, detectClassifier, detectDescriber } from '../detector.js';
 import { generate } from '../imageCache.js';
 import { set as setBg, clear as clearBg } from '../background.js';
@@ -76,13 +76,20 @@ export async function runPipeline(messageId) {
             .join('\n');
 
         const historyText = buildHistoryText(context.chat, messageId, s.classifierHistory ?? 0);
+        const { spatial_transitions, spatial_discovery_count } = buildSpatialContext(
+            state.currentLocation,
+            state.transitionsMap,
+            state.newFromMap
+        );
         const matchedKey = await detectClassifier(
             message.mes,
             locationKeys,
             historyText,
             s.classifierPrompt
                 .replace('{{key_list}}', descriptiveList)
-                .replace('{{filtered_list}}', filteredList),
+                .replace('{{filtered_list}}', filteredList)
+                .replace('{{spatial_transitions}}', spatial_transitions)
+                .replace('{{spatial_discovery_count}}', spatial_discovery_count),
             s.classifierProfileId
         );
         

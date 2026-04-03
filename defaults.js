@@ -83,6 +83,9 @@ Identify which location from the list below matches the current scene described 
 LOCATIONS:
 {{key_list}}
 
+TRANSITION HISTORY FROM CURRENT LOCATION:
+{{spatial_transitions}}
+
 {{history}}
 LATEST MESSAGE:
 {{message}}
@@ -90,7 +93,7 @@ LATEST MESSAGE:
 INSTRUCTIONS:
 1. Compare the message to the Name and Definition of each location.
 2. If a match is found, reply with only the ID portion of the location (the text inside the brackets).
-3. If no match is found, reply with: NULL`
+3. If no match is found, or if the scene is moving somewhere entirely new, reply with: NULL`
 
 export const DEFAULT_DESCRIBER_PROMPT =
 `[SYSTEM: TASK — LOCATION ARCHIVIST]
