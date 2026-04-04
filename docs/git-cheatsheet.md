@@ -52,7 +52,7 @@ git push origin feature/my-new-task
 ```bash
 git switch main
 git pull origin main
-git merge --ff-only feature/my-new-task
+git merge feature/my-new-task
 git push origin main
 ```
 

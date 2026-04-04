@@ -155,6 +155,7 @@ export function bindWorkshopEvents(handlers) {
         $btn.prop('disabled', true).text('Generating...');
         try {
             await handleFinalizeWorkshop(key);
+            $btn.prop('disabled', false).text('Apply and Finalize');
             $overlay.addClass('lz-hidden');
         } catch (err) {
             $btn.prop('disabled', false).text('Apply and Finalize');
