@@ -26,6 +26,8 @@
  *                   requestAnimationFrame, sessionStorage (iOS tilt flag)]
  */
 
+import { log } from '../utils/logger.js'
+
 const IMG_ID          = 'lz-bg-img'
 const TILT_SESSION_KEY = 'lz_tilt_asked'
 const MAX_EFFECTIVE_PAN = 200   // px — caps travel on very narrow screens
@@ -129,7 +131,7 @@ function _maybeRequestTilt() {
                 const result = await DeviceOrientationEvent.requestPermission()
                 if (result === 'granted') _bindTilt()
             } catch (err) {
-                console.debug('[Localyze:Parallax] Tilt permission request failed:', err)
+                log('Parallax', 'Tilt permission request failed:', err)
             }
         })
 
@@ -162,7 +164,7 @@ export function attachParallax(url) {
     _imgEl = img
 
     img.onerror = () => {
-        console.debug('[Localyze:Parallax] Image failed to load, detaching.')
+        log('Parallax', 'Image failed to load, detaching.')
         detachParallax()
     }
 

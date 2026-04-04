@@ -25,6 +25,7 @@
 import { callPopup } from '../../../../../script.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 import { escapeHtml, slugify } from '../utils/history.js'
+import { error } from '../utils/logger.js'
 
 /**
  * Opens the "Add Location" modal.
@@ -80,7 +81,7 @@ export async function openAddModal(def) {
             $('#lz-preview-img').attr('src', objectUrl)
             status.text('320×180 preview ready')
         } catch (err) {
-            console.error('[Localyze:Preview] failed:', err)
+            error('Preview', 'failed:', err)
             status.text(`Failed: ${err.message}`)
             if (window.toastr) window.toastr.warning(err.message, 'Localyze Preview')
         } finally {

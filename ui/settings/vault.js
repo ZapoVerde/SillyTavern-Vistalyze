@@ -22,6 +22,7 @@
 import { callPopup } from '../../../../../../script.js';
 import { writeSecret, secret_state } from '../../../../../secrets.js';
 import { fetchPreviewBlob } from '../../imageCache.js';
+import { log, error } from '../../utils/logger.js';
 
 const SECRET_KEY_NAME = 'api_key_pollinations';
 
@@ -70,7 +71,7 @@ export async function testPollinationsConnection() {
     $btn.prop('disabled', true).text('Generating...');
     $status.text('Fetching test image...');
 
-    console.debug('[Localyze] Test connection: generating 320×180 test image');
+    log('Vault', 'Test connection: generating 320×180 test image');
     
     try {
         const objectUrl = await fetchPreviewBlob('a glowing lantern on a wooden tavern table, cinematic lighting');
@@ -84,7 +85,7 @@ export async function testPollinationsConnection() {
         );
     } catch (err) {
         $status.text(`Failed: ${err.message}`);
-        console.error('[Localyze] Test connection failed:', err);
+        error('Vault', 'Test connection failed:', err);
         if (window.toastr) window.toastr.error(err.message, 'Localyze');
     } finally {
         $btn.prop('disabled', false).text(originalText);

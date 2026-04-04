@@ -25,6 +25,7 @@ import { chat_metadata, saveSettingsDebounced } from '../../../../script.js'
 import { saveMetadataDebounced } from '../../../extensions.js'
 import { state, setSessionId } from './state.js'
 import { initSettings, getMetaSettings } from './settings/data.js'
+import { log } from './utils/logger.js'
 
 /**
  * Generates an 8-character random alphanumeric string for session identification.
@@ -51,7 +52,7 @@ export function initSession() {
 
     if (!chat_metadata.localyze.sessionId) {
         const sessionId = generateSessionId();
-        console.log(`[Localyze:Session] New chat detected. Assigning SessionID: ${sessionId}`);
+        log('Session', `New chat detected. Assigning SessionID: ${sessionId}`);
         chat_metadata.localyze.sessionId = sessionId;
         saveMetadataDebounced();
     }
@@ -62,7 +63,7 @@ export function initSession() {
     // 3. Register the session in the global (meta) knownSessions registry
     const root = getMetaSettings();
     if (!root.knownSessions.includes(state.sessionId)) {
-        console.debug(`[Localyze:Session] Registering session ${state.sessionId} in knownSessions.`);
+        log('Session', `Registering session ${state.sessionId} in knownSessions.`);
         
         // Update the array and persist via the meta setting route
         const updatedSessions = [...root.knownSessions, state.sessionId];

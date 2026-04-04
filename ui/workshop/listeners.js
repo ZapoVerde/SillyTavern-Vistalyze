@@ -21,6 +21,7 @@
  */
 
 import { state, setWorkshopKey, setProposedBlob, updateDraftField } from '../../state.js';
+import { error } from '../../utils/logger.js';
 import {
     regenField,
     discoverySearch,
@@ -85,7 +86,7 @@ export function bindWorkshopEvents(handlers) {
             await handleFinalizeWorkshop(key);
             $overlay.addClass('lz-hidden');
         } catch (err) {
-            console.error('[Localyze:Workshop] Apply failed:', err);
+            error('Workshop', 'Apply failed:', err);
         }
     });
 
@@ -159,7 +160,7 @@ export function bindWorkshopEvents(handlers) {
             $overlay.addClass('lz-hidden');
         } catch (err) {
             $btn.prop('disabled', false).text('Apply and Finalize');
-            console.error('[Localyze:Workshop] Commit failed:', err);
+            error('Workshop', 'Commit failed:', err);
             if (window.toastr) window.toastr.error('Generation failed: ' + err.message, 'Localyze');
         }
     });
@@ -189,7 +190,7 @@ export function bindWorkshopEvents(handlers) {
                 if (window.toastr) window.toastr.warning('Could not discover a new location from current context.');
             }
         } catch (err) {
-            console.error('[Localyze:Workshop] Discovery failed:', err);
+            error('Workshop', 'Discovery failed:', err);
         } finally {
             $status.addClass('lz-hidden');
             $btn.prop('disabled', false);

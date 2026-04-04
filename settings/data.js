@@ -25,6 +25,7 @@
 
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { extension_settings } from '../../../../extensions.js';
+import { log, warn } from '../utils/logger.js';
 import {
     DEFAULT_BOOLEAN_PROMPT,
     DEFAULT_BOOLEAN_HISTORY,
@@ -92,7 +93,7 @@ export function updateActiveSetting(key, value) {
         active[key] = value;
         saveSettingsDebounced();
     } else {
-        console.warn(`[Localyze:Settings] Attempted to update invalid profile key: ${key}`);
+        warn('Settings', `Attempted to update invalid profile key: ${key}`);
     }
 }
 
@@ -181,7 +182,7 @@ export function initSettings() {
     const root = extension_settings[EXT_NAME];
 
     if (!root.profiles) {
-        console.log('[Localyze] Creating fresh profile-based settings structure...');
+        log('Settings', 'Creating fresh profile-based settings structure...');
 
         const legacyConfig = {};
         for (const key of Object.keys(PROFILE_DEFAULTS)) {

@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/index.js
  * @stamp {"utc":"2026-04-02T17:00:00.000Z"}
- * @version 1.1.12
+ * @version 1.1.13
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
  * SillyTavern Location Engine (Localyze) — extension entry point.
@@ -26,6 +26,7 @@
 import { eventSource, event_types, chat_metadata } from '../../../../script.js';
 import { getContext } from '../../../extensions.js';
 import { resetState } from './state.js';
+import { log, error } from './utils/logger.js';
 import { initSettings } from './settings/data.js';
 import { runBoot } from './logic/bootstrapper.js';
 import { runPipeline } from './logic/pipeline.js';
@@ -42,7 +43,7 @@ function handleMessageReceived(messageId) {
     runPipeline(messageId)
         .then(() => injectMessageBadge(messageId))
         .catch(err => {
-            console.error('[Localyze] Pipeline execution failed:', err);
+            error('Core', 'Pipeline execution failed:', err);
         });
 }
 
@@ -65,7 +66,7 @@ function handleMessageSwiped(messageId) {
     runPipeline(messageId)
         .then(() => injectMessageBadge(messageId))
         .catch(err => {
-            console.error('[Localyze] Pipeline execution failed on swipe:', err);
+            error('Core', 'Pipeline execution failed on swipe:', err);
         });
 }
 
@@ -75,11 +76,11 @@ function handleMessageSwiped(messageId) {
  * whenever the active chat changes.
  */
 function handleChatChanged() {
-    console.debug('[Localyze] Chat changed event detected.');
+    log('Core', 'Chat changed event detected.');
     // DEBUG: Snapshot chat_metadata at the moment CHAT_CHANGED fires.
     // If custom_background contains a localyze filename here, ST's onChatChanged
     // will immediately apply it as CSS before runBoot() can verify the file exists.
-    console.debug('[Localyze:Debug] chat_metadata snapshot on CHAT_CHANGED:', {
+    log('Core', 'chat_metadata snapshot on CHAT_CHANGED:', {
         custom_background: chat_metadata.custom_background ?? '(not set)',
         localyze_managed:  chat_metadata.localyze_managed  ?? '(not set)',
     });
@@ -87,7 +88,7 @@ function handleChatChanged() {
     runBoot()
         .then(() => reinjectAllBadges())
         .catch(err => {
-            console.error('[Localyze] Bootstrapper failed during chat change:', err);
+            error('Core', 'Bootstrapper failed during chat change:', err);
         });
 }
 
@@ -99,7 +100,7 @@ function handleChatChanged() {
  * reduce overhead during development.
  */
 async function init() {
-    console.log('[Localyze] Extension initializing...');
+    log('Core', 'Extension initializing...');
 
     try {
         // 1. Data Layer - Bootstrap settings.
@@ -114,27 +115,27 @@ async function init() {
         eventSource.on(event_types.MESSAGE_SWIPED, handleMessageSwiped);
         eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, injectMessageBadge);
-        console.debug('[Localyze] Listeners active.');
+        log('Core', 'Listeners active.');
 
         // 4. Conditional Initial Boot
         // We only trigger runBoot if a chatId is already present (e.g. extension hot-reload).
         // On a fresh ST load, we wait for the CHAT_CHANGED event to trigger the engine.
         const context = getContext();
         if (context && context.chatId) {
-            console.debug('[Localyze] Active chat detected on init. Running boot sequence...');
+            log('Core', 'Active chat detected on init. Running boot sequence...');
             await runBoot();
             reinjectAllBadges();
         } else {
-            console.log('[Localyze] Standing by for chat selection.');
+            log('Core', 'Standing by for chat selection.');
         }
 
     } catch (err) {
-        console.error('[Localyze] CRITICAL FAILURE during initialization:', err);
+        error('Core', 'CRITICAL FAILURE during initialization:', err);
     }
 }
 
 // ─── Execution ───────────────────────────────────────────────────────────────
 
 init().catch(err => {
-    console.error('[Localyze] Top-level initialization rejection:', err);
+    error('Core', 'Top-level initialization rejection:', err);
 });

@@ -23,6 +23,7 @@
 
 import { callPopup } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
+import { error } from '../utils/logger.js';
 import { state, updateState, upsertLocation, addToFileIndex } from '../state.js';
 import { getSettings } from '../settings/data.js';
 import { buildHistoryText, buildDescriberContext, buildSpatialContext, escapeHtml, slugify } from '../utils/history.js';
@@ -141,7 +142,7 @@ async function handleKnownLocation(messageId, key) {
                 setBg(newFile);
             })
             .catch(err => {
-                console.error('[Localyze:Pipeline] Known location generate failed:', err);
+                error('Pipeline', 'Known location generate failed:', err);
                 if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
             });
     }
@@ -219,7 +220,7 @@ async function handleUnknownLocation(messageId, context) {
             setBg(newFile);
         })
         .catch(err => {
-            console.error('[Localyze:Pipeline] Generate failed after approve:', err);
+            error('Pipeline', 'Generate failed after approve:', err);
             if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
         });
 }

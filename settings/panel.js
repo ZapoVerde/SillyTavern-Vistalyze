@@ -21,6 +21,7 @@
  */
 
 import { getRequestHeaders } from '../../../../../script.js';
+import { warn, error } from '../utils/logger.js';
 import { runFullAudit } from '../orphanDetector.js';
 import { openOrphanModal } from '../ui/orphanModal.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
@@ -81,7 +82,7 @@ function initDropdowns() {
                 },
             );
         } catch (err) {
-            console.warn(`[Localyze] Connection Manager failed for ${selector}:`, err);
+            warn('Settings', `Connection Manager failed for ${selector}:`, err);
             $(selector).closest('.lz-profile-row').hide();
         }
     }
@@ -247,7 +248,7 @@ function bindHandlers() {
                 if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze');
             }
         } catch (err) {
-            console.error('[Localyze] Audit failed:', err);
+            error('Settings', 'Audit failed:', err);
             if (window.toastr) window.toastr.error('Audit failed. See console for details.', 'Localyze');
         } finally {
             $btn.html(originalHtml);

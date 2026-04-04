@@ -39,6 +39,7 @@ import { chat_metadata } from '../../../../script.js'
 import { saveMetadataDebounced } from '../../../extensions.js'
 import { attachParallax, detachParallax } from './ui/parallax.js'
 import { getMetaSettings } from './settings/data.js'
+import { log } from './utils/logger.js'
 
 const BG_KEY      = 'custom_background'
 const MANAGED_KEY = 'localyze_managed'
@@ -58,13 +59,13 @@ export function isManagedByLocalyze() {
 export function set(filename) {
     // 1. Guard: Prevent malformed requests if filename is missing
     if (!filename || typeof filename !== 'string') {
-        console.debug('[Localyze:Background] Skipping setBg: filename is null or empty.');
+        log('Background', 'Skipping setBg: filename is null or empty.');
         return;
     }
 
     // 2. Guard: Don't overwrite a manual user-set background lock
     if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
-        console.debug('[Localyze:Background] Skipping setBg: Manual user lock detected.');
+        log('Background', 'Skipping setBg: Manual user lock detected.');
         return;
     }
 
@@ -114,7 +115,7 @@ export function clear() {
     if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
         // DEBUG: This fires when custom_background has a value we didn't set.
         // If the value is a localyze filename, an old version likely wrote it directly.
-        console.debug('[Localyze:Debug] clear() guard blocked — custom_background is set but not owned:', chat_metadata[BG_KEY]);
+        log('Background', 'clear() guard blocked — custom_background is set but not owned:', chat_metadata[BG_KEY]);
         return;
     }
 

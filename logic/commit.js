@@ -26,6 +26,7 @@
 
 import { saveChatConditional } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
+import { log, error } from '../utils/logger.js';
 import { 
     state, 
     updateState, 
@@ -60,7 +61,7 @@ async function commitDraftLibrary() {
         );
 
         if (isNew || isModified) {
-            console.debug(`[Localyze:Commit] Persisting definition for: ${key}`);
+            log('Commit', `Persisting definition for: ${key}`);
             await lockedWriteLocationDef(lastMsgId, draftDef, state.sessionId);
             
             // Protected Update: Sync local library memory
@@ -71,7 +72,7 @@ async function commitDraftLibrary() {
     // Handle deletions
     for (const key of Object.keys(state.locations)) {
         if (!state._draftLocations[key]) {
-            console.debug(`[Localyze:Commit] Removing deleted location: ${key}`);
+            log('Commit', `Removing deleted location: ${key}`);
             
             // Protected Update: Delete from local library memory
             removeLocation(key);
@@ -107,7 +108,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     await commitDraftLibrary();
 
     // 2. WRITE 1: Immediate Narrative Intent
-    console.debug(`[Localyze:Commit] Write 1: Recording transition to ${targetKey}`);
+    log('Commit', `Write 1: Recording transition to ${targetKey}`);
     await lockedWriteSceneRecord(lastMsgId, {
         location: targetKey,
         image: null, 
@@ -130,7 +131,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
             addToFileIndex(newFile);
 
             // 4. WRITE 2: Eventual Consistency
-            console.debug(`[Localyze:Commit] Write 2: Patching transition with ${newFile}`);
+            log('Commit', `Write 2: Patching transition with ${newFile}`);
             await lockedPatchSceneImage(lastMsgId, newFile);
             
             // Protected Update: Record asset completion
@@ -139,7 +140,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
 
             if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
         } catch (err) {
-            console.error('[Localyze:Commit] Write 2 failed (Image IO):', err);
+            error('Commit', 'Write 2 failed (Image IO):', err);
             if (window.toastr) window.toastr.error(`Transition saved, but image failed: ${err.message}`, 'Localyze');
         }
     } else {
@@ -202,7 +203,7 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
                 setBg(newFile);
                 if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
             } catch (err) {
-                console.error('[Localyze:Commit] Retroactive image gen failed:', err);
+                error('Commit', 'Retroactive image gen failed:', err);
                 if (window.toastr) window.toastr.error(`Transition saved, but image failed: ${err.message}`, 'Localyze');
             }
         } else {

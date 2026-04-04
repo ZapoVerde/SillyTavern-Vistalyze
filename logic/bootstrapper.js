@@ -23,6 +23,7 @@
 
 import { saveSettingsDebounced, chat_metadata } from '../../../../../script.js';
 import { getContext } from '../../../../extensions.js';
+import { log, warn, error } from '../utils/logger.js';
 import { state, bulkInitState, setFileIndex, addToFileIndex, updateState } from '../state.js';
 import { initSession } from '../session.js';
 import { reconstruct } from '../reconstruction.js';
@@ -36,17 +37,17 @@ import { getMetaSettings, updateMetaSetting } from '../settings/data.js';
  * Executes the full boot sequence for the current chat context.
  */
 export async function runBoot() {
-    console.debug('[Localyze:Boot] Starting sequence...');
-    
+    log('Boot', 'Starting sequence...');
+
     const context = getContext();
     if (!context.chatId) {
-        console.debug('[Localyze:Boot] Abort: No active chatId found.');
+        log('Boot', 'Abort: No active chatId found.');
         return;
     }
 
     // DEBUG: Log metadata state at boot entry — tells us if custom_background is already
     // set when we arrive, meaning ST's onChatChanged already applied it (and may have 404'd).
-    console.debug('[Localyze:Debug] runBoot() entry — chat_metadata:', {
+    log('Boot', 'runBoot() entry — chat_metadata:', {
         custom_background: chat_metadata?.custom_background ?? '(not set)',
         localyze_managed:  chat_metadata?.localyze_managed  ?? '(not set)',
     });
@@ -60,16 +61,16 @@ export async function runBoot() {
     // Protected Update: Hydrate live state from reconstructed DNA
     bulkInitState(reconstructed);
     
-    console.debug(`[Localyze:Boot] DNA Reconstructed: ${Object.keys(state.locations).length} locations found.`);
+    log('Boot', `DNA Reconstructed: ${Object.keys(state.locations).length} locations found.`);
 
     // 2. Filesystem Reconciliation
     // Fetch the list of actual background files present on the server.
     const { fileIndex, allImages } = await fetchFileIndex(state.sessionId);
-    
+
     // Protected Update: Update the server asset cache
     setFileIndex(fileIndex);
-    
-    console.debug(`[Localyze:Boot] File Index: ${state.fileIndex.size} managed files detected.`);
+
+    log('Boot', `File Index: ${state.fileIndex.size} managed files detected.`);
 
     // 3. 404 Prevention & Self-Healing Queue
     const queue = [];
@@ -78,7 +79,7 @@ export async function runBoot() {
     for (const key of Object.keys(state.locations)) {
         const filename = `localyze_${state.sessionId}_${key}.png`;
         if (!state.fileIndex.has(filename)) {
-            console.warn(`[Localyze:Boot] Asset missing from server: ${filename}. Queuing regeneration.`);
+            warn('Boot', `Asset missing from server: ${filename}. Queuing regeneration.`);
             queue.push(key);
         }
     }
@@ -89,35 +90,35 @@ export async function runBoot() {
     // 4. UI Restoration
     if (state.currentImage && !isCurrentImageMissing) {
         // File exists on server: display it immediately
-        console.debug('[Localyze:Boot] Restoring valid background:', state.currentImage);
+        log('Boot', 'Restoring valid background:', state.currentImage);
         setBg(state.currentImage);
     } else {
         // File is missing or no scene active: clear the background to prevent 404 logs
         if (isCurrentImageMissing) {
-            console.warn(`[Localyze:Boot] Active background ${state.currentImage} is missing. Clearing UI to prevent 404.`);
+            warn('Boot', `Active background ${state.currentImage} is missing. Clearing UI to prevent 404.`);
         }
         clearBg();
     }
 
     // 5. Execute Regeneration Queue
     if (queue.length > 0) {
-        console.debug(`[Localyze:Boot] Regenerating ${queue.length} missing assets...`);
+        log('Boot', `Regenerating ${queue.length} missing assets...`);
         for (const key of queue) {
             const def = state.locations[key];
             if (!def) continue;
-            
+
             generate(key, def, state.sessionId)
                 .then(async filename => {
                     // Protected Update: Add the new file to the index
                     addToFileIndex(filename);
-                    
+
                     // If the regenerated file is the one we should be looking at, apply it now
                     if (filename === state.currentImage) {
-                        console.log(`[Localyze:Boot] Active background regenerated: ${filename}. Applying to UI.`);
+                        log('Boot', `Active background regenerated: ${filename}. Applying to UI.`);
                         setBg(filename);
                     }
                 })
-                .catch(err => console.error(`[Localyze:Boot] Regeneration failed for "${key}":`, err));
+                .catch(err => error('Boot', `Regeneration failed for "${key}":`, err));
         }
     }
 

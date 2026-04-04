@@ -24,6 +24,7 @@
  */
 
 import { callPopup } from '../../../../../script.js';
+import { error } from '../utils/logger.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils/history.js';
 import { syncDraftState } from '../logic/maintenance.js';
@@ -136,7 +137,7 @@ export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
                 await handleFinalizeWorkshop(selectedKey);
             }
         } catch (err) {
-            console.error('[Localyze:Picker] Failed to apply selection:', err);
+            error('Picker', 'Failed to apply selection:', err);
         }
     }
 }

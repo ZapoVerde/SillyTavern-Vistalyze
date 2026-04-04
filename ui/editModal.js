@@ -26,6 +26,7 @@
 import { callPopup } from '../../../../../script.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 import { escapeHtml } from '../utils/history.js'
+import { log, error } from '../utils/logger.js'
 
 /**
  * Opens the edit modal for a specific location.
@@ -76,7 +77,7 @@ export async function openEditModal(def) {
         btn.prop('disabled', true).text('Generating...')
         
         try {
-            console.debug('[Localyze:Edit] Requesting preview for updated visuals.')
+            log('Edit', 'Requesting preview for updated visuals.')
             const objectUrl = await fetchPreviewBlob(visuals)
             $('#lz-edit-preview-container').show()
             $('#lz-edit-preview-img').attr('src', objectUrl)
@@ -85,7 +86,7 @@ export async function openEditModal(def) {
             // certainly want to regenerate the high-res file on save.
             $('#lz-edit-regen-check').prop('checked', true)
         } catch (err) {
-            console.error('[Localyze:Edit] Preview failed:', err)
+            error('Edit', 'Preview failed:', err)
             if (window.toastr) window.toastr.error(err.message, 'Localyze Preview')
         } finally {
             btn.prop('disabled', false).text(originalText)

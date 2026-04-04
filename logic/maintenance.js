@@ -28,6 +28,7 @@
  */
 
 import { getContext } from '../../../../extensions.js';
+import { error } from '../utils/logger.js';
 import { 
     state, 
     syncDrafts, 
@@ -110,7 +111,7 @@ export async function regenField(key, field) {
             return true;
         }
     } catch (err) {
-        console.error(`[Localyze:Regen] Targeted regen failed for ${field}:`, err);
+        error('Regen', `Targeted regen failed for ${field}:`, err);
         throw err;
     }
     return false;
@@ -130,7 +131,7 @@ export async function previewProposedImage(key) {
         setProposedBlob('thumbnail', blobUrl);
         return blobUrl;
     } catch (err) {
-        console.error('[Localyze:Preview] Workshop preview failed:', err);
+        error('Preview', 'Workshop preview failed:', err);
         throw err;
     }
 }
@@ -149,7 +150,7 @@ export async function generateFullPreview(key) {
         setProposedBlob('full', blobUrl);
         return blobUrl;
     } catch (err) {
-        console.error('[Localyze:Preview] Full preview generation failed:', err);
+        error('Preview', 'Full preview generation failed:', err);
         throw err;
     }
 }

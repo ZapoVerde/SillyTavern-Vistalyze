@@ -20,6 +20,7 @@
  */
 import { generateQuietPrompt } from '../../../../script.js'
 import { ConnectionManagerRequestService } from '../../shared.js'
+import { log, warn, error } from './utils/logger.js'
 
 function interpolate(template, vars) {
     return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '')
@@ -57,35 +58,35 @@ function extractMarkerData(raw) {
  * Dispatches the prompt to the LLM with Verbose Raw Logging.
  */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
-    console.debug(`[Localyze:${label}] --- PROMPT SENT --- \n${prompt}`);
-    
+    log(label, `--- PROMPT SENT ---\n${prompt}`);
+
     let result;
     if (profileId) {
         try {
             result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions);
         } catch (err) {
-            console.warn(`[Localyze:${label}] ConnectionManager failed, falling back:`, err);
+            warn(label, 'ConnectionManager failed, falling back:', err);
         }
     }
 
     if (!result) {
         try {
-            result = await generateQuietPrompt({ 
-                quietPrompt: prompt, 
+            result = await generateQuietPrompt({
+                quietPrompt: prompt,
                 removeReasoning: true,
-                ...extraOptions 
+                ...extraOptions
             });
         } catch (err) {
-            console.error(`[Localyze:${label}] generateQuietPrompt failed:`, err);
+            error(label, 'generateQuietPrompt failed:', err);
             throw err;
         }
     }
 
     const text = result?.content ?? result;
-    
+
     // VISIBILITY: Show exactly what the AI said before we touch it
-    console.debug(`[Localyze:${label}] --- RAW AI RESPONSE --- \n${text}`);
-    
+    log(label, `--- RAW AI RESPONSE ---\n${text}`);
+
     return text;
 }
 
@@ -110,7 +111,7 @@ export async function detectBoolean(messageText, currentLocation, historyText, p
     // Prioritize YES if both exist, otherwise default to NO (false)
     const result = hasYes && !cleanText.includes("NOT YES"); // Basic negation check
     
-    console.debug(`[Localyze:Boolean] Result interpreted as: ${result ? 'YES (Changed)' : 'NO (Same)'}`);
+    log('Boolean', `Result interpreted as: ${result ? 'YES (Changed)' : 'NO (Same)'}`);
     return result;
 }
 
