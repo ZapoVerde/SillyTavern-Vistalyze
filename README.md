@@ -1,4 +1,3 @@
---- START OF FILE README.md ---
 # 📍 Localyze
 
 **Localyze** is a SillyTavern extension that brings your roleplay to life by automatically detecting location changes and generating cinematic background images via the Pollinations API.
@@ -27,7 +26,7 @@ Located in your top toolbar, the **Workshop** is your command center for managin
 ---
 
 ## 🧠 Transparency: How it Works
-Localyze is designed to be fast, cheap, and non-intrusive. It uses a **"Falling Water"** logic pipeline to save you money on LLM tokens:
+Localyze is designed to be fast, cheap, and non-intrusive. It uses a logic pipeline to save you money on LLM tokens:
 
 1.  **Step 1: The Gate (Cheap)**: The AI does a lightning-fast check: "Has the location changed?" If the answer is No, the process stops. You aren't charged for complex analysis on every message.
 2.  **Step 2: The Library (Smart)**: If the location *did* change, the AI checks your existing Library first. "Is this a place we've been before?"
@@ -49,8 +48,6 @@ Localyze believes your data belongs to you.
 *   **Self-Healing**: If an image fails to generate because of a network error, Localyze will notice it's missing the next time you open the chat and automatically try to fix it for you.
 
 ## ❓ Troubleshooting
-*   **Backgrounds aren't changing?** Check that you don't have a "User Locked" background. If you manually picked a background from ST's gallery, Localyze will step back and let you stay in control.
 *   **Images failing to save?** Ensure `allowKeysExposure: true` is set in your `config.yaml`. Without this, the extension cannot securely access your API key to talk to the image generator.
-*   **"Orphaned" Images?** Use the **Audit Images** button in settings to find and delete background files belonging to deleted chats, keeping your storage clean.
-
---- END OF FILE ---
+*   **Orphaned" Images?** Use the **Audit Images** button in settings to find and delete background files belonging to deleted chats, keeping your storage clean.
+*   **LLM failing?** Check that you are using the appropriate size LLMs for the job. The step 1 LLM can be small and cheap. The others require a bit more power, but only run occasionally.
