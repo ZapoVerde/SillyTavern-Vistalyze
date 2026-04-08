@@ -170,6 +170,15 @@ async function handleUnknownLocation(messageId, context) {
         key: slugify(rawDef.name)
     };
 
+    // Don't prompt if the user is in the character editor (not viewing chat)
+    const charEditorOpen = document.getElementById('rm_ch_create_block')?.offsetParent !== null;
+    if (charEditorOpen) {
+        clearBg();
+        await lockedWriteSceneRecord(messageId, { location: null, image: null, bg_declined: true });
+        updateState(null, null);
+        return;
+    }
+
     const confirmed = await callPopup(
         `<h3>New location detected: ${escapeHtml(def.name)}</h3>
         <p><em>${escapeHtml(def.description)}</em></p>

@@ -49,7 +49,12 @@ export const POLLINATIONS_MODELS =[
 export const DEFAULT_IMAGE_MODEL = 'flux'
 
 /** Image prompt template. Interpolated by imageCache.js. */
-export const DEFAULT_IMAGE_PROMPT_TEMPLATE = '{{image_prompt}}, landscape, cinematic lighting, detailed environment'
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = 
+`Concept Art for Video Games, 
+{{image_prompt}}, a wide angled background, cinematic lighting, high detail, uncluttered in the centre.
+
+Style: Concept Art for Video Games, in the style of Frank Cho, comic book style.
+`
 
 /** Dev mode — generates recognizable but low-cost images. */
 export const DEFAULT_DEV_MODE = false
@@ -69,19 +74,41 @@ export const DEFAULT_DESCRIBER_HISTORY = 3
 export const DEFAULT_DISCOVERY_HISTORY = 3
 
 export const DEFAULT_BOOLEAN_PROMPT =
-`Current scene: {{current_location}}
+`[SYSTEM: LOCATION CHANGE DETECTOR]
 
-Previous turns:
+You are a precise location archivist for a roleplay. Your ONLY job is to detect whether the scene has left the current known location.
+
+Current known location: {{current_location}}
+
 {{history}}
 
 Latest message:
 {{message}}
 
-Has the scene moved to a new named location since the previous turns? YES or NO.`
+At the END of the latest message, has the scene clearly left the current known location?
+
+Rules:
+- Answer with ONLY the single word YES or NO.
+- Evaluate the scene state strictly at the end of the latest message, not during earlier parts of it.
+- YES = the characters are no longer in the current known location.
+  This includes:
+  - clearly exiting the location (e.g. stepping outside)
+  - being in transit after leaving (e.g. on the road, in a vehicle, traveling)
+  - arriving somewhere after previously being in transit
+- NO = they are still within the current location or its immediate sub-areas (different room, floor, corner, or nearby extension).
+- Movement within a location does NOT count as leaving.
+- Intent to leave does NOT count; the exit must be completed.
+- Mentions of other locations without physically moving do NOT count.
+- If the location is ambiguous or unclear, default to NO.
+- Do not explain. Do not add any other text.
+
+Answer:`
 
 export const DEFAULT_CLASSIFIER_PROMPT =
 `[SYSTEM: TASK — LOCATION CLASSIFIER]
-Identify which location from the list below matches the current scene described in the message.
+Identify which location from the list below matches the location at the end of the LATEST MESSAGE.
+
+CURRENT LOCATION: {{current_location_name}}
 
 LOCATIONS:
 {{key_list}}
@@ -89,14 +116,18 @@ LOCATIONS:
 TRANSITION HISTORY FROM CURRENT LOCATION:
 {{spatial_transitions}}
 
+NUMBER OF TRANSITIONS TO A COMPLETELY NEW LOCATION ({{spatial_discovery_count}})
+
+PREVIOUS History:
 {{history}}
+
 LATEST MESSAGE:
 {{message}}
 
 INSTRUCTIONS:
-1. Compare the message to the Name and Definition of each location.
-2. If a match is found, reply with only the ID portion of the location (the text inside the brackets).
-3. If no match is found, or if the scene is moving somewhere entirely new, reply with: NULL`
+1. If the characters have moved to a NEW location not listed above, reply: NEW
+2. If the characters have moved to a location in the list above, reply ONLY with the ID in brackets (e.g., [fob_armory]).
+3. If the characters are STILL at {{current_location_name}}, reply: NULL`
 
 export const DEFAULT_DESCRIBER_PROMPT =
 `[SYSTEM: TASK — LOCATION ARCHIVIST]
@@ -109,8 +140,8 @@ INSTRUCTIONS:
 1. Identify the single most specific active location at the end of the transcript.
 2. Provide the information using the exact labels below:
    Name: A short, formal label (e.g., "The Silver Swan Tavern").
-   Definition: A brief, conceptual definition of what this place is. This helps distinguish the location semantically for search logic.
-   Visuals: 2-3 sentences of pure visual/sensory detail for an image generator. Focus on lighting, materials, and mood. Do not mention characters.
+   Definition: A brief, conceptual definition of what this place is. This helps distinguish the location and narratively for search logic.
+    Visuals: 2–3 sentences of concrete visual detail for an image generator. Focus on visible elements such as lighting, materials, layout, and color. Exclude mention of humans, animals, and any other living creatures.
 
 ### OUTPUT FORMAT:
 Name: [Location Name]
@@ -132,7 +163,7 @@ INSTRUCTIONS:
 3. Provide the information using the exact labels below:
    Name: A short, formal label based on the keywords.
    Definition: A brief, conceptual definition of what this place is.
-   Visuals: 2-3 sentences of pure visual/sensory detail for an image generator. Focus on lighting and environment. No characters.
+   Visuals: 2–3 sentences of concrete visual detail for an image generator. Focus on visible elements such as lighting, materials, layout, and color. Exclude mention of humans, animals, and any other living creatures.
 
 ### OUTPUT FORMAT:
 Name: [Location Name]
