@@ -1,18 +1,20 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/templates.js
- * @stamp {"utc":"2026-04-01T23:30:00.000Z"}
- * @version 1.4.3
+ * @stamp {"utc":"2026-04-04T10:00:00.000Z"}
+ * @version 1.5.0
  * @architectural-role Pure UI Templates
  * @description
  * Pure functions for generating the Localyze settings panel HTML.
  * 
  * @updates
- * - Added Step 4 (Targeted Discovery) to the settings panel layout.
- * - Added parallax feature toggle checkbox at the top of the panel.
+ * - Enhanced buildCallRow to support guidance icons with hover/click tooltips.
+ * - Updated buildPanelHTML with "Known Good Recipe" guidance for specific models:
+ *   Step 1 -> Mistral Small 2603.
+ *   Steps 2, 3, 4 -> Gemini 3.1 Flash Lite Preview.
  *
  * @api-declaration
  * buildPanelHTML(meta, models) -> string
- * buildCallRow(id, label, promptKey, profileKey, historyKey) -> string
+ * buildCallRow(id, label, promptKey, profileKey, historyKey, guidance) -> string
  * escapeHtml(str) -> string
  *
  * @contract
@@ -42,12 +44,14 @@ export function escapeHtml(str) {
  * @param {string} promptKey The settings key for the prompt template.
  * @param {string} profileKey The settings key for the connection profile.
  * @param {string|null} historyKey The settings key for the history pairs count.
+ * @param {string} guidance Advice text for the info icon.
  * @returns {string} HTML string.
  */
-export function buildCallRow(id, label, promptKey, profileKey, historyKey = null) {
+export function buildCallRow(id, label, promptKey, profileKey, historyKey = null, guidance = '') {
     const safeId = escapeHtml(id);
     const safePromptKey = escapeHtml(promptKey);
     const safeProfileKey = escapeHtml(profileKey);
+    const safeGuidance = escapeHtml(guidance);
 
     const historyRow = historyKey ? `
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
@@ -61,7 +65,13 @@ export function buildCallRow(id, label, promptKey, profileKey, historyKey = null
     return `
     <div class="lz-call-row" style="margin-bottom:16px;padding:12px;border:1px solid var(--SmartThemeBorderColor,#555);border-radius:6px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <strong style="font-size:0.95em;">${escapeHtml(label)}</strong>
+            <strong style="font-size:0.95em;">
+                ${escapeHtml(label)}
+                <i class="fa-solid fa-circle-info lz-info-icon" 
+                   title="${safeGuidance}" 
+                   data-guidance="${safeGuidance}" 
+                   style="opacity:0.6; cursor:pointer; margin-left:6px;"></i>
+            </strong>
             <button class="menu_button lz-open-prompt" data-prompt-key="${safePromptKey}" style="font-size:0.8em;padding:2px 8px;">Edit Prompt</button>
         </div>
         <div class="lz-profile-row" style="display:flex;align-items:center;gap:8px;">
@@ -82,6 +92,9 @@ export function buildPanelHTML(meta, availableModels) {
     const modelOptions = Array.isArray(availableModels) 
         ? availableModels.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
         : '';
+
+    const step1Guidance = "This gate runs on every AI message. To keep the chat fast and cheap, use a lightweight model. Mistral Small 2603 is the recommended choice for this high-frequency task.";
+    const creativeGuidance = "This step requires higher descriptive intelligence. Weaker models can produce chaotic results or fail to follow the extraction format. Gemini 3.1 Flash Lite Preview is recommended for its balance of power and reliability.";
 
     return `
     <div id="lz-settings" class="extension_settings">
@@ -115,10 +128,10 @@ export function buildPanelHTML(meta, availableModels) {
                 </p>
 
                 <!-- Detection & Discovery Steps -->
-                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory')}
-                ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory')}
-                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory')}
-                ${buildCallRow('discovery',  'Step 4 — Targeted Discovery',            'discoveryPrompt',  'discoveryProfileId',  'discoveryHistory')}
+                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory', step1Guidance)}
+                ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory', creativeGuidance)}
+                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory', creativeGuidance)}
+                ${buildCallRow('discovery',  'Step 4 — Targeted Discovery',            'discoveryPrompt',  'discoveryProfileId',  'discoveryHistory', creativeGuidance)}
                 
                 <!-- Image Generation Section -->
                 <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--SmartThemeBorderColor,#444);">

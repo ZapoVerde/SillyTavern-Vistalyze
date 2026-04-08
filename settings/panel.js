@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
- * @stamp {"utc":"2026-04-03T17:30:00.000Z"}
+ * @stamp {"utc":"2026-04-04T10:05:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
  * The primary entry point for the Localyze settings UI. 
@@ -9,6 +9,7 @@
  * - Migration: Replaced all direct setting mutations with updateActiveSetting, 
  *   updateMetaSetting, and switchProfile setters.
  * - Standardized Flow: UI events now trigger data updates through protected gatekeepers.
+ * - Guidance Support: Added click handler for .lz-info-icon to display model advice via callPopup.
  *
  * @api-declaration
  * injectSettingsPanel() — Main entry point for extension settings init.
@@ -17,10 +18,10 @@
  *   assertions:
  *     purity: UI Orchestrator
  *     state_ownership: [none]
- *     external_io: [#extensions_settings DOM, settings/data.js]
+ *     external_io: [#extensions_settings DOM, settings/data.js, callPopup]
  */
 
-import { getRequestHeaders } from '../../../../../script.js';
+import { getRequestHeaders, callPopup } from '../../../../../script.js';
 import { warn, error } from '../utils/logger.js';
 import { runFullAudit } from '../orphanDetector.js';
 import { openOrphanModal } from '../ui/orphanModal.js';
@@ -178,6 +179,12 @@ function bindHandlers() {
         const key = $(this).data('prompt-key');
         const updated = await openPromptModal(key, promptTitles[key], promptDefaults[key], promptVariables[key] ?? []);
         if (updated) updateDirtyIndicator(meta);
+    });
+
+    // Guidance Popup Handler
+    $('#lz-settings').on('click', '.lz-info-icon', function () {
+        const guidance = $(this).data('guidance');
+        callPopup(`<h3>Localyze Guidance</h3><p>${guidance}</p>`, 'text');
     });
 
     $('#lz-settings').on('input', '.lz-history-input', function () {
