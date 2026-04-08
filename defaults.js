@@ -60,7 +60,7 @@ Style: Concept Art for Video Games, in the style of Frank Cho, comic book style.
 export const DEFAULT_DEV_MODE = false
 
 /** Verbose logging — set to true to enable informational log/warn output. Errors always surface. */
-export const DEFAULT_VERBOSE_LOGGING = true
+export const DEFAULT_VERBOSE_LOGGING = false
 
 /** Parallax — horizontal panning effect on wide background images. Off by default. */
 export const DEFAULT_PARALLAX_ENABLED = false
@@ -68,10 +68,10 @@ export const DEV_IMAGE_WIDTH  = 320
 export const DEV_IMAGE_HEIGHT = 180
 
 /** Default turn-pair history for LLM calls. */
-export const DEFAULT_BOOLEAN_HISTORY = 3
-export const DEFAULT_CLASSIFIER_HISTORY = 3
-export const DEFAULT_DESCRIBER_HISTORY = 3
-export const DEFAULT_DISCOVERY_HISTORY = 3
+export const DEFAULT_BOOLEAN_HISTORY = 2
+export const DEFAULT_CLASSIFIER_HISTORY = 2
+export const DEFAULT_DESCRIBER_HISTORY = 2
+export const DEFAULT_DISCOVERY_HISTORY = 2
 
 export const DEFAULT_BOOLEAN_PROMPT =
 `[SYSTEM: LOCATION CHANGE DETECTOR]
