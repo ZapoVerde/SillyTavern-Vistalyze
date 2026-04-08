@@ -1,101 +1,56 @@
-# Localyze
+--- START OF FILE README.md ---
+# 📍 Localyze
 
-A SillyTavern extension that automatically detects location changes in roleplay chat, maintains a per-chat location library, generates background images via the Pollinations API, and sets the ST background accordingly.
+**Localyze** is a SillyTavern extension that brings your roleplay to life by automatically detecting location changes and generating cinematic background images via the Pollinations API.
 
-## Features
+## 🚀 Quick Start Guide
 
-- **"Falling Water" Detection Pipeline:** Automatic location detection on every AI message (Boolean gate → Classifier → Describer) to minimize LLM costs.
-- **The Location Workshop:** A unified 3-tab interface (Library, Architect, Explorer) for managing, editing, and discovering locations.
-- **Targeted Discovery:** Guide the AI to create specific locations using manual keywords.
-- **Per-Message Integration:** Interactive location badges injected onto every AI message for retroactive location tagging and quick editing.
-- **Localyze Settings Profiles:** Save, load, and manage your specific prompt setups and extension configurations internally.
-- **Parallax Backgrounds:** Optional device-tilt and mouse-responsive horizontal panning for wide background images.
-- **Chat Log as Database:** Location definitions and scene transitions are stored in the chat log itself using a non-destructive array pattern — completely fork-safe and self-healing.
-- **Background Image Generation:** Integration with Pollinations API for scene visualization. **(Note: A Pollinations API key is required)**.
-- **Orphan Cleanup:** Safe, manual auditing and deletion of generated images no longer tied to active chats.
+1.  **Installation**: Place the `localyze` folder into `SillyTavern/data/default-user/extensions/`.
+2.  **Server Config**: Open `SillyTavern/config.yaml` and ensure `allowKeysExposure: true` is set. Restart SillyTavern.
+3.  **API Key**: 
+    *   Go to the **SillyTavern Extensions Panel** (the puzzle piece icon).
+    *   Find the **Localyze** section.
+    *   Enter your **Pollinations API Key** and click **Save to Vault**.
+    *   Click **Test Connection** to ensure everything is working.
+4.  **Chatting**: Start roleplaying! When your character moves to a new place (e.g., "They stepped into the dimly lit tavern"), Localyze will automatically detect the shift, ask for your approval, and generate a new background.
 
-## Installation & Setup
+---
 
-1. Place the `localyze` folder in `SillyTavern/data/default-user/extensions/`
-2. Enable the extension in ST's Extensions panel.
-3. Open `SillyTavern/config.yaml` in your server folder and ensure `allowKeysExposure: true` is set (this allows extensions to securely read your API keys).
-4. Restart your SillyTavern server and reload the page.
+## 🛠 The Location Workshop
+Located in your top toolbar, the **Workshop** is your command center for managing the "spatial DNA" of your story. It is divided into three tabs:
 
-## How It Works
+*   **Library**: View every location your characters have ever visited in this chat. Click the **Arrow** to jump back to a previous location instantly.
+*   **Architect**: Manually edit a location's name, its logical definition (for the AI), or its visual description (for the image generator). 
+    *   *Pro Tip:* Use the "Thumbnail Preview" to see a low-cost version of your changes before finalizing.
+*   **Explorer**: If the AI missed a transition, use **Force Detect**. You can provide keywords (e.g., "A futuristic laboratory") to guide the AI’s imagination.
 
-### The Location Workshop & Manual Tools
-Clicking the **Localyze** button in the ST extensions toolbar opens the **Location Workshop**, which consists of three tabs:
-1. **Library:** Browse known locations, apply them to the current scene, or jump to edit them.
-2. **Architect:** Manually edit location names, logical definitions, and visual prompts. Features targeted AI regeneration for specific fields and 320x180 low-cost thumbnail previews.
-3. **Explorer (Targeted Discovery):** Run the extraction AI manually against the recent chat context, optionally providing keywords (e.g., "A dark tavern") to guide the generation.
+---
 
-### Per-Message Badges
-Every AI message features a small Location Pill in its action bar. 
-- **Clicking the Pill** opens the **Location Picker**, allowing you to retroactively change the location of the scene at that specific point in the chat history.
-- **Clicking the Edit Icon** opens the Architect tab directly for that specific location.
+## 🧠 Transparency: How it Works
+Localyze is designed to be fast, cheap, and non-intrusive. It uses a **"Falling Water"** logic pipeline to save you money on LLM tokens:
 
-### Automatic Detection Pipeline
-On every AI message, Localyze runs a cascading pipeline:
-1. **Boolean (Gate):** Asks the LLM if the location has changed. If No, the pipeline stops (cheap, fast).
-2. **Classifier:** Injects a dynamic Markov-graph of your historical movements. Asks the LLM which known location key matches the message.
-3. **Describer:** If no known location matches, extracts the `name`, `definition`, and `imagePrompt` as JSON. An Add Modal lets you preview the visual prompt before committing the new location to your library.
+1.  **Step 1: The Gate (Cheap)**: The AI does a lightning-fast check: "Has the location changed?" If the answer is No, the process stops. You aren't charged for complex analysis on every message.
+2.  **Step 2: The Library (Smart)**: If the location *did* change, the AI checks your existing Library first. "Is this a place we've been before?"
+3.  **Step 3: The Architect (Creative)**: Only if the location is brand new does the AI write a full visual description and request an image.
 
-### Chat Log as Database (Array Pattern)
-Location definitions and scene transitions are stored directly in `message.extra.localyze` on the relevant chat messages. 
-- We use an **Array Pattern**, allowing a single message to hold both a `location_def` (the dictionary definition) and a `scene` transition record simultaneously without overwriting data.
-- **Self-healing:** If you reload, Localyze reconstructs the entire spatial history via a pure forward-pass over the chat log. No external JSON files to get corrupted or desynced.
+---
 
-### The Two-Write Pattern
-When a location transition requires a new image:
-1. **Write 1:** The scene record is written immediately with `image: null` (capturing narrative intent).
-2. **Async Gen:** Generation starts in the background.
-3. **Write 2:** The scene record is patched with the resulting filename.
-If generation fails (or you close the browser), Localyze detects the `null` image on next boot and queues a silent background regeneration.
+## 🛡 Data & Privacy
+Localyze believes your data belongs to you.
+*   **No External Databases**: Your locations, descriptions, and history are stored **inside your chat log (`.jsonl`) file**. 
+*   **Fork-Safe**: If you "Move" or "Duplicate" a chat in SillyTavern, your entire location history and all generated images move with it.
+*   **Manual Control**: Localyze will **never** overwrite a background you set manually using SillyTavern’s native tools. It respects your choices and only manages the backgrounds it creates.
 
-## Configuration
+---
 
-Open ST's Extensions panel and scroll to the **Localyze** section.
+## 🎨 Visual Features
+*   **Parallax Effect**: Turn this on in settings to make wide backgrounds respond to your mouse movement or phone tilt, creating a 3D "window" effect.
+*   **Message Badges**: Every AI message has a small location icon in the action bar. Click it to retroactively change the location of that specific moment in time.
+*   **Self-Healing**: If an image fails to generate because of a network error, Localyze will notice it's missing the next time you open the chat and automatically try to fix it for you.
 
-### Profiles
-- **Localyze Profiles:** Save and switch between complete configurations of your custom prompts, histories, and model selections.
-- **Connection Profiles:** Each LLM call (Boolean, Classifier, Describer, Discovery) has a dropdown to select a Connection Manager profile. Leave blank to use your active chat API.
+## ❓ Troubleshooting
+*   **Backgrounds aren't changing?** Check that you don't have a "User Locked" background. If you manually picked a background from ST's gallery, Localyze will step back and let you stay in control.
+*   **Images failing to save?** Ensure `allowKeysExposure: true` is set in your `config.yaml`. Without this, the extension cannot securely access your API key to talk to the image generator.
+*   **"Orphaned" Images?** Use the **Audit Images** button in settings to find and delete background files belonging to deleted chats, keeping your storage clean.
 
-### Prompt Editing & Variables
-Click **Edit Prompt** next to any step to customize it. Available placeholders:
-
-| Call | Available Variables |
-| :--- | :--- |
-| **Boolean** | `{{current_location}}`, `{{history}}`, `{{message}}` |
-| **Classifier** | `{{current_location}}`, `{{key_list}}`, `{{filtered_list}}`, `{{history}}`, `{{message}}`, `{{spatial_transitions}}`, `{{spatial_discovery_count}}` |
-| **Describer** | `{{context}}` |
-| **Discovery** | `{{keywords}}`, `{{context}}` |
-| **Image Template** | `{{image_prompt}}`, `{{name}}`, `{{description}}` |
-
-### Image Generation & Vault
-- **API Vault:** A Pollinations API key is **required** to generate backgrounds. Securely save your token to ST's encrypted secret vault via the input field in the Localyze settings panel.
-- **Parallax Backgrounds:** Enable this at the top of the settings to allow horizontal panning on wide backgrounds (tracks mouse on desktop, requests device-tilt permission on mobile).
-
-## Architecture Notes
-
-Localyze is strictly structured using a Gatekeeper/Stateful Owner pattern.
-
-```text
-├── index.js          — Event orchestrator; entry point
-├── state.js          — Stateful Owner: Single source of truth for runtime state
-├── reconstruction.js — Pure function: Derives state purely from the chat log
-├── logic/            — Narrative and UI logic controllers
-│   ├── pipeline.js   — Auto-detection "Falling Water" orchestrator
-│   ├── maintenance.js— Workshop and Discovery controller
-│   ├── commit.js     — Applies two-write pattern for draft/scene finalization
-│   └── bootstrapper.js- Initial DNA reconstruction and self-healing queue
-├── io/
-│   └── dnaWriter.js  — IO Executor: Writes Array-pattern data to chat objects
-├── settings/         — Data management for profiles and configuration
-├── ui/               — Visual components
-│   ├── workshopModal.js — Main 3-tab Workshop UI orchestrator
-│   ├── messageBadge.js  — Per-message DOM injector
-│   ├── parallax.js      — High-performance rAF panning logic
-│   └── ...
-├── detector.js       — LLM parsing and API dispatch
-├── imageCache.js     — Pollinations API IO
-└── background.js     — Safely applies background images using lock mechanisms
+--- END OF FILE ---
