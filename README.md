@@ -1,6 +1,22 @@
 # 📍 Localyze
 
-**Localyze** is a SillyTavern extension that brings your roleplay to life by automatically detecting location changes and generating cinematic background images via the Pollinations API.
+**Localyze** is a SillyTavern extension that brings your roleplay to life by automatically detecting location changes and generating cinematic background images via the [Pollinations API](https://pollinations.ai).
+
+## 🔑 Setup & Requirements
+
+To use **Localyze** effectively, you must configure both your API key and your SillyTavern AI connections.
+
+1. **Obtain a Pollinations Key:** Visit [enter.pollinations.ai](https://pollinations.ai) to generate your API key for image generation.
+2. **Configure Extension:** 
+   - Open the **Extensions** panel in SillyTavern.
+   - Locate **Localyze** and paste your key into the API Key field.
+3. **LLM Connections:** 
+   - Select an LLM for each step in the settings (see below for model guidance)
+   - Select a Pollinations model (typically zimage or flux)
+
+> [!TIP]
+> Higher-quality LLMs will provide more accurate location detection and more atmospheric image prompts!
+
 
 ## 🚀 Quick Start Guide
 
@@ -12,6 +28,23 @@
     *   Enter your **Pollinations API Key** and click **Save to Vault**.
     *   Click **Test Connection** to ensure everything is working.
 4.  **Chatting**: Start roleplaying! When your character moves to a new place (e.g., "They stepped into the dimly lit tavern"), Localyze will automatically detect the shift, ask for your approval, and generate a new background.
+
+---
+
+## ⚙️ Configuration & Best Practices
+
+**Localyze** uses a 4-step pipeline to manage background generation. To optimize for both speed and cost, the following LLM setup is recommended for each step:
+
+
+| Step | Function | Recommended Model Type | Why? |
+| :--- | :--- | :--- | :--- |
+| **Step 1** | **Location Detection** | **Fast/Cheap** (e.g., Mistral smal 2603) | This runs frequently to check for changes; a small model handles this boolean logic perfectly. |
+| **Step 2** | **Location Classifier** | **Mid-Tier** (e.g., Gemini 3.1 Flash Lite Preview) | Categorizes the setting to ensure consistent prompt engineering. |
+| **Step 3** | **Scene Description** | **Mid-Tier** (e.g., Gemini 3.1 Flash Lite Preview) | This writes the actual visual prompt.|
+| **Step 4** | **Targeted Discovery** | **Mid-Tier** (e.g., Gemini 3.1 Flash Lite Preview)| Provides a keyword guided generation. |
+
+> [!TIP]
+> Users can mix and match providers (OpenRouter, local, etc.) for each step directly in the extension settings menu to balance performance and cost.
 
 ---
 
