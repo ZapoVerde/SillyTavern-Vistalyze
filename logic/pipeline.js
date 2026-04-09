@@ -124,11 +124,13 @@ async function handleKnownLocation(messageId, key) {
         setBg(filename);
         await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false });
         updateState(key, filename);
+        document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
     } else {
         // Transition recorded but image is missing: clear and generate
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: key, image: null, bg_declined: false });
         updateState(key, null);
+        document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
 
         const capturedId = messageId;
         generate(key, def, state.sessionId)
@@ -216,6 +218,7 @@ async function handleUnknownLocation(messageId, context) {
     
     // Protected Update: Set scene intent
     updateState(approved.key, null);
+    document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
 
     const capturedId = messageId;
     generate(approved.key, approved, state.sessionId)
