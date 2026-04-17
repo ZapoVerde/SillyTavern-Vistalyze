@@ -21,7 +21,7 @@
  *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js, i18n]
  */
 
-import { t, translate } from '../../../../../i18n.js';
+import { t, translate } from '../../../../i18n.js';
 import { state, setWorkshopKey, setProposedBlob, updateDraftField } from '../../state.js';
 import { error } from '../../utils/logger.js';
 import {

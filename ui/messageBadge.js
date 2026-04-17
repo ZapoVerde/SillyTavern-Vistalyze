@@ -20,7 +20,7 @@
  */
 
 import { getContext } from '../../../../extensions.js';
-import { t, translate } from '../../../../i18n.js';
+import { t, translate } from '../../../i18n.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils/history.js';
 import { syncDraftState, handleEditLocation } from '../logic/maintenance.js';

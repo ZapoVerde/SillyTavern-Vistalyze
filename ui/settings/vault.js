@@ -21,7 +21,7 @@
  */
 
 import { callPopup } from '../../../../../../script.js';
-import { t, translate } from '../../../../../../i18n.js';
+import { t, translate } from '../../../../i18n.js';
 import { writeSecret, secret_state } from '../../../../../secrets.js';
 import { fetchPreviewBlob } from '../../imageCache.js';
 import { log, error } from '../../utils/logger.js';

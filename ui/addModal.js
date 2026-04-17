@@ -23,7 +23,7 @@
  *     external_io: [callPopup, fetchPreviewBlob, i18n]
  */
 import { callPopup } from '../../../../../script.js'
-import { t, translate } from '../../../../../i18n.js'
+import { t, translate } from '../../../i18n.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 import { escapeHtml, slugify } from '../utils/history.js'
 import { error } from '../utils/logger.js'

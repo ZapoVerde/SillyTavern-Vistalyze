@@ -25,7 +25,7 @@
  */
 
 import { callPopup } from '../../../../../script.js';
-import { t, translate } from '../../../../../i18n.js';
+import { t, translate } from '../../../i18n.js';
 import { error } from '../utils/logger.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils/history.js';

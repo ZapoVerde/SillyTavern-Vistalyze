@@ -24,7 +24,7 @@
  */
 
 import { getRequestHeaders, callPopup } from '../../../../../script.js';
-import { t, translate } from '../../../../../i18n.js';
+import { t, translate } from '../../../i18n.js';
 import { warn, error } from '../utils/logger.js';
 import { runFullAudit } from '../orphanDetector.js';
 import { openOrphanModal } from '../ui/orphanModal.js';

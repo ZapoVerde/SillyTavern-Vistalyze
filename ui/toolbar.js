@@ -24,7 +24,7 @@
  *     external_io: [#extensionsMenu DOM, updateMetaSetting, maintenance.js, i18n]
  */
 
-import { translate } from '../../../../i18n.js';
+import { translate } from '../../../i18n.js';
 
 /**
  * Injects the Localyze button into the ST extension menu.

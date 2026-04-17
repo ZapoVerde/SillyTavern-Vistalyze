@@ -29,7 +29,7 @@
  */
 
 import { callPopup } from '../../../../../../script.js';
-import { t, translate } from '../../../../../../i18n.js';
+import { t, translate } from '../../../../i18n.js';
 import { escapeHtml } from './templates.js';
 import { 
     saveCurrentProfile, 

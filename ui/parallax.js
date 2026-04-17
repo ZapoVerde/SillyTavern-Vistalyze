@@ -21,7 +21,7 @@
  *                   requestAnimationFrame, sessionStorage (iOS tilt flag), i18n]
  */
 
-import { translate } from '../../../../i18n.js'
+import { translate } from '../../../i18n.js'
 import { log } from '../utils/logger.js'
 
 const IMG_ID          = 'lz-bg-img'
