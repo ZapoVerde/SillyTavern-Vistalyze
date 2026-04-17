@@ -1,14 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshopModal.js
- * @stamp {"utc":"2026-04-03T10:20:00.000Z"}
+ * @stamp {"utc":"2026-04-04T13:40:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
  * High-level coordinator for the Location Workshop. 
+ * Includes translation-ready wrappers for dynamic UI labels.
  *
  * @updates
  * - Standardized Cache Busting: Updated renderArchitect to use the 'v=' timestamp parameter.
  * - This ensures that if a background is overwritten (same filename, new content), the preview updates instantly.
  * - Synchronized tab active classes with style.css (.lz-active).
+ * - Integrated translation-ready translate wrappers for dynamic labels.
  *
  * @api-declaration
  * renderLibrary()   — updates the Library tab content.
@@ -21,9 +23,10 @@
  *   assertions:
  *     purity: Stateful UI Shell
  *     state_ownership: []
- *     external_io: [JQuery DOM (write), templates.js, listeners.js]
+ *     external_io: [JQuery DOM (write), templates.js, listeners.js, i18n]
  */
 
+import { translate } from '../../../../i18n.js';
 import { state, setWorkshopKey } from '../state.js';
 import { 
     getBaseWorkshopHTML, 
@@ -71,14 +74,14 @@ export async function renderArchitect() {
         : '';
         
     let proposedImgUrl = '';
-    let proposedLabel = 'Proposed';
+    let proposedLabel = translate('Proposed');
 
     if (state._proposedFullBlob) {
         proposedImgUrl = state._proposedFullBlob;
-        proposedLabel = 'Full Resolution';
+        proposedLabel = translate('Full Resolution');
     } else if (state._proposedImageBlob) {
         proposedImgUrl = state._proposedImageBlob;
-        proposedLabel = 'Thumbnail Preview';
+        proposedLabel = translate('Thumbnail Preview');
     }
 
     $container.html(getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, proposedLabel));

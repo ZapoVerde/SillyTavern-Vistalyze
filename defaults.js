@@ -1,13 +1,13 @@
 /**
  * @file data/default-user/extensions/localyze/defaults.js
- * @stamp {"utc":"2026-04-01T23:10:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:05:00.000Z"}
  * @architectural-role Default Configuration
  * @description
- * Default prompt strings and API constants for Localyze.
+ * Default prompt strings, API constants, and workflow toggles for Localyze.
  * 
  * @updates
- * - Added DEFAULT_DISCOVERY_PROMPT for targeted keyword-based generation.
- * - Added DEFAULT_DISCOVERY_HISTORY turns.
+ * - Added DEFAULT_AUTO_ACCEPT_LOCATION for Gate 1 pipeline bypass.
+ * - Added DEFAULT_AUTO_ACCEPT_DESCRIPTION for Gate 2 pipeline bypass.
  *
  * @api-declaration
  * POLLINATIONS_BASE_URL
@@ -16,6 +16,8 @@
  * DEFAULT_IMAGE_MODEL
  * DEFAULT_IMAGE_PROMPT_TEMPLATE
  * DEFAULT_DEV_MODE
+ * DEFAULT_AUTO_ACCEPT_LOCATION
+ * DEFAULT_AUTO_ACCEPT_DESCRIPTION
  * DEV_IMAGE_WIDTH
  * DEV_IMAGE_HEIGHT
  * DEFAULT_BOOLEAN_HISTORY
@@ -64,6 +66,11 @@ export const DEFAULT_VERBOSE_LOGGING = false
 
 /** Parallax — horizontal panning effect on wide background images. Off by default. */
 export const DEFAULT_PARALLAX_ENABLED = false
+
+/** Auto-Accept Bypasses — allows the pipeline to skip manual confirmation gates. */
+export const DEFAULT_AUTO_ACCEPT_LOCATION = false
+export const DEFAULT_AUTO_ACCEPT_DESCRIPTION = false
+
 export const DEV_IMAGE_WIDTH  = 320
 export const DEV_IMAGE_HEIGHT = 180
 

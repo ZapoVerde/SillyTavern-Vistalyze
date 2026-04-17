@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/localyze/logic/commit.js
- * @stamp {"utc":"2026-04-03T16:15:00.000Z"}
- * @version 1.2.0
+ * @stamp {"utc":"2026-04-04T12:30:00.000Z"}
+ * @version 1.2.1
  * @architectural-role IO Executor / Finalizer
  * @description
  * Handles the "Commit Phase" of the Location Workshop. Responsible for 
@@ -12,6 +12,7 @@
  * - Migration: Replaced all direct state mutations with upsertLocation, 
  *   removeLocation, addToFileIndex, and clearWorkshop setters.
  * - Maintained Two-Write Pattern: Transition intent is written before asset generation.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * handleFinalizeWorkshop(targetKey) — Persists a draft and applies it as the active scene.
@@ -21,10 +22,11 @@
  *   assertions:
  *     purity: Stateful IO Executor
  *     state_ownership: [state (mutates via setters)]
- *     external_io: [DNA Writer, Image Cache, Background UI, saveChatConditional]
+ *     external_io: [DNA Writer, Image Cache, Background UI, saveChatConditional, i18n]
  */
 
 import { saveChatConditional } from '../../../../../script.js';
+import { t, translate } from '../../../../../i18n.js';
 import { getContext } from '../../../../extensions.js';
 import { log, error } from '../utils/logger.js';
 import { 
@@ -138,17 +140,17 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
             updateState(targetKey, newFile);
             setBg(newFile);
 
-            if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
+            if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Localyze');
         } catch (err) {
             error('Commit', 'Write 2 failed (Image IO):', err);
-            if (window.toastr) window.toastr.error(`Transition saved, but image failed: ${err.message}`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Localyze');
         }
     } else {
         // Immediate transition (Asset already exists)
         await lockedPatchSceneImage(lastMsgId, filename);
         updateState(targetKey, filename);
         setBg(filename);
-        if (window.toastr) window.toastr.success(`Location switched to: ${draftDef.name}`, 'Localyze');
+        if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Localyze');
     }
 
     // Protected Update: Wipe temporary workshop memory
@@ -201,20 +203,20 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
                 await lockedPatchSceneImage(msgId, newFile);
                 updateState(targetKey, newFile);
                 setBg(newFile);
-                if (window.toastr) window.toastr.success(`Location applied: ${draftDef.name}`, 'Localyze');
+                if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Localyze');
             } catch (err) {
                 error('Commit', 'Retroactive image gen failed:', err);
-                if (window.toastr) window.toastr.error(`Transition saved, but image failed: ${err.message}`, 'Localyze');
+                if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Localyze');
             }
         } else {
             await lockedPatchSceneImage(msgId, filename);
             updateState(targetKey, filename);
             setBg(filename);
-            if (window.toastr) window.toastr.success(`Location switched to: ${draftDef.name}`, 'Localyze');
+            if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Localyze');
         }
     } else {
         // Historical tag — DNA chain patched, background unchanged
-        if (window.toastr) window.toastr.info(`Tagged as: ${draftDef.name}`, 'Localyze');
+        if (window.toastr) window.toastr.info(t`Tagged as: ${draftDef.name}`, 'Localyze');
     }
 
     clearWorkshop();

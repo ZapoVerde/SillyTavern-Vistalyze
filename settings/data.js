@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/settings/data.js
- * @stamp {"utc":"2026-04-03T17:15:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:10:00.000Z"}
  * @architectural-role Stateful Owner (Settings)
  * @description
  * Manages the Localyze settings lifecycle and profile-based configuration.
@@ -39,6 +39,8 @@ import {
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEFAULT_DEV_MODE,
     DEFAULT_PARALLAX_ENABLED,
+    DEFAULT_AUTO_ACCEPT_LOCATION,
+    DEFAULT_AUTO_ACCEPT_DESCRIPTION,
 } from '../defaults.js';
 
 const EXT_NAME = 'localyze';
@@ -47,21 +49,23 @@ const EXT_NAME = 'localyze';
  * Blueprint for profile-level settings.
  */
 export const PROFILE_DEFAULTS = Object.freeze({
-    booleanPrompt:        DEFAULT_BOOLEAN_PROMPT,
-    booleanProfileId:     null,
-    booleanHistory:       DEFAULT_BOOLEAN_HISTORY,
-    classifierPrompt:     DEFAULT_CLASSIFIER_PROMPT,
-    classifierProfileId:  null,
-    classifierHistory:    DEFAULT_CLASSIFIER_HISTORY,
-    describerPrompt:      DEFAULT_DESCRIBER_PROMPT,
-    describerProfileId:   null,
-    describerHistory:     DEFAULT_DESCRIBER_HISTORY,
-    discoveryPrompt:      DEFAULT_DISCOVERY_PROMPT,
-    discoveryProfileId:   null,
-    discoveryHistory:     DEFAULT_DISCOVERY_HISTORY,
-    imageModel:          DEFAULT_IMAGE_MODEL,
-    imagePromptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
-    devMode:             DEFAULT_DEV_MODE,
+    booleanPrompt:         DEFAULT_BOOLEAN_PROMPT,
+    booleanProfileId:      null,
+    booleanHistory:        DEFAULT_BOOLEAN_HISTORY,
+    classifierPrompt:      DEFAULT_CLASSIFIER_PROMPT,
+    classifierProfileId:   null,
+    classifierHistory:     DEFAULT_CLASSIFIER_HISTORY,
+    describerPrompt:       DEFAULT_DESCRIBER_PROMPT,
+    describerProfileId:    null,
+    describerHistory:      DEFAULT_DESCRIBER_HISTORY,
+    discoveryPrompt:       DEFAULT_DISCOVERY_PROMPT,
+    discoveryProfileId:    null,
+    discoveryHistory:      DEFAULT_DISCOVERY_HISTORY,
+    imageModel:            DEFAULT_IMAGE_MODEL,
+    imagePromptTemplate:   DEFAULT_IMAGE_PROMPT_TEMPLATE,
+    devMode:               DEFAULT_DEV_MODE,
+    autoAcceptLocation:    DEFAULT_AUTO_ACCEPT_LOCATION,
+    autoAcceptDescription: DEFAULT_AUTO_ACCEPT_DESCRIPTION,
 });
 
 /**

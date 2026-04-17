@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/settings/panel.js
- * @stamp {"utc":"2026-04-04T10:05:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:20:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
  * The primary entry point for the Localyze settings UI. 
@@ -10,6 +10,8 @@
  *   updateMetaSetting, and switchProfile setters.
  * - Standardized Flow: UI events now trigger data updates through protected gatekeepers.
  * - Guidance Support: Added click handler for .lz-info-icon to display model advice via callPopup.
+ * - Added bindings for autoAcceptLocation and autoAcceptDescription checkboxes.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * injectSettingsPanel() — Main entry point for extension settings init.
@@ -22,6 +24,7 @@
  */
 
 import { getRequestHeaders, callPopup } from '../../../../../script.js';
+import { t, translate } from '../../../../../i18n.js';
 import { warn, error } from '../utils/logger.js';
 import { runFullAudit } from '../orphanDetector.js';
 import { openOrphanModal } from '../ui/orphanModal.js';
@@ -103,6 +106,10 @@ function populateInputs() {
     $('#lz-image-model').val(s.imageModel ?? DEFAULT_IMAGE_MODEL);
     $('#lz-dev-mode').prop('checked', s.devMode ?? false);
     $('#lz-parallax-enabled').prop('checked', meta.parallaxEnabled ?? false);
+
+    // Auto-Accept bypasses
+    $('#lz-auto-accept-location').prop('checked', s.autoAcceptLocation ?? false);
+    $('#lz-auto-accept-description').prop('checked', s.autoAcceptDescription ?? false);
     
     $('#lz-pollinations-status').text('');
     updateKeyStatusIndicator();
@@ -184,7 +191,7 @@ function bindHandlers() {
     // Guidance Popup Handler
     $('#lz-settings').on('click', '.lz-info-icon', function () {
         const guidance = $(this).data('guidance');
-        callPopup(`<h3>Localyze Guidance</h3><p>${guidance}</p>`, 'text');
+        callPopup(`<h3>${translate('Localyze Guidance')}</h3><p>${guidance}</p>`, 'text');
     });
 
     $('#lz-settings').on('input', '.lz-history-input', function () {
@@ -193,6 +200,16 @@ function bindHandlers() {
         
         // Protected Update: Update numeric setting
         updateActiveSetting(key, val);
+        updateDirtyIndicator(meta);
+    });
+
+    $('#lz-settings').on('change', '#lz-auto-accept-location', function () {
+        updateActiveSetting('autoAcceptLocation', $(this).prop('checked'));
+        updateDirtyIndicator(meta);
+    });
+
+    $('#lz-settings').on('change', '#lz-auto-accept-description', function () {
+        updateActiveSetting('autoAcceptDescription', $(this).prop('checked'));
         updateDirtyIndicator(meta);
     });
 
@@ -231,7 +248,7 @@ function bindHandlers() {
         const originalHtml = $btn.html();
 
         try {
-            $btn.html('<i class="fa-solid fa-spinner fa-spin"></i> Auditing...');
+            $btn.html(`<i class="fa-solid fa-spinner fa-spin"></i> ${translate('Auditing...')}`);
 
             const res = await fetch('/api/backgrounds/all', {
                 method: 'POST',
@@ -252,11 +269,11 @@ function bindHandlers() {
             if (orphans.length > 0) {
                 openOrphanModal(orphans);
             } else {
-                if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze');
+                if (window.toastr) window.toastr.success(t`No orphaned images found.`, 'Localyze');
             }
         } catch (err) {
             error('Settings', 'Audit failed:', err);
-            if (window.toastr) window.toastr.error('Audit failed. See console for details.', 'Localyze');
+            if (window.toastr) window.toastr.error(t`Audit failed. See console for details.`, 'Localyze');
         } finally {
             $btn.html(originalHtml);
         }

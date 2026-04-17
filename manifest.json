@@ -8,5 +8,8 @@
     "author": "ZapoVerde",
     "version": "1.1.16",
     "homePage": "",
-    "auto_update": false
+    "auto_update": false,
+    "i18n": {
+        "en-us": "i18n/en-us.json"
+    }
 }

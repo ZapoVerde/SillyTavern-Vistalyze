@@ -1,17 +1,12 @@
 /**
  * @file data/default-user/extensions/localyze/ui/parallax.js
- * @stamp {"utc":"2026-04-01T12:00:00.000Z"}
+ * @stamp {"utc":"2026-04-04T13:30:00.000Z"}
  * @architectural-role IO Executor
  * @description
  * Manages the parallax background image for #bg1. Injects an <img> child,
  * positions it centered, and drives horizontal-only panning via rAF in
- * response to mouse movement (desktop) or device tilt (mobile). Contains
- * zero business logic — it does not know about locations, sessions, state,
- * or settings. It receives a URL and makes it move.
- *
- * The effect only engages when the viewport is narrower than the displayed
- * image width. When the image fits the viewport, effectivePan is 0 and the
- * rAF loop runs idle without touching the DOM.
+ * response to mouse movement (desktop) or device tilt (mobile).
+ * Includes translation-ready wrappers for the mobile tilt permission prompt.
  *
  * @api-declaration
  * attachParallax(url)  — injects #lz-bg-img, registers events, starts rAF loop
@@ -23,9 +18,10 @@
  *     state_ownership: []
  *     external_io: [#bg1 DOM (child img write), window mousemove,
  *                   window deviceorientation, window resize,
- *                   requestAnimationFrame, sessionStorage (iOS tilt flag)]
+ *                   requestAnimationFrame, sessionStorage (iOS tilt flag), i18n]
  */
 
+import { translate } from '../../../../i18n.js'
 import { log } from '../utils/logger.js'
 
 const IMG_ID          = 'lz-bg-img'
@@ -114,7 +110,7 @@ function _maybeRequestTilt() {
 
         const btn = document.createElement('button')
         btn.id = 'lz-tilt-prompt'
-        btn.textContent = '✦ Enable tilt parallax'
+        btn.textContent = translate('✦ Enable tilt parallax')
         btn.style.cssText = [
             'position:fixed', 'bottom:80px', 'left:50%',
             'transform:translateX(-50%)', 'z-index:9999',

@@ -1,14 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/ui/orphanModal.js
- * @stamp {"utc":"2026-04-03T18:00:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:55:00.000Z"}
  * @architectural-role Orphan File Review UI
  * @description
  * Modal for reviewing and deleting orphaned Localyze background images.
+ * Includes data-i18n attributes for native SillyTavern translation support.
  *
  * @updates
  * - Migration: Replaced direct mutation of getMetaSettings().auditCache 
  *   with the updateMetaSetting() API.
  * - Standardized Flow: Audit results are cleared via the Stateful Owner.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * openOrphanModal(orphans) — opens the modal.
@@ -17,9 +19,10 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [none]
- *     external_io: [POST /api/backgrounds/delete, updateMetaSetting, clearOrphanBadge]
+ *     external_io: [POST /api/backgrounds/delete, updateMetaSetting, clearOrphanBadge, i18n]
  */
 import { getRequestHeaders, callPopup } from '../../../../../script.js'
+import { t, translate } from '../../../../../i18n.js'
 import { clearOrphanBadge } from './toolbar.js'
 import { updateMetaSetting } from '../settings/data.js'
 
@@ -29,7 +32,7 @@ function escapeHtml(str) {
 
 export async function openOrphanModal(orphans) {
     if (!orphans || orphans.length === 0) {
-        if (window.toastr) window.toastr.success('No orphaned images found.', 'Localyze')
+        if (window.toastr) window.toastr.success(translate('No orphaned images found.'), 'Localyze')
         return
     }
 
@@ -43,16 +46,16 @@ export async function openOrphanModal(orphans) {
     `).join('')
 
     const confirmed = await callPopup(
-        `<h3>Orphaned Localyze Images (${orphans.length})</h3>
-        <p style="opacity:0.65;font-size:0.88em;">These files belong to sessions not found in any known chat.</p>
+        `<h3 data-i18n="localyze.orphan.title">Orphaned Localyze Images (${orphans.length})</h3>
+        <p style="opacity:0.65;font-size:0.88em;" data-i18n="localyze.orphan.hint">These files belong to sessions not found in any known chat.</p>
         <div style="max-height:300px; overflow-y:auto; border:1px solid var(--SmartThemeBorderColor); border-radius:4px;">
             <table style="width:100%;border-collapse:collapse;font-size:0.88em;">
                 <thead>
                     <tr>
                         <th style="width:32px;text-align:center;">
-                            <input type="checkbox" id="lz-orphan-select-all" title="Select All" checked />
+                            <input type="checkbox" id="lz-orphan-select-all" data-i18n="[title]localyze.orphan.select_all_title" title="Select All" checked />
                         </th>
-                        <th style="text-align:left;">Filename</th>
+                        <th style="text-align:left;" data-i18n="localyze.orphan.label_filename">Filename</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -70,7 +73,7 @@ export async function openOrphanModal(orphans) {
 
     const selected = $('.lz-orphan-check:checked').map(function () { return this.value }).get()
     if (selected.length === 0) {
-        if (window.toastr) window.toastr.warning('No files selected.', 'Localyze')
+        if (window.toastr) window.toastr.warning(translate('No files selected.'), 'Localyze')
         return
     }
 
@@ -99,8 +102,8 @@ export async function openOrphanModal(orphans) {
     clearOrphanBadge()
 
     if (failed > 0) {
-        if (window.toastr) window.toastr.warning(`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
+        if (window.toastr) window.toastr.warning(t`Deleted ${selected.length - failed} files. ${failed} deletion(s) failed.`, 'Localyze')
     } else {
-        if (window.toastr) window.toastr.success(`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
+        if (window.toastr) window.toastr.success(t`Deleted ${selected.length} orphaned file(s).`, 'Localyze')
     }
 }

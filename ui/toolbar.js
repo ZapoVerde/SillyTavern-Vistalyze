@@ -1,14 +1,16 @@
 /**
  * @file data/default-user/extensions/localyze/ui/toolbar.js
- * @stamp {"utc":"2026-04-03T18:10:00.000Z"}
- * @version 1.7.0
+ * @stamp {"utc":"2026-04-04T13:15:00.000Z"}
+ * @version 1.7.1
  * @architectural-role Toolbar UI
  * @description
  * Injects management buttons into the ST extensions panel (#extensionsMenu).
+ * Includes data-i18n attributes for native SillyTavern translation support.
  *
  * @updates
  * - Migration: Replaced direct mutation of auditCache with the updateMetaSetting() API.
  * - Standardized Callbacks: Uses logic/maintenance.js controllers for all entries.
+ * - Integrated translation-ready translate wrapper for user-facing strings.
  *
  * @api-declaration
  * injectToolbar(onOpenLibrary, onEdit) — Injects toolbar button.
@@ -19,8 +21,10 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [none]
- *     external_io: [#extensionsMenu DOM, updateMetaSetting, maintenance.js]
+ *     external_io: [#extensionsMenu DOM, updateMetaSetting, maintenance.js, i18n]
  */
+
+import { translate } from '../../../../i18n.js';
 
 /**
  * Injects the Localyze button into the ST extension menu.
@@ -33,9 +37,11 @@ export function injectToolbar(onOpenLibrary, onEdit) {
 
     // 2. Single Localyze Button
     const localyzeBtn = $(`
-        <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" title="Localyze">
+        <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" 
+             data-i18n="[title]localyze.toolbar.title"
+             title="${translate('Localyze')}">
             <i class="fa-solid fa-location-dot"></i>
-            <span>Localyze</span>
+            <span data-i18n="localyze.toolbar.label">${translate('Localyze')}</span>
         </div>
     `);
 

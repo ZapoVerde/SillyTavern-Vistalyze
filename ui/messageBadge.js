@@ -1,15 +1,12 @@
 /**
  * @file data/default-user/extensions/localyze/ui/messageBadge.js
- * @stamp {"utc":"2026-04-03T22:00:00.000Z"}
- * @version 1.0.0
+ * @stamp {"utc":"2026-04-04T13:10:00.000Z"}
+ * @version 1.0.1
  * @architectural-role UI / Per-Message Location Badge
  * @description
  * Injects a clickable location badge into the .mes_buttons bar of each AI message,
  * sitting alongside the other message action controls (edit, bookmark, etc.).
- *
- * Click the pill  → opens the location picker scoped to that message
- *                   (retroactive assignment via handleFinalizeWorkshopAtMessage).
- * Click the edit  → opens the Architect modal for that location.
+ * Includes data-i18n attributes for native SillyTavern translation support.
  *
  * @api-declaration
  * injectMessageBadge(messageId)  — Injects or refreshes the badge for one message.
@@ -19,10 +16,11 @@
  *   assertions:
  *     purity: UI / IO
  *     state_ownership: [none]
- *     external_io: [DOM (.mes_buttons), pickerModal, maintenance.js]
+ *     external_io: [DOM (.mes_buttons), pickerModal, maintenance.js, i18n]
  */
 
 import { getContext } from '../../../../extensions.js';
+import { t, translate } from '../../../../i18n.js';
 import { state } from '../state.js';
 import { escapeHtml } from '../utils/history.js';
 import { syncDraftState, handleEditLocation } from '../logic/maintenance.js';
@@ -63,7 +61,8 @@ function renderBadge($mes, msgId) {
 
     const editIcon = locKey
         ? `<i class="fa-solid fa-pen-to-square lz-badge-edit"
-               title="Edit in Architect"
+               data-i18n="[title]localyze.badge.edit_architect"
+               title="${translate('Edit in Architect')}"
                style="opacity:0.6; padding:0 2px; cursor:pointer;"></i>`
         : '';
 
@@ -80,7 +79,8 @@ function renderBadge($mes, msgId) {
                  margin-right: 4px;
              ">
             <span class="lz-badge-picker"
-                  title="Change location for this message"
+                  data-i18n="[title]localyze.badge.change_location"
+                  title="${translate('Change location for this message')}"
                   style="
                       display: inline-flex;
                       align-items: center;

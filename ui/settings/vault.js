@@ -1,11 +1,12 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/vault.js
- * @stamp {"utc":"2026-04-01T13:20:00.000Z"}
+ * @stamp {"utc":"2026-04-04T13:20:00.000Z"}
  * @architectural-role IO Executor / Vault Manager
  * @description
  * Handles secure storage of API keys and network connectivity tests.
  * This module interacts with the SillyTavern secret vault and the
  * Pollinations API.
+ * Includes translation-ready wrappers for user-facing UI and notifications.
  *
  * @api-declaration
  * updateKeyStatusIndicator() -> void
@@ -16,10 +17,11 @@
  *   assertions:
  *     purity: IO Executor
  *     state_ownership: [none]
- *     external_io: [writeSecret, secret_state, fetchPreviewBlob, callPopup]
+ *     external_io: [writeSecret, secret_state, fetchPreviewBlob, callPopup, i18n]
  */
 
 import { callPopup } from '../../../../../../script.js';
+import { t, translate } from '../../../../../../i18n.js';
 import { writeSecret, secret_state } from '../../../../../secrets.js';
 import { fetchPreviewBlob } from '../../imageCache.js';
 import { log, error } from '../../utils/logger.js';
@@ -37,9 +39,9 @@ export function updateKeyStatusIndicator() {
     const state = secret_state[SECRET_KEY_NAME];
     
     if (Array.isArray(state) && state.length > 0) {
-        $indicator.html('<span style="color:var(--SmartThemeQuoteColor,#28a745);"><i class="fa-solid fa-circle-check"></i> Configured (Saved in Vault)</span>');
+        $indicator.html(`<span style="color:var(--SmartThemeQuoteColor,#28a745);"><i class="fa-solid fa-circle-check"></i> ${translate('Configured (Saved in Vault)')}</span>`);
     } else {
-        $indicator.html('<span style="color:var(--SmartThemeWarningColor,#ffc107);"><i class="fa-solid fa-triangle-exclamation"></i> Not Configured</span>');
+        $indicator.html(`<span style="color:var(--SmartThemeWarningColor,#ffc107);"><i class="fa-solid fa-triangle-exclamation"></i> ${translate('Not Configured')}</span>`);
     }
 }
 
@@ -50,14 +52,14 @@ export function updateKeyStatusIndicator() {
 export async function savePollinationsKey(key) {
     const trimmed = (key ?? '').trim();
     if (!trimmed) {
-        if (window.toastr) window.toastr.warning('Paste your Pollinations API key first.', 'Localyze');
+        if (window.toastr) window.toastr.warning(translate('Paste your Pollinations API key first.'), 'Localyze');
         return;
     }
 
     await writeSecret(SECRET_KEY_NAME, trimmed, 'Localyze: Pollinations');
     updateKeyStatusIndicator();
     
-    if (window.toastr) window.toastr.success('Pollinations key securely saved to vault.', 'Localyze');
+    if (window.toastr) window.toastr.success(translate('Pollinations key securely saved to vault.'), 'Localyze');
 }
 
 /**
@@ -68,23 +70,23 @@ export async function testPollinationsConnection() {
     const $status = $('#lz-pollinations-status');
     
     const originalText = $btn.text();
-    $btn.prop('disabled', true).text('Generating...');
-    $status.text('Fetching test image...');
+    $btn.prop('disabled', true).text(translate('Generating...'));
+    $status.text(translate('Fetching test image...'));
 
     log('Vault', 'Test connection: generating 320×180 test image');
     
     try {
         const objectUrl = await fetchPreviewBlob('a glowing lantern on a wooden tavern table, cinematic lighting');
-        $status.text('Connected!');
+        $status.text(translate('Connected!'));
         
         await callPopup(
-            `<h3>Localyze — Connection OK</h3>
-            <p style="opacity:0.65;font-size:0.88em;">Pollinations responded successfully. Your account is connected.</p>
+            `<h3>${translate('Localyze — Connection OK')}</h3>
+            <p style="opacity:0.65;font-size:0.88em;">${translate('Pollinations responded successfully. Your account is connected.')}</p>
             <img src="${objectUrl}" style="width:100%;border-radius:6px;margin-top:8px;" />`,
             'text',
         );
     } catch (err) {
-        $status.text(`Failed: ${err.message}`);
+        $status.text(t`Failed: ${err.message}`);
         error('Vault', 'Test connection failed:', err);
         if (window.toastr) window.toastr.error(err.message, 'Localyze');
     } finally {

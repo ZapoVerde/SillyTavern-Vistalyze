@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/settings/profileController.js
- * @stamp {"utc":"2026-04-03T18:45:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:35:00.000Z"}
  * @architectural-role UI Controller / Profile Logic
  * @description
  * Manages the logic for settings profiles and "dirty" state tracking.
@@ -8,9 +8,9 @@
  * profile dictionary in settings/data.js.
  *
  * @updates
- * - Fix: Corrected relative import path for settings/data.js to resolve 404 error.
  * - Migration: Replaced direct mutation of extension_settings with switchProfile,
  *   saveCurrentProfile, createProfile, renameCurrentProfile, and deleteCurrentProfile.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * isStateDirty(meta) -> boolean
@@ -25,10 +25,11 @@
  *   assertions:
  *     purity: UI Controller
  *     state_ownership: [none]
- *     external_io: [settings/data.js, callPopup, toastr]
+ *     external_io: [settings/data.js, callPopup, toastr, i18n]
  */
 
 import { callPopup } from '../../../../../../script.js';
+import { t, translate } from '../../../../../../i18n.js';
 import { escapeHtml } from './templates.js';
 import { 
     saveCurrentProfile, 
@@ -87,19 +88,19 @@ export function handleProfileSave(meta) {
     // Protected Update: Delegate persistence to Stateful Owner
     saveCurrentProfile();
     updateDirtyIndicator(meta);
-    if (window.toastr) window.toastr.success(`Profile "${meta.currentProfileName}" saved.`, 'Localyze');
+    if (window.toastr) window.toastr.success(t`Profile "${meta.currentProfileName}" saved.`, 'Localyze');
 }
 
 /**
  * Logic for creating a new profile.
  */
 export async function handleProfileAdd(meta, onRefresh) {
-    const rawName = await callPopup('<h3>New profile name</h3>', 'input', '');
+    const rawName = await callPopup(`<h3>${translate('New profile name')}</h3>`, 'input', '');
     const name = (rawName ?? '').trim();
     if (!name) return;
 
     if (meta.profiles[name]) {
-        if (window.toastr) window.toastr.warning(`Profile "${name}" already exists.`, 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Profile "${name}" already exists.`, 'Localyze');
         return;
     }
 
@@ -112,12 +113,12 @@ export async function handleProfileAdd(meta, onRefresh) {
  * Logic for renaming the active profile.
  */
 export async function handleProfileRename(meta, onRefresh) {
-    const rawName = await callPopup('<h3>Rename profile</h3>', 'input', meta.currentProfileName);
+    const rawName = await callPopup(`<h3>${translate('Rename profile')}</h3>`, 'input', meta.currentProfileName);
     const newName = (rawName ?? '').trim();
     if (!newName || newName === meta.currentProfileName) return;
 
     if (meta.profiles[newName]) {
-        if (window.toastr) window.toastr.warning(`Profile "${newName}" already exists.`, 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Profile "${newName}" already exists.`, 'Localyze');
         return;
     }
 
@@ -131,12 +132,12 @@ export async function handleProfileRename(meta, onRefresh) {
  */
 export async function handleProfileDelete(meta, onRefresh) {
     if (Object.keys(meta.profiles).length <= 1) {
-        if (window.toastr) window.toastr.warning('Cannot delete the only profile.', 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Cannot delete the only profile.`, 'Localyze');
         return;
     }
 
     const confirmed = await callPopup(
-        `<h3>Delete profile "${escapeHtml(meta.currentProfileName)}"?</h3>This cannot be undone.`,
+        `<h3>${translate('Delete profile')} "${escapeHtml(meta.currentProfileName)}"?</h3>${translate('This cannot be undone.')}`,
         'confirm'
     );
     if (!confirmed) return;

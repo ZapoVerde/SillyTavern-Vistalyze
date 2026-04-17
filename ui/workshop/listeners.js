@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/ui/workshop/listeners.js
- * @stamp {"utc":"2026-04-03T16:45:00.000Z"}
+ * @stamp {"utc":"2026-04-04T13:05:00.000Z"}
  * @architectural-role UI Event Listeners
  * @description
  * Centralizes all DOM event bindings for the Location Workshop modal.
@@ -9,6 +9,7 @@
  * - Migration: Replaced direct state mutations with setWorkshopKey, 
  *   setProposedBlob, and updateDraftField setters.
  * - Optimized Syncing: UI input now flows through state.js gatekeepers.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * bindWorkshopEvents(handlers) -> void
@@ -17,9 +18,10 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [state (mutates via setters)]
- *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js]
+ *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js, i18n]
  */
 
+import { t, translate } from '../../../../../i18n.js';
 import { state, setWorkshopKey, setProposedBlob, updateDraftField } from '../../state.js';
 import { error } from '../../utils/logger.js';
 import {
@@ -68,9 +70,9 @@ export function bindWorkshopEvents(handlers) {
     $overlay.on('click', '.lz-lib-delete', function(e) {
         e.stopPropagation();
         const key = $(this).closest('.lz-library-item').data('key');
-        const name = state._draftLocations[key]?.name || 'this location';
+        const name = state._draftLocations[key]?.name || translate('this location');
         
-        if (confirm(`Remove "${name}" from the library?`)) {
+        if (confirm(t`Remove "${name}" from the library?`)) {
             deleteDraftLocation(key);
             renderLibrary();
         }
@@ -137,7 +139,7 @@ export function bindWorkshopEvents(handlers) {
             await previewProposedImage(key);
             renderArchitect();
         } catch (err) {
-            if (window.toastr) window.toastr.error('Preview failed: ' + err.message);
+            if (window.toastr) window.toastr.error(t`Preview failed: ${err.message}`);
         } finally {
             $spinner.addClass('lz-hidden');
         }
@@ -147,21 +149,21 @@ export function bindWorkshopEvents(handlers) {
     $overlay.on('click', '#lz-arch-finalize', async function() {
         const key = state._activeWorkshopKey;
         if (!key) {
-            if (window.toastr) window.toastr.warning('Select a location in the Architect tab first.', 'Localyze');
+            if (window.toastr) window.toastr.warning(translate('Select a location in the Architect tab first.'), 'Localyze');
             return;
         }
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
         const $btn = $(this);
 
-        $btn.prop('disabled', true).text('Generating...');
+        $btn.prop('disabled', true).text(translate('Generating...'));
         try {
             await handleFinalizeWorkshop(key);
-            $btn.prop('disabled', false).text('Apply and Finalize');
+            $btn.prop('disabled', false).text(translate('Apply and Finalize'));
             $overlay.addClass('lz-hidden');
         } catch (err) {
-            $btn.prop('disabled', false).text('Apply and Finalize');
+            $btn.prop('disabled', false).text(translate('Apply and Finalize'));
             error('Workshop', 'Commit failed:', err);
-            if (window.toastr) window.toastr.error('Generation failed: ' + err.message, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
         }
     });
 
@@ -187,7 +189,7 @@ export function bindWorkshopEvents(handlers) {
                 switchTab('architect');
                 $('#lz-explorer-keywords').val('');
             } else {
-                if (window.toastr) window.toastr.warning('Could not discover a new location from current context.');
+                if (window.toastr) window.toastr.warning(translate('Could not discover a new location from current context.'));
             }
         } catch (err) {
             error('Workshop', 'Discovery failed:', err);

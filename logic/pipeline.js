@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/localyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-03T16:00:00.000Z"}
+ * @stamp {"utc":"2026-04-04T12:25:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
@@ -10,6 +10,8 @@
  *   addToFileIndex, and updateState setters.
  * - Standardized Visual Change Detection: Aligned with commit.js to ensure 
  *   consistency between automated detection and manual workshop edits.
+ * - Added independent auto-accept bypasses for Location and Description gates.
+ * - Integrated translation-ready t and translate wrappers for user-facing strings.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -22,6 +24,7 @@
  */
 
 import { callPopup } from '../../../../../script.js';
+import { t, translate } from '../../../../../i18n.js';
 import { getContext } from '../../../../extensions.js';
 import { error } from '../utils/logger.js';
 import { state, updateState, upsertLocation, addToFileIndex } from '../state.js';
@@ -145,7 +148,7 @@ async function handleKnownLocation(messageId, key) {
             })
             .catch(err => {
                 error('Pipeline', 'Known location generate failed:', err);
-                if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
+                if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
             });
     }
 }
@@ -181,12 +184,16 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    const confirmed = await callPopup(
-        `<h3>New location detected: ${escapeHtml(def.name)}</h3>
-        <p><em>${escapeHtml(def.description)}</em></p>
-        <p style="font-size:0.9em; opacity:0.8;">${escapeHtml(def.imagePrompt)}</p>`,
-        'confirm'
-    );
+    // Gate 1: Location Discovery Approval
+    let confirmed = s.autoAcceptLocation;
+    if (!confirmed) {
+        confirmed = await callPopup(
+            `<h3>${translate('New location detected:')} ${escapeHtml(def.name)}</h3>
+            <p><em>${escapeHtml(def.description)}</em></p>
+            <p style="font-size:0.9em; opacity:0.8;">${escapeHtml(def.imagePrompt)}</p>`,
+            'confirm'
+        );
+    }
 
     if (!confirmed) {
         clearBg();
@@ -195,7 +202,14 @@ async function handleUnknownLocation(messageId, context) {
         return;
     }
 
-    const approved = await openAddModal(def);
+    // Gate 2: Description Review Approval
+    let approved = null;
+    if (s.autoAcceptDescription) {
+        approved = { ...def };
+        if (window.toastr) window.toastr.success(t`Auto-accepted new location: ${approved.name}`, 'Localyze');
+    } else {
+        approved = await openAddModal(def);
+    }
 
     if (approved === null) {
         clearBg();
@@ -233,6 +247,6 @@ async function handleUnknownLocation(messageId, context) {
         })
         .catch(err => {
             error('Pipeline', 'Generate failed after approve:', err);
-            if (window.toastr) window.toastr.error(`Generation failed: ${err.message}`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
         });
 }
