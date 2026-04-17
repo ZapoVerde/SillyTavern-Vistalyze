@@ -24,7 +24,7 @@
  */
 
 import { callPopup } from '../../../../../script.js';
-import { t, translate } from '../../../i18n.js';
+import { t, translate } from '../../../../i18n.js';
 import { getContext } from '../../../../extensions.js';
 import { error } from '../utils/logger.js';
 import { state, updateState, upsertLocation, addToFileIndex } from '../state.js';

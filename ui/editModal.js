@@ -26,7 +26,7 @@
  */
 
 import { callPopup } from '../../../../../script.js'
-import { t, translate } from '../../../i18n.js'
+import { t, translate } from '../../../../i18n.js'
 import { fetchPreviewBlob } from '../imageCache.js'
 import { escapeHtml } from '../utils/history.js'
 import { log, error } from '../utils/logger.js'

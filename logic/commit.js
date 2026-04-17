@@ -26,7 +26,7 @@
  */
 
 import { saveChatConditional } from '../../../../../script.js';
-import { t, translate } from '../../../i18n.js';
+import { t, translate } from '../../../../i18n.js';
 import { getContext } from '../../../../extensions.js';
 import { log, error } from '../utils/logger.js';
 import { 

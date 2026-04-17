@@ -22,7 +22,7 @@
  *     external_io: [POST /api/backgrounds/delete, updateMetaSetting, clearOrphanBadge, i18n]
  */
 import { getRequestHeaders, callPopup } from '../../../../../script.js'
-import { t, translate } from '../../../i18n.js'
+import { t, translate } from '../../../../i18n.js'
 import { clearOrphanBadge } from './toolbar.js'
 import { updateMetaSetting } from '../settings/data.js'
 

@@ -26,7 +26,7 @@
  *     external_io: [JQuery DOM (write), templates.js, listeners.js, i18n]
  */
 
-import { translate } from '../../../i18n.js';
+import { translate } from '../../../../i18n.js';
 import { state, setWorkshopKey } from '../state.js';
 import { 
     getBaseWorkshopHTML, 

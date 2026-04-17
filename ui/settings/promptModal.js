@@ -23,7 +23,7 @@
  */
 
 import { callPopup } from '../../../../../../script.js';
-import { t, translate } from '../../../../i18n.js';
+import { t, translate } from '../../../../../i18n.js';
 import { getSettings, updateActiveSetting } from '../../settings/data.js';
 import { escapeHtml } from './templates.js';
 
