@@ -27,6 +27,7 @@ import { findSecret } from '../../../secrets.js'
 import { getSettings } from './settings/data.js'
 import {
     POLLINATIONS_BASE_URL,
+    POLLINATIONS_APP_KEY,
     DEFAULT_IMAGE_MODEL,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
     DEV_IMAGE_WIDTH,
@@ -49,8 +50,9 @@ function buildPollinationsUrl(finalPrompt, overrides = {}) {
     const params = new URLSearchParams({
         width:  overrides.width  ?? (devMode ? String(DEV_IMAGE_WIDTH)  : '1920'),
         height: overrides.height ?? (devMode ? String(DEV_IMAGE_HEIGHT) : '1080'),
-        model:  s.imageModel ?? DEFAULT_IMAGE_MODEL,
-        nologo: 'true',
+        model:    s.imageModel ?? DEFAULT_IMAGE_MODEL,
+        nologo:   'true',
+        referrer: POLLINATIONS_APP_KEY,
     })
     return `${POLLINATIONS_BASE_URL}/image/${encodeURIComponent(finalPrompt)}?${params.toString()}`
 }
