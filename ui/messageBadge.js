@@ -66,17 +66,17 @@ function renderBadge($mes, msgId) {
                style="opacity:0.6; padding:0 2px; cursor:pointer;"></i>`
         : '';
 
-    // Styled to blend with the other .mes_button controls in the bar
+    // Rendered as its own row below .ch_name so it doesn't crowd .mes_buttons on mobile
     const $badge = $(`
         <div class="lz-msg-badge"
              style="
-                 display: inline-flex;
+                 display: flex;
                  align-items: center;
                  gap: 4px;
                  font-size: 0.75em;
                  opacity: 0.7;
                  user-select: none;
-                 margin-right: 4px;
+                 padding: 0 4px 2px 4px;
              ">
             <span class="lz-badge-picker"
                   data-i18n="[title]localyze.badge.change_location"
@@ -98,9 +98,9 @@ function renderBadge($mes, msgId) {
         </div>
     `);
 
-    // Prepend to .mes_buttons so it appears at the left of the action bar
-    const $buttons = $mes.find('.mes_buttons');
-    if ($buttons.length) $buttons.prepend($badge);
+    // Insert as a new row after .ch_name, leaving .mes_buttons uncluttered
+    const $chName = $mes.find('.ch_name');
+    if ($chName.length) $chName.after($badge);
 
     // ── Click: pill → open location picker for this specific message ──────────
     $badge.on('click', '.lz-badge-picker', async (e) => {
