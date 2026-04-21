@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/pickerModal.js
+ * @file data/default-user/extensions/vistalyze/ui/pickerModal.js
  * @stamp {"utc":"2026-04-04T12:50:00.000Z"}
  * @architectural-role Manual Override UI
  * @description
@@ -56,16 +56,16 @@ export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
                     </div>
                     <div class="lz-picker-actions" style="display:flex; gap:12px;">
                         <i class="fa-solid fa-pen-to-square lz-edit-trigger" data-key="${escapeHtml(key)}" 
-                           data-i18n="[title]localyze.picker.edit_location"
+                           data-i18n="[title]vistalyze.picker.edit_location"
                            title="Edit Location" style="opacity:0.6; padding:4px;"></i>
                     </div>
                 </div>
             `).join('')
-        : `<p style="text-align:center; opacity:0.5; padding:20px;" data-i18n="localyze.picker.empty_library">Library is empty. Use "Explorer" to discover new places.</p>`;
+        : `<p style="text-align:center; opacity:0.5; padding:20px;" data-i18n="vistalyze.picker.empty_library">Library is empty. Use "Explorer" to discover new places.</p>`;
 
     const popupPromise = callPopup(
-        `<h3 data-i18n="localyze.picker.title">Location Library</h3>
-        <input type="text" id="lz-picker-search" class="text_pole" data-i18n="[placeholder]localyze.picker.search_placeholder" placeholder="Search locations..." style="width:100%; margin-bottom:10px;" />
+        `<h3 data-i18n="vistalyze.picker.title">Location Library</h3>
+        <input type="text" id="lz-picker-search" class="text_pole" data-i18n="[placeholder]vistalyze.picker.search_placeholder" placeholder="Search locations..." style="width:100%; margin-bottom:10px;" />
         <div id="lz-picker-list" style="max-height:300px; overflow-y:auto; background:var(--SmartThemeBlurTintColor); border:1px solid var(--SmartThemeBorderColor); border-radius:4px; padding:4px;">
             ${listHtml}
         </div>
@@ -74,9 +74,9 @@ export async function openPickerModal(onEdit, onManualDetect, msgId = null) {
         <div style="margin-top:16px; border-top:1px solid var(--SmartThemeBorderColor); padding-top:12px;">
             <button id="lz-picker-manual" class="menu_button" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <span data-i18n="localyze.picker.btn_force_detect">Force Detect New Location</span>
+                <span data-i18n="vistalyze.picker.btn_force_detect">Force Detect New Location</span>
             </button>
-            <p style="font-size:0.75em; opacity:0.5; margin-top:6px; text-align:center;" data-i18n="localyze.picker.detect_hint">
+            <p style="font-size:0.75em; opacity:0.5; margin-top:6px; text-align:center;" data-i18n="vistalyze.picker.detect_hint">
                 Analyze the current context to discover a new location automatically.
             </p>
         </div>` : ''}`,

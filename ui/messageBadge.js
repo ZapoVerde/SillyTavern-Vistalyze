@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/messageBadge.js
+ * @file data/default-user/extensions/vistalyze/ui/messageBadge.js
  * @stamp {"utc":"2026-04-04T13:10:00.000Z"}
  * @version 1.0.1
  * @architectural-role UI / Per-Message Location Badge
@@ -35,9 +35,9 @@ import { syncDraftState, handleEditLocation } from '../logic/maintenance.js';
 function getLocationAtMessage(chat, msgId) {
     let current = null;
     for (let i = 0; i <= msgId; i++) {
-        const localyze = chat[i]?.extra?.localyze;
-        if (!localyze) continue;
-        const records = Array.isArray(localyze) ? localyze : [localyze];
+        const vistalyze = chat[i]?.extra?.vistalyze;
+        if (!vistalyze) continue;
+        const records = Array.isArray(vistalyze) ? vistalyze : [vistalyze];
         for (const rec of records) {
             if (rec?.type === 'scene' && rec.location) current = rec.location;
         }
@@ -61,7 +61,7 @@ function renderBadge($mes, msgId) {
 
     const editIcon = locKey
         ? `<i class="fa-solid fa-pen-to-square lz-badge-edit"
-               data-i18n="[title]localyze.badge.edit_architect"
+               data-i18n="[title]vistalyze.badge.edit_architect"
                title="${translate('Edit in Architect')}"
                style="opacity:0.6; padding:0 2px; cursor:pointer;"></i>`
         : '';
@@ -79,7 +79,7 @@ function renderBadge($mes, msgId) {
                  padding: 0 4px 2px 4px;
              ">
             <span class="lz-badge-picker"
-                  data-i18n="[title]localyze.badge.change_location"
+                  data-i18n="[title]vistalyze.badge.change_location"
                   title="${translate('Change location for this message')}"
                   style="
                       display: inline-flex;

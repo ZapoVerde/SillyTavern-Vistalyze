@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/utils/logger.js
+ * @file data/default-user/extensions/vistalyze/utils/logger.js
  * @stamp {"utc":"2026-04-04T00:00:00.000Z"}
  * @architectural-role Utility
  * @description
- * Centralised logging wrapper for Localyze.
+ * Centralised logging wrapper for Vistalyze.
  *
  * - log() and warn() are gated behind DEFAULT_VERBOSE_LOGGING.
  * - error() always fires regardless of the flag.
@@ -12,9 +12,9 @@
  *
  * Usage:
  *   import { log, warn, error } from '../utils/logger.js';
- *   log('Boot', 'Session started:', id);      // → [Localyze:Boot] Session started: (collapsed)
- *   warn('Pipeline', 'Skipping stale job');   // → [Localyze:Pipeline] Skipping stale job
- *   error('Commit', 'Write failed:', err);    // → [Localyze:Commit] Write failed: (collapsed)
+ *   log('Boot', 'Session started:', id);      // → [Vistalyze:Boot] Session started: (collapsed)
+ *   warn('Pipeline', 'Skipping stale job');   // → [Vistalyze:Pipeline] Skipping stale job
+ *   error('Commit', 'Write failed:', err);    // → [Vistalyze:Commit] Write failed: (collapsed)
  *
  * @api-declaration
  * log(tag, ...args)   — verbose-gated informational output.
@@ -31,7 +31,7 @@ import { DEFAULT_VERBOSE_LOGGING } from '../defaults.js';
  * @param {any[]} args Caller arguments: [message, ...details]
  */
 function _output(consoleFn, tag, args) {
-    const label = `[Localyze:${tag}] ${String(args[0] ?? '')}`;
+    const label = `[Vistalyze:${tag}] ${String(args[0] ?? '')}`;
     if (args.length <= 1) {
         consoleFn(label);
         return;

@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/utils/history.js
+ * @file data/default-user/extensions/vistalyze/utils/history.js
  * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
  * @architectural-role Pure Functions / Text Processor
  * @description
- * Pure string and array manipulation utilities for the Localyze pipeline.
+ * Pure string and array manipulation utilities for the Vistalyze pipeline.
  * Contains logic for escaping HTML in UI elements, building history
  * transcripts for LLM context windows, and deterministic slugification.
  *

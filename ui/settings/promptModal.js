@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/settings/promptModal.js
+ * @file data/default-user/extensions/vistalyze/ui/settings/promptModal.js
  * @stamp {"utc":"2026-04-04T13:25:00.000Z"}
  * @architectural-role UI Component / Prompt Editor
  * @description
@@ -42,21 +42,21 @@ export async function openPromptModal(settingsKey, title, defaultValue, variable
 
     const variableHint = variables.length > 0
         ? `<div style="display:flex;flex-direction:column;gap:3px;">
-               <small style="opacity:0.65;font-weight:bold;" data-i18n="localyze.prompt_modal.available_vars">Available variables:</small>
+               <small style="opacity:0.65;font-weight:bold;" data-i18n="vistalyze.prompt_modal.available_vars">Available variables:</small>
                ${variables.map(v => `
                <div style="display:flex;align-items:baseline;gap:8px;">
                    <code style="white-space:nowrap;">{{${escapeHtml(v.name)}}}</code>
                    <small style="opacity:0.55;">${escapeHtml(v.description)}</small>
                </div>`).join('')}
            </div>`
-        : `<small style="opacity:0.65;" data-i18n="localyze.prompt_modal.placeholder_hint">Use {{placeholders}} as shown in the default prompt.</small>`;
+        : `<small style="opacity:0.65;" data-i18n="vistalyze.prompt_modal.placeholder_hint">Use {{placeholders}} as shown in the default prompt.</small>`;
 
     const popupPromise = callPopup(
         `<div style="display:flex;flex-direction:column;gap:8px;">
             <strong>${escapeHtml(title)}</strong>
             ${variableHint}
             <textarea id="lz-prompt-editor" class="text_pole" rows="16" style="width:100%;font-family:monospace;font-size:0.88em;">${escapeHtml(current)}</textarea>
-            <button id="lz-prompt-reset" class="menu_button" style="align-self:flex-start;" data-i18n="localyze.prompt_modal.btn_reset">${translate('Reset to Default')}</button>
+            <button id="lz-prompt-reset" class="menu_button" style="align-self:flex-start;" data-i18n="vistalyze.prompt_modal.btn_reset">${translate('Reset to Default')}</button>
         </div>`,
         'text',
     );

@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/state.js
+ * @file data/default-user/extensions/vistalyze/state.js
  * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
  * @architectural-role Stateful Owner (Runtime State)
  * @description
- * Single source of truth for all Localyze in-memory runtime state. 
+ * Single source of truth for all Vistalyze in-memory runtime state. 
  * 
  * STRICT CONTRACT:
  * 1. This module is the ONLY module permitted to mutate the 'state' object.

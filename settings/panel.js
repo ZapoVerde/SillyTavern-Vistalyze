@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/settings/panel.js
+ * @file data/default-user/extensions/vistalyze/settings/panel.js
  * @stamp {"utc":"2026-04-04T12:20:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
- * The primary entry point for the Localyze settings UI. 
+ * The primary entry point for the Vistalyze settings UI. 
  *
  * @updates
  * - Migration: Replaced all direct setting mutations with updateActiveSetting, 
@@ -191,7 +191,7 @@ function bindHandlers() {
     // Guidance Popup Handler
     $('#lz-settings').on('click', '.lz-info-icon', function () {
         const guidance = $(this).data('guidance');
-        callPopup(`<h3>${translate('Localyze Guidance')}</h3><p>${guidance}</p>`, 'text');
+        callPopup(`<h3>${translate('Vistalyze Guidance')}</h3><p>${guidance}</p>`, 'text');
     });
 
     $('#lz-settings').on('input', '.lz-history-input', function () {
@@ -269,11 +269,11 @@ function bindHandlers() {
             if (orphans.length > 0) {
                 openOrphanModal(orphans);
             } else {
-                if (window.toastr) window.toastr.success(t`No orphaned images found.`, 'Localyze');
+                if (window.toastr) window.toastr.success(t`No orphaned images found.`, 'Vistalyze');
             }
         } catch (err) {
             error('Settings', 'Audit failed:', err);
-            if (window.toastr) window.toastr.error(t`Audit failed. See console for details.`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Audit failed. See console for details.`, 'Vistalyze');
         } finally {
             $btn.html(originalHtml);
         }

@@ -1,20 +1,20 @@
 /**
- * @file data/default-user/extensions/localyze/style.css
+ * @file data/default-user/extensions/vistalyze/style.css
  * @stamp {"utc":"2026-04-03T18:30:00.000Z"}
  * @architectural-role UI Styling
  * @description
- * Primary stylesheet for Localyze. Handles background transitions, 
+ * Primary stylesheet for Vistalyze. Handles background transitions, 
  * workshop modal layout, and themed UI components. 
  * Fixes "tiny modal" collapse by hardening the flex chain.
  */
 
 /* --- Background Transitions --- */
-#bg1.localyze-fade-out {
+#bg1.vistalyze-fade-out {
     opacity: 0 !important;
     transition: opacity 0.3s ease-in-out !important;
 }
 
-#bg1.localyze-fade-in {
+#bg1.vistalyze-fade-in {
     opacity: 1 !important;
     transition: opacity 0.6s ease-in-out !important;
 }

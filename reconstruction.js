@@ -1,13 +1,13 @@
 /**
- * @file data/default-user/extensions/localyze/reconstruction.js
+ * @file data/default-user/extensions/vistalyze/reconstruction.js
  * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
  * @architectural-role State Derivation (Pure)
  * @description
- * Derives all Localyze runtime state from a single forward pass over the chat
+ * Derives all Vistalyze runtime state from a single forward pass over the chat
  * log.
  *
  * @updates
- * - Added support for the "Array Pattern" in message.extra.localyze.
+ * - Added support for the "Array Pattern" in message.extra.vistalyze.
  * - Handles both single-object (legacy) and array-based (current) records.
  * - This allows a single message to define a location AND trigger a scene shift.
  * - Added transitionsMap and newFromMap derivation for Dynamic Markov Injection.
@@ -31,11 +31,11 @@ export function reconstruct(chat) {
     let previousSceneKey = null
 
     for (const message of chat) {
-        const localyzeData = message.extra?.localyze
-        if (!localyzeData) continue
+        const vistalyzeData = message.extra?.vistalyze
+        if (!vistalyzeData) continue
 
         // Normalize to array to handle both legacy and new patterns
-        const records = Array.isArray(localyzeData) ? localyzeData : [localyzeData]
+        const records = Array.isArray(vistalyzeData) ? vistalyzeData : [vistalyzeData]
 
         for (const rec of records) {
             if (!rec || typeof rec !== 'object') continue

@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/toolbar.js
+ * @file data/default-user/extensions/vistalyze/ui/toolbar.js
  * @stamp {"utc":"2026-04-04T13:15:00.000Z"}
  * @version 1.7.1
  * @architectural-role Toolbar UI
@@ -27,7 +27,7 @@
 import { translate } from '../../../../i18n.js';
 
 /**
- * Injects the Localyze button into the ST extension menu.
+ * Injects the Vistalyze button into the ST extension menu.
  * @param {Function} onOpenLibrary Callback from maintenance.js to sync and open library.
  * @param {Function} onEdit Callback for Architect mode.
  */
@@ -35,24 +35,24 @@ export function injectToolbar(onOpenLibrary, onEdit) {
     // 1. Cleanup for hot-reloads
     $('#lz-toolbar-btn').remove();
 
-    // 2. Single Localyze Button
-    const localyzeBtn = $(`
+    // 2. Single Vistalyze Button
+    const vistalyzeBtn = $(`
         <div id="lz-toolbar-btn" class="list-group-item flex-container flexGap5" 
-             data-i18n="[title]localyze.toolbar.title"
-             title="${translate('Localyze')}">
+             data-i18n="[title]vistalyze.toolbar.title"
+             title="${translate('Vistalyze')}">
             <i class="fa-solid fa-location-dot"></i>
-            <span data-i18n="localyze.toolbar.label">${translate('Localyze')}</span>
+            <span data-i18n="vistalyze.toolbar.label">${translate('Vistalyze')}</span>
         </div>
     `);
 
-    localyzeBtn.on('click', () => {
+    vistalyzeBtn.on('click', () => {
         if (typeof onOpenLibrary === 'function') onOpenLibrary();
     });
 
     // 3. DOM Injection
     const $menu = $('#extensionsMenu');
     if ($menu.length) {
-        $menu.append(localyzeBtn);
+        $menu.append(vistalyzeBtn);
     }
 }
 

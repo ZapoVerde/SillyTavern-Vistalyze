@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/settings/vault.js
+ * @file data/default-user/extensions/vistalyze/ui/settings/vault.js
  * @stamp {"utc":"2026-04-04T13:20:00.000Z"}
  * @architectural-role IO Executor / Vault Manager
  * @description
@@ -52,14 +52,14 @@ export function updateKeyStatusIndicator() {
 export async function savePollinationsKey(key) {
     const trimmed = (key ?? '').trim();
     if (!trimmed) {
-        if (window.toastr) window.toastr.warning(translate('Paste your Pollinations API key first.'), 'Localyze');
+        if (window.toastr) window.toastr.warning(translate('Paste your Pollinations API key first.'), 'Vistalyze');
         return;
     }
 
-    await writeSecret(SECRET_KEY_NAME, trimmed, 'Localyze: Pollinations');
+    await writeSecret(SECRET_KEY_NAME, trimmed, 'Vistalyze: Pollinations');
     updateKeyStatusIndicator();
     
-    if (window.toastr) window.toastr.success(translate('Pollinations key securely saved to vault.'), 'Localyze');
+    if (window.toastr) window.toastr.success(translate('Pollinations key securely saved to vault.'), 'Vistalyze');
 }
 
 /**
@@ -80,7 +80,7 @@ export async function testPollinationsConnection() {
         $status.text(translate('Connected!'));
         
         await callPopup(
-            `<h3>${translate('Localyze — Connection OK')}</h3>
+            `<h3>${translate('Vistalyze — Connection OK')}</h3>
             <p style="opacity:0.65;font-size:0.88em;">${translate('Pollinations responded successfully. Your account is connected.')}</p>
             <img src="${objectUrl}" style="width:100%;border-radius:6px;margin-top:8px;" />`,
             'text',
@@ -88,7 +88,7 @@ export async function testPollinationsConnection() {
     } catch (err) {
         $status.text(t`Failed: ${err.message}`);
         error('Vault', 'Test connection failed:', err);
-        if (window.toastr) window.toastr.error(err.message, 'Localyze');
+        if (window.toastr) window.toastr.error(err.message, 'Vistalyze');
     } finally {
         $btn.prop('disabled', false).text(originalText);
     }

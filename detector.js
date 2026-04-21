@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/detector.js
+ * @file data/default-user/extensions/vistalyze/detector.js
  * @stamp {"utc":"2026-04-02T15:00:00.000Z"}
  * @architectural-role LLM IO / Parser
  * @description

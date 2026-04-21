@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/orphanDetector.js
+ * @file data/default-user/extensions/vistalyze/orphanDetector.js
  * @stamp {"utc":"2026-03-29T00:00:00.000Z"}
  * @architectural-role Orphan File Detection
  * @description
@@ -7,7 +7,7 @@
  * associated with any known chat session. Two-tier system:
  *
  *   fastDiff    — pure function, runs at every boot with zero extra IO.
- *                 Diffs localyze_* files against the knownSessions registry
+ *                 Diffs vistalyze_* files against the knownSessions registry
  *                 already held in extension_settings. Instant. May produce
  *                 false positives if knownSessions is incomplete (e.g. chat
  *                 opened on a different device).
@@ -34,7 +34,7 @@ import { characters, getRequestHeaders } from '../../../../script.js'
 export function fastDiff(allImages, knownSessions) {
     const knownSet = new Set(knownSessions)
     return allImages
-        .filter(f => f.startsWith('localyze_'))
+        .filter(f => f.startsWith('vistalyze_'))
         .filter(f => {
             const sessionId = f.split('_')[1]
             return !knownSet.has(sessionId)
@@ -78,8 +78,8 @@ export async function runFullAudit(allImages) {
                 if (!Array.isArray(messages)) continue
                 for (const element of messages) {
                     const sessionId =
-                        element?.localyze?.sessionId ??
-                        element?.extra?.localyze?.sessionId ??
+                        element?.vistalyze?.sessionId ??
+                        element?.extra?.vistalyze?.sessionId ??
                         null
                     if (sessionId) knownSessions.add(sessionId)
                 }

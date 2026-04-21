@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/library.js
+ * @file data/default-user/extensions/vistalyze/library.js
  * @stamp {"utc":"2026-04-02T12:05:00.000Z"}
  * @architectural-role Chat DNA Writer
  * @description
- * Writes location_def records into message.extra.localyze as an array.
+ * Writes location_def records into message.extra.vistalyze as an array.
  * 
  * @updates
  * - Implemented the "Array Pattern" for storage.
@@ -18,7 +18,7 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: []
- *     external_io: [message.extra.localyze (write), saveChatConditional()]
+ *     external_io: [message.extra.vistalyze (write), saveChatConditional()]
  */
 import { getContext } from '../../../extensions.js'
 import { saveChatConditional } from '../../../../script.js'
@@ -35,19 +35,19 @@ export async function writeLocationDef(messageId, def, sessionId) {
     if (!message) return
 
     message.extra = message.extra ?? {}
-    const existing = message.extra.localyze;
+    const existing = message.extra.vistalyze;
 
     // Handle Array Pattern Migration
     if (!existing) {
         // Fresh start
-        message.extra.localyze = [];
+        message.extra.vistalyze = [];
     } else if (!Array.isArray(existing)) {
         // Migration: Wrap existing object-style record into an array
-        message.extra.localyze = [existing];
+        message.extra.vistalyze = [existing];
     }
 
     // Append the new definition to the ledger
-    message.extra.localyze.push({
+    message.extra.vistalyze.push({
         type: 'location_def',
         key: def.key,
         name: def.name,

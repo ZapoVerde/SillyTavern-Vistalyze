@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/defaults.js
+ * @file data/default-user/extensions/vistalyze/defaults.js
  * @stamp {"utc":"2026-04-04T12:05:00.000Z"}
  * @architectural-role Default Configuration
  * @description
- * Default prompt strings, API constants, and workflow toggles for Localyze.
+ * Default prompt strings, API constants, and workflow toggles for Vistalyze.
  * 
  * @updates
  * - Added DEFAULT_AUTO_ACCEPT_LOCATION for Gate 1 pipeline bypass.
@@ -33,7 +33,7 @@
 /** Primary API Gateway for Pollinations. */
 export const POLLINATIONS_BASE_URL = 'https://gen.pollinations.ai'
 
-/** Publishable app key — identifies Localyze to Pollinations for attribution. */
+/** Publishable app key — identifies Vistalyze to Pollinations for attribution. */
 export const POLLINATIONS_APP_KEY = 'pk_WfuLORZ5RZDfPRZU'
 
 /** Available Pollinations image models. */

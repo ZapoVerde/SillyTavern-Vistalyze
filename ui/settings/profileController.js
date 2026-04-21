@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/settings/profileController.js
+ * @file data/default-user/extensions/vistalyze/ui/settings/profileController.js
  * @stamp {"utc":"2026-04-04T12:35:00.000Z"}
  * @architectural-role UI Controller / Profile Logic
  * @description
@@ -88,7 +88,7 @@ export function handleProfileSave(meta) {
     // Protected Update: Delegate persistence to Stateful Owner
     saveCurrentProfile();
     updateDirtyIndicator(meta);
-    if (window.toastr) window.toastr.success(t`Profile "${meta.currentProfileName}" saved.`, 'Localyze');
+    if (window.toastr) window.toastr.success(t`Profile "${meta.currentProfileName}" saved.`, 'Vistalyze');
 }
 
 /**
@@ -100,7 +100,7 @@ export async function handleProfileAdd(meta, onRefresh) {
     if (!name) return;
 
     if (meta.profiles[name]) {
-        if (window.toastr) window.toastr.warning(t`Profile "${name}" already exists.`, 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Profile "${name}" already exists.`, 'Vistalyze');
         return;
     }
 
@@ -118,7 +118,7 @@ export async function handleProfileRename(meta, onRefresh) {
     if (!newName || newName === meta.currentProfileName) return;
 
     if (meta.profiles[newName]) {
-        if (window.toastr) window.toastr.warning(t`Profile "${newName}" already exists.`, 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Profile "${newName}" already exists.`, 'Vistalyze');
         return;
     }
 
@@ -132,7 +132,7 @@ export async function handleProfileRename(meta, onRefresh) {
  */
 export async function handleProfileDelete(meta, onRefresh) {
     if (Object.keys(meta.profiles).length <= 1) {
-        if (window.toastr) window.toastr.warning(t`Cannot delete the only profile.`, 'Localyze');
+        if (window.toastr) window.toastr.warning(t`Cannot delete the only profile.`, 'Vistalyze');
         return;
     }
 

@@ -1,10 +1,10 @@
 /**
- * @file data/default-user/extensions/localyze/logic/bootstrapper.js
+ * @file data/default-user/extensions/vistalyze/logic/bootstrapper.js
  * @stamp {"utc":"2026-04-03T15:30:00.000Z"}
  * @version 1.1.0
  * @architectural-role Orchestrator / Boot Sequence
  * @description
- * Manages the initialization of the Localyze environment for a specific chat.
+ * Manages the initialization of the Vistalyze environment for a specific chat.
  * 
  * @updates
  * - Migration: Replaced all direct state mutations with bulkInitState, 
@@ -49,7 +49,7 @@ export async function runBoot() {
     // set when we arrive, meaning ST's onChatChanged already applied it (and may have 404'd).
     log('Boot', 'runBoot() entry — chat_metadata:', {
         custom_background: chat_metadata?.custom_background ?? '(not set)',
-        localyze_managed:  chat_metadata?.localyze_managed  ?? '(not set)',
+        vistalyze_managed:  chat_metadata?.vistalyze_managed  ?? '(not set)',
     });
 
     // 1. Session & DNA Reconstruction
@@ -77,7 +77,7 @@ export async function runBoot() {
 
     // Check every location in the library. If its image is missing, queue it.
     for (const key of Object.keys(state.locations)) {
-        const filename = `localyze_${state.sessionId}_${key}.png`;
+        const filename = `vistalyze_${state.sessionId}_${key}.png`;
         if (!state.fileIndex.has(filename)) {
             warn('Boot', `Asset missing from server: ${filename}. Queuing regeneration.`);
             queue.push(key);

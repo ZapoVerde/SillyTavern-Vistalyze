@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/background.js
+ * @file data/default-user/extensions/vistalyze/background.js
  * @stamp {"utc":"2026-04-01T12:00:00.000Z"}
  * @architectural-role IO Executor
  * @description
@@ -22,14 +22,14 @@
  * @api-declaration
  * set(filename)           — applies background with fade and cache-busting, sets managed lock
  * clear()                 — removes background with fade, releases lock
- * isManagedByLocalyze()   — true if the current bg lock was set by us
+ * isManagedByVistalyze()   — true if the current bg lock was set by us
  *
  * @contract
  *   assertions:
  *     purity: IO
  *     state_ownership: []
  *     external_io: [chat_metadata['custom_background'] (write),
- *       chat_metadata['localyze_managed'] (write),
+ *       chat_metadata['vistalyze_managed'] (write),
  *       #bg1 DOM (write — CSS or via parallax delegate),
  *       saveMetadataDebounced(),
  *       attachParallax() (delegate), detachParallax() (delegate),
@@ -42,13 +42,13 @@ import { getMetaSettings } from './settings/data.js'
 import { log } from './utils/logger.js'
 
 const BG_KEY      = 'custom_background'
-const MANAGED_KEY = 'localyze_managed'
+const MANAGED_KEY = 'vistalyze_managed'
 
 /**
- * Checks if the current background lock belongs to Localyze.
+ * Checks if the current background lock belongs to Vistalyze.
  * @returns {boolean}
  */
-export function isManagedByLocalyze() {
+export function isManagedByVistalyze() {
     return !!chat_metadata[MANAGED_KEY]
 }
 
@@ -64,7 +64,7 @@ export function set(filename) {
     }
 
     // 2. Guard: Don't overwrite a manual user-set background lock
-    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
+    if (chat_metadata[BG_KEY] && !isManagedByVistalyze()) {
         log('Background', 'Skipping setBg: Manual user lock detected.');
         return;
     }
@@ -79,13 +79,13 @@ export function set(filename) {
     // NOTE: We intentionally do NOT write to chat_metadata[BG_KEY] (ST's native
     // 'custom_background' key). If we did, ST would apply the URL on next startup
     // before this extension has a chance to verify the file still exists, causing
-    // a guaranteed 404. Localyze's boot sequence (bootstrapper.js) handles
+    // a guaranteed 404. Vistalyze's boot sequence (bootstrapper.js) handles
     // background restoration after filesystem verification.
     chat_metadata[MANAGED_KEY] = true
 
     // UI Fade Sequence — image is applied while #bg1 is at opacity:0 so it is
     // positioned and ready before the fade-in begins.
-    $('#bg1').addClass('localyze-fade-out')
+    $('#bg1').addClass('vistalyze-fade-out')
     setTimeout(() => {
         // Always tear down any previous parallax instance first. Safe no-op if
         // none is active; cleans up stale <img> if setting was toggled.
@@ -98,10 +98,10 @@ export function set(filename) {
             $('#bg1').css('background-image', cssUrl)
         }
 
-        $('#bg1').removeClass('localyze-fade-out').addClass('localyze-fade-in')
+        $('#bg1').removeClass('vistalyze-fade-out').addClass('vistalyze-fade-in')
 
         // Cleanup transition classes after animation completes (~600ms total)
-        setTimeout(() => $('#bg1').removeClass('localyze-fade-in'), 600)
+        setTimeout(() => $('#bg1').removeClass('vistalyze-fade-in'), 600)
     }, 300)
 
     saveMetadataDebounced()
@@ -112,9 +112,9 @@ export function set(filename) {
  */
 export function clear() {
     // Guard: Don't release the lock if we don't own it
-    if (chat_metadata[BG_KEY] && !isManagedByLocalyze()) {
+    if (chat_metadata[BG_KEY] && !isManagedByVistalyze()) {
         // DEBUG: This fires when custom_background has a value we didn't set.
-        // If the value is a localyze filename, an old version likely wrote it directly.
+        // If the value is a vistalyze filename, an old version likely wrote it directly.
         log('Background', 'clear() guard blocked — custom_background is set but not owned:', chat_metadata[BG_KEY]);
         return;
     }
@@ -122,13 +122,13 @@ export function clear() {
     delete chat_metadata[BG_KEY]
     delete chat_metadata[MANAGED_KEY]
 
-    $('#bg1').addClass('localyze-fade-out')
+    $('#bg1').addClass('vistalyze-fade-out')
     setTimeout(() => {
         // Tear down parallax (no-op if not active) and clear CSS path together,
         // both deferred so the outgoing image fades before removal.
         detachParallax()
         $('#bg1').css('background-image', '')
-        $('#bg1').removeClass('localyze-fade-out')
+        $('#bg1').removeClass('vistalyze-fade-out')
     }, 300)
 
     saveMetadataDebounced()

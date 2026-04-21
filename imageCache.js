@@ -146,12 +146,12 @@ export async function fetchFileIndex(sessionId) {
     })
     const data = await res.json()
     const images = data.images ?? []
-    const fileIndex = new Set(images.filter(f => f.startsWith(`localyze_${sessionId}_`)))
+    const fileIndex = new Set(images.filter(f => f.startsWith(`vistalyze_${sessionId}_`)))
     return { fileIndex, allImages: images }
 }
 
 export async function generate(key, locationDef, sessionId) {
-    const filename = `localyze_${sessionId}_${key}.png`
+    const filename = `vistalyze_${sessionId}_${key}.png`
     const template = getSettings().imagePromptTemplate ?? DEFAULT_IMAGE_PROMPT_TEMPLATE
     const finalPrompt = interpolateImagePrompt(template, locationDef)
     

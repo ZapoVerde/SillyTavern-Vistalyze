@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/logic/maintenance.js
+ * @file data/default-user/extensions/vistalyze/logic/maintenance.js
  * @stamp {"utc":"2026-04-03T18:30:00.000Z"}
  * @version 1.7.0
  * @architectural-role Orchestrator / Workshop Controller

@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/io/dnaWriter.js
+ * @file data/default-user/extensions/vistalyze/io/dnaWriter.js
  * @stamp {"utc":"2026-04-02T12:00:00.000Z"}
  * @architectural-role IO Executor / DNA Chain Writer
  * @description
- * Handles all writes to message.extra.localyze with integrated concurrency 
+ * Handles all writes to message.extra.vistalyze with integrated concurrency 
  * locking. 
  * 
  * @updates
@@ -21,7 +21,7 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [Mutex Queue]
- *     external_io: [message.extra.localyze (write), saveChatConditional()]
+ *     external_io: [message.extra.vistalyze (write), saveChatConditional()]
  */
 
 import { saveChatConditional } from '../../../../../script.js';
@@ -33,18 +33,18 @@ import { writeLocationDef } from '../library.js';
 const writeLock = new AsyncLock();
 
 /**
- * Ensures message.extra.localyze is a valid array, migrating old objects if found.
+ * Ensures message.extra.vistalyze is a valid array, migrating old objects if found.
  * @param {object} message 
  */
-function ensureLocalyzeArray(message) {
+function ensureVistalyzeArray(message) {
     message.extra = message.extra ?? {};
-    const existing = message.extra.localyze;
+    const existing = message.extra.vistalyze;
 
     if (!existing) {
-        message.extra.localyze = [];
+        message.extra.vistalyze = [];
     } else if (!Array.isArray(existing)) {
         // Migration: Wrap existing object-style record into an array
-        message.extra.localyze = [existing];
+        message.extra.vistalyze = [existing];
     }
 }
 
@@ -59,8 +59,8 @@ export async function lockedWriteSceneRecord(messageId, record) {
         const context = getContext();
         const message = context.chat[messageId];
         if (message) {
-            ensureLocalyzeArray(message);
-            message.extra.localyze.push({ 
+            ensureVistalyzeArray(message);
+            message.extra.vistalyze.push({ 
                 type: 'scene', 
                 ...record 
             });
@@ -83,9 +83,9 @@ export async function lockedPatchSceneImage(messageId, filename) {
         const context = getContext();
         const message = context.chat[messageId];
         if (message) {
-            ensureLocalyzeArray(message);
+            ensureVistalyzeArray(message);
             // Find the most recent 'scene' record in the array and patch it
-            const records = message.extra.localyze;
+            const records = message.extra.vistalyze;
             for (let i = records.length - 1; i >= 0; i--) {
                 if (records[i].type === 'scene') {
                     records[i].image = filename;

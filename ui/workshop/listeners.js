@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/workshop/listeners.js
+ * @file data/default-user/extensions/vistalyze/ui/workshop/listeners.js
  * @stamp {"utc":"2026-04-04T13:05:00.000Z"}
  * @architectural-role UI Event Listeners
  * @description
@@ -149,7 +149,7 @@ export function bindWorkshopEvents(handlers) {
     $overlay.on('click', '#lz-arch-finalize', async function() {
         const key = state._activeWorkshopKey;
         if (!key) {
-            if (window.toastr) window.toastr.warning(translate('Select a location in the Architect tab first.'), 'Localyze');
+            if (window.toastr) window.toastr.warning(translate('Select a location in the Architect tab first.'), 'Vistalyze');
             return;
         }
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
@@ -163,7 +163,7 @@ export function bindWorkshopEvents(handlers) {
         } catch (err) {
             $btn.prop('disabled', false).text(translate('Apply and Finalize'));
             error('Workshop', 'Commit failed:', err);
-            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Vistalyze');
         }
     });
 

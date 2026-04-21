@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/session.js
+ * @file data/default-user/extensions/vistalyze/session.js
  * @stamp {"utc":"2026-04-03T15:20:00.000Z"}
  * @architectural-role Session Identity
  * @description
@@ -16,7 +16,7 @@
  *   assertions:
  *     purity: Stateful/IO
  *     state_ownership: [state.sessionId (via setter)]
- *     external_io: [chat_metadata.localyze (read/write),
+ *     external_io: [chat_metadata.vistalyze (read/write),
  *       getMetaSettings().knownSessions (write),
  *       saveMetadataDebounced(), saveSettingsDebounced()]
  */
@@ -46,19 +46,19 @@ export function initSession() {
 
     // 2. Handle sessionId generation/persistence
     // The sessionId is stored in chat_metadata (the specific .jsonl file) 
-    if (!chat_metadata.localyze) {
-        chat_metadata.localyze = {};
+    if (!chat_metadata.vistalyze) {
+        chat_metadata.vistalyze = {};
     }
 
-    if (!chat_metadata.localyze.sessionId) {
+    if (!chat_metadata.vistalyze.sessionId) {
         const sessionId = generateSessionId();
         log('Session', `New chat detected. Assigning SessionID: ${sessionId}`);
-        chat_metadata.localyze.sessionId = sessionId;
+        chat_metadata.vistalyze.sessionId = sessionId;
         saveMetadataDebounced();
     }
 
     // Sync runtime state using the Setter API (Stateful Owner Principle)
-    setSessionId(chat_metadata.localyze.sessionId);
+    setSessionId(chat_metadata.vistalyze.sessionId);
 
     // 3. Register the session in the global (meta) knownSessions registry
     const root = getMetaSettings();

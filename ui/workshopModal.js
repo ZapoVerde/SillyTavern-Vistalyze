@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/workshopModal.js
+ * @file data/default-user/extensions/vistalyze/ui/workshopModal.js
  * @stamp {"utc":"2026-04-04T13:40:00.000Z"}
  * @architectural-role UI Orchestrator
  * @description
@@ -65,7 +65,7 @@ export async function renderArchitect() {
         return;
     }
 
-    const filename = `localyze_${state.sessionId}_${key}.png`;
+    const filename = `vistalyze_${state.sessionId}_${key}.png`;
     
     // Cache-busting: Use a timestamp to force the browser to ignore its cache.
     // This is vital because we use static filenames (overwriting the file on server).

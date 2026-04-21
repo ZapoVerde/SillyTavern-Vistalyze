@@ -1,9 +1,9 @@
 /**
- * @file data/default-user/extensions/localyze/index.js
+ * @file data/default-user/extensions/vistalyze/index.js
  * @stamp {"utc":"2026-04-02T17:00:00.000Z"}
  * @architectural-role Feature Entry Point / Orchestrator
  * @description
- * SillyTavern Location Engine (Localyze) — extension entry point.
+ * SillyTavern Location Engine (Vistalyze) — extension entry point.
  * 
  * @updates
  * - Removed initial runBoot() call if no chat is active to prevent "Abort" log.
@@ -77,11 +77,11 @@ function handleMessageSwiped(messageId) {
 function handleChatChanged() {
     log('Core', 'Chat changed event detected.');
     // DEBUG: Snapshot chat_metadata at the moment CHAT_CHANGED fires.
-    // If custom_background contains a localyze filename here, ST's onChatChanged
+    // If custom_background contains a vistalyze filename here, ST's onChatChanged
     // will immediately apply it as CSS before runBoot() can verify the file exists.
     log('Core', 'chat_metadata snapshot on CHAT_CHANGED:', {
         custom_background: chat_metadata.custom_background ?? '(not set)',
-        localyze_managed:  chat_metadata.localyze_managed  ?? '(not set)',
+        vistalyze_managed:  chat_metadata.vistalyze_managed  ?? '(not set)',
     });
     resetState();
     runBoot()

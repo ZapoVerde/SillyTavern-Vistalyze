@@ -1,12 +1,12 @@
 /**
- * @file data/default-user/extensions/localyze/settings/data.js
+ * @file data/default-user/extensions/vistalyze/settings/data.js
  * @stamp {"utc":"2026-04-04T12:10:00.000Z"}
  * @architectural-role Stateful Owner (Settings)
  * @description
- * Manages the Localyze settings lifecycle and profile-based configuration.
+ * Manages the Vistalyze settings lifecycle and profile-based configuration.
  * 
  * STRICT CONTRACT:
- * 1. This module is the ONLY module permitted to mutate 'extension_settings.localyze'.
+ * 1. This module is the ONLY module permitted to mutate 'extension_settings.vistalyze'.
  * 2. External modules MUST use the provided Setter API for updates.
  * 3. External modules may READ from getSettings() or getMetaSettings() directly.
  *
@@ -43,7 +43,7 @@ import {
     DEFAULT_AUTO_ACCEPT_DESCRIPTION,
 } from '../defaults.js';
 
-const EXT_NAME = 'localyze';
+const EXT_NAME = 'vistalyze';
 
 /**
  * Blueprint for profile-level settings.
@@ -217,5 +217,5 @@ export function initSettings() {
     // Clean legacy artifacts
     delete root.pollinationsKey;
     delete root.pollinationsSecretKey;
-    delete root.localyze_pollinations_key;
+    delete root.vistalyze_pollinations_key;
 }

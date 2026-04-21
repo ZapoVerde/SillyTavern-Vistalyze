@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/logic/commit.js
+ * @file data/default-user/extensions/vistalyze/logic/commit.js
  * @stamp {"utc":"2026-04-04T12:30:00.000Z"}
  * @version 1.2.1
  * @architectural-role IO Executor / Finalizer
@@ -92,7 +92,7 @@ async function commitDraftLibrary() {
  */
 export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     if (!targetKey || !state._draftLocations[targetKey]) {
-        throw new Error(`[Localyze:Commit] Invalid target key: ${targetKey}`);
+        throw new Error(`[Vistalyze:Commit] Invalid target key: ${targetKey}`);
     }
 
     const context = getContext();
@@ -102,7 +102,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
 
     // Detect if the visual prompt changed (requires overwriting the current image)
     const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
-    const filename = `localyze_${state.sessionId}_${targetKey}.png`;
+    const filename = `vistalyze_${state.sessionId}_${targetKey}.png`;
     const hasPregeneratedBlob = state._proposedFullBlob !== null;
     const needsGeneration = hasPregeneratedBlob || forceRegen || visualsModified || !state.fileIndex.has(filename);
 
@@ -140,17 +140,17 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
             updateState(targetKey, newFile);
             setBg(newFile);
 
-            if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Localyze');
+            if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Vistalyze');
         } catch (err) {
             error('Commit', 'Write 2 failed (Image IO):', err);
-            if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Vistalyze');
         }
     } else {
         // Immediate transition (Asset already exists)
         await lockedPatchSceneImage(lastMsgId, filename);
         updateState(targetKey, filename);
         setBg(filename);
-        if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Localyze');
+        if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Vistalyze');
     }
 
     // Protected Update: Wipe temporary workshop memory
@@ -168,7 +168,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
  */
 export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
     if (!targetKey || !state._draftLocations[targetKey]) {
-        throw new Error(`[Localyze:Commit] Invalid target key: ${targetKey}`);
+        throw new Error(`[Vistalyze:Commit] Invalid target key: ${targetKey}`);
     }
 
     const context = getContext();
@@ -192,7 +192,7 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
 
         const original = state.locations[targetKey];
         const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
-        const filename = `localyze_${state.sessionId}_${targetKey}.png`;
+        const filename = `vistalyze_${state.sessionId}_${targetKey}.png`;
         const needsGeneration = visualsModified || !state.fileIndex.has(filename);
 
         if (needsGeneration) {
@@ -203,20 +203,20 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
                 await lockedPatchSceneImage(msgId, newFile);
                 updateState(targetKey, newFile);
                 setBg(newFile);
-                if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Localyze');
+                if (window.toastr) window.toastr.success(t`Location applied: ${draftDef.name}`, 'Vistalyze');
             } catch (err) {
                 error('Commit', 'Retroactive image gen failed:', err);
-                if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Localyze');
+                if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Vistalyze');
             }
         } else {
             await lockedPatchSceneImage(msgId, filename);
             updateState(targetKey, filename);
             setBg(filename);
-            if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Localyze');
+            if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Vistalyze');
         }
     } else {
         // Historical tag — DNA chain patched, background unchanged
-        if (window.toastr) window.toastr.info(t`Tagged as: ${draftDef.name}`, 'Localyze');
+        if (window.toastr) window.toastr.info(t`Tagged as: ${draftDef.name}`, 'Vistalyze');
     }
 
     clearWorkshop();

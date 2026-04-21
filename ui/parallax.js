@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/ui/parallax.js
+ * @file data/default-user/extensions/vistalyze/ui/parallax.js
  * @stamp {"utc":"2026-04-04T13:30:00.000Z"}
  * @architectural-role IO Executor
  * @description

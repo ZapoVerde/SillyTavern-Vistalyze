@@ -1,5 +1,5 @@
 /**
- * @file data/default-user/extensions/localyze/logic/pipeline.js
+ * @file data/default-user/extensions/vistalyze/logic/pipeline.js
  * @stamp {"utc":"2026-04-04T12:25:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
@@ -119,7 +119,7 @@ export async function runPipeline(messageId) {
  * Handles transition to a location already in the library.
  */
 async function handleKnownLocation(messageId, key) {
-    const filename = `localyze_${state.sessionId}_${key}.png`;
+    const filename = `vistalyze_${state.sessionId}_${key}.png`;
     const def = state.locations[key];
 
     if (state.fileIndex.has(filename)) {
@@ -127,13 +127,13 @@ async function handleKnownLocation(messageId, key) {
         setBg(filename);
         await lockedWriteSceneRecord(messageId, { location: key, image: filename, bg_declined: false });
         updateState(key, filename);
-        document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
+        document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
     } else {
         // Transition recorded but image is missing: clear and generate
         clearBg();
         await lockedWriteSceneRecord(messageId, { location: key, image: null, bg_declined: false });
         updateState(key, null);
-        document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
+        document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
 
         const capturedId = messageId;
         generate(key, def, state.sessionId)
@@ -148,7 +148,7 @@ async function handleKnownLocation(messageId, key) {
             })
             .catch(err => {
                 error('Pipeline', 'Known location generate failed:', err);
-                if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
+                if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Vistalyze');
             });
     }
 }
@@ -206,7 +206,7 @@ async function handleUnknownLocation(messageId, context) {
     let approved = null;
     if (s.autoAcceptDescription) {
         approved = { ...def };
-        if (window.toastr) window.toastr.success(t`Auto-accepted new location: ${approved.name}`, 'Localyze');
+        if (window.toastr) window.toastr.success(t`Auto-accepted new location: ${approved.name}`, 'Vistalyze');
     } else {
         approved = await openAddModal(def);
     }
@@ -232,7 +232,7 @@ async function handleUnknownLocation(messageId, context) {
     
     // Protected Update: Set scene intent
     updateState(approved.key, null);
-    document.dispatchEvent(new CustomEvent('localyze:location-changed', { detail: { messageId } }));
+    document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
 
     const capturedId = messageId;
     generate(approved.key, approved, state.sessionId)
@@ -247,6 +247,6 @@ async function handleUnknownLocation(messageId, context) {
         })
         .catch(err => {
             error('Pipeline', 'Generate failed after approve:', err);
-            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Localyze');
+            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Vistalyze');
         });
 }

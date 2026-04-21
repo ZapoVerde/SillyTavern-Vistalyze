@@ -1,14 +1,14 @@
 
 
 
-# LLZ v1.0 — Project Principles
+# VLZ v1.0 — Project Principles
 *Read before writing any code. Applies to every session.*
 
 ---
 
 ## The Core Philosophy
 
-Localyze (LLZ) does one thing: automate atmospheric immersion. It turns narrative text into visual context without the user having to manage files or prompts manually.
+Vistalyze (VLZ) does one thing: automate atmospheric immersion. It turns narrative text into visual context without the user having to manage files or prompts manually.
 
 The system is built on the **DNA Chain** principle. We do not trust external databases, local storage, or sidecar files for chat-specific data. If a user forks a chat, the location history must fork with it. If a user moves their chat to a new install, the locations must survive. **The chat log is the only source of truth.**
 
@@ -16,7 +16,7 @@ The system is built on the **DNA Chain** principle. We do not trust external dat
 
 ## The Three Kinds of Code
 
-LLZ strictly enforces the separation of logic, state, and side effects. Every module declares its role. Mixing these responsibilities is the primary source of bugs.
+VLZ strictly enforces the separation of logic, state, and side effects. Every module declares its role. Mixing these responsibilities is the primary source of bugs.
 
 ### Pure Functions
 Takes data in, returns derived data out. No external reads. No external writes. It does not know the DOM exists. It does not know about settings. It cannot see the filesystem. Given the same chat log array, a pure function must always produce the identical derived state object.
