@@ -24,6 +24,18 @@
 
 import { DEFAULT_VERBOSE_LOGGING } from '../defaults.js';
 
+/** Runtime verbose flag — initialised from the compile-time default, then updated by settings. */
+let _verboseLogging = DEFAULT_VERBOSE_LOGGING;
+
+/**
+ * Updates the runtime verbose flag.
+ * Call this once during settings initialisation and again whenever the setting changes.
+ * @param {boolean} value
+ */
+export function setVerboseLogging(value) {
+    _verboseLogging = Boolean(value);
+}
+
 /**
  * Emits a single labelled log line, collapsing any extra arguments into a group.
  * @param {Function} consoleFn The bound console method (log/warn/error) for detail lines.
@@ -47,7 +59,7 @@ function _output(consoleFn, tag, args) {
  * @param {...*} args  Message followed by any extra detail values
  */
 export function log(tag, ...args) {
-    if (!DEFAULT_VERBOSE_LOGGING) return;
+    if (!_verboseLogging) return;
     _output(console.log.bind(console), tag, args);
 }
 
@@ -57,7 +69,7 @@ export function log(tag, ...args) {
  * @param {...*} args  Message followed by any extra detail values
  */
 export function warn(tag, ...args) {
-    if (!DEFAULT_VERBOSE_LOGGING) return;
+    if (!_verboseLogging) return;
     _output(console.warn.bind(console), tag, args);
 }
 

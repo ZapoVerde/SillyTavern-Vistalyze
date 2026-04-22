@@ -41,6 +41,7 @@ import {
     DEFAULT_PARALLAX_ENABLED,
     DEFAULT_AUTO_ACCEPT_LOCATION,
     DEFAULT_AUTO_ACCEPT_DESCRIPTION,
+    DEFAULT_VERBOSE_LOGGING,
 } from '../defaults.js';
 
 const EXT_NAME = 'vistalyze';
@@ -209,6 +210,7 @@ export function initSettings() {
     }
 
     if (typeof root.parallaxEnabled !== 'boolean') root.parallaxEnabled = DEFAULT_PARALLAX_ENABLED;
+    if (typeof root.verboseLogging !== 'boolean') root.verboseLogging = DEFAULT_VERBOSE_LOGGING;
     if (!Array.isArray(root.knownSessions)) root.knownSessions = [];
     if (!root.auditCache) {
         root.auditCache = { suspects: [], lastAudit: null, orphans: [] };

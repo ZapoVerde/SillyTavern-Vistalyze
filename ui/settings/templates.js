@@ -207,6 +207,13 @@ export function buildPanelHTML(meta, availableModels) {
                         </button>
                         <span id="lz-orphan-badge" style="display:none;background:var(--SmartThemeErrorColor);color:white;padding:1px 6px;border-radius:10px;font-size:0.75em;"></span>
                     </div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                        <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
+                            <input type="checkbox" id="lz-verbose-logging" />
+                            <span data-i18n="vistalyze.settings.label_verbose_logging">Verbose logging</span>
+                        </label>
+                        <span style="font-size:0.78em;opacity:0.55;" data-i18n="vistalyze.settings.verbose_logging_hint">Logs pipeline steps and AI calls to the browser console</span>
+                    </div>
                 </div>
             </div>
         </div>

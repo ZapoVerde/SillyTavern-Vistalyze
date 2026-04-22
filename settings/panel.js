@@ -25,7 +25,7 @@
 
 import { getRequestHeaders, callPopup } from '../../../../../script.js';
 import { t, translate } from '../../../../i18n.js';
-import { warn, error } from '../utils/logger.js';
+import { warn, error, setVerboseLogging } from '../utils/logger.js';
 import { runFullAudit } from '../orphanDetector.js';
 import { openOrphanModal } from '../ui/orphanModal.js';
 import { ConnectionManagerRequestService } from '../../../shared.js';
@@ -110,6 +110,8 @@ function populateInputs() {
     // Auto-Accept bypasses
     $('#lz-auto-accept-location').prop('checked', s.autoAcceptLocation ?? false);
     $('#lz-auto-accept-description').prop('checked', s.autoAcceptDescription ?? false);
+
+    $('#lz-verbose-logging').prop('checked', meta.verboseLogging ?? true);
     
     $('#lz-pollinations-status').text('');
     updateKeyStatusIndicator();
@@ -243,6 +245,12 @@ function bindHandlers() {
         updateMetaSetting('parallaxEnabled', val);
     });
 
+    $('#lz-settings').on('change', '#lz-verbose-logging', function () {
+        const val = $(this).prop('checked');
+        updateMetaSetting('verboseLogging', val);
+        setVerboseLogging(val);
+    });
+
     $('#lz-settings').on('click', '#lz-audit-btn', async function () {
         const $btn = $(this);
         const originalHtml = $btn.html();
@@ -292,7 +300,8 @@ export function injectSettingsPanel() {
 
     const meta = getMetaSettings();
     $parent.append(buildPanelHTML(meta, POLLINATIONS_MODELS));
-    
+
+    setVerboseLogging(meta.verboseLogging ?? true);
     bindHandlers();
     refreshPanel();
 }
