@@ -215,9 +215,13 @@
 }
 
 .lz-bg-lightbox img {
-    width: 100vw;
-    max-height: 100vh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    width: auto;
+    height: auto;
     object-fit: contain;
+    display: block;
+    margin: auto;
 }
 
 /* --- Architect Layout --- */
