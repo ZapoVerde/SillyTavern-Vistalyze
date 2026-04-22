@@ -52,7 +52,23 @@ export function bindWorkshopEvents(handlers) {
     });
 
     // ─── Library Tab Listeners ────────────────────────────────────────────
-    
+
+    // Thumbnail click: open full-screen lightbox
+    $overlay.on('click', '.lz-lib-thumb', function(e) {
+        e.stopPropagation();
+        const filename = $(this).data('filename');
+        if (!filename) return;
+
+        const url = `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}`;
+        const $lightbox = $(`
+            <div class="lz-bg-lightbox">
+                <img src="${url}" alt="${filename}" />
+            </div>
+        `);
+        $lightbox.on('click', () => $lightbox.remove());
+        $('body').append($lightbox);
+    });
+
     // Navigate from Library to Architect
     $overlay.on('click', '.lz-lib-edit', function(e) {
         e.stopPropagation();

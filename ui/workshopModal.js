@@ -42,7 +42,7 @@ import { bindWorkshopEvents } from './workshop/listeners.js';
  */
 export function renderLibrary() {
     const drafts = Object.entries(state._draftLocations);
-    const html = getLibraryListHTML(drafts, state.currentLocation);
+    const html = getLibraryListHTML(drafts, state.currentLocation, state.fileIndex, state.sessionId);
     $('.lz-library-list').html(html);
 }
 

@@ -167,6 +167,57 @@
 .lz-lib-edit:hover { color: #3498db; }
 .lz-lib-delete:hover { color: var(--SmartThemeErrorColor); }
 
+/* --- Library Thumbnails --- */
+.lz-lib-thumb {
+    width: 80px;
+    height: 45px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--SmartThemeBorderColor);
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, opacity 0.2s;
+}
+
+.lz-lib-thumb:hover {
+    border-color: var(--SmartThemeQuoteColor);
+    opacity: 0.85;
+}
+
+.lz-lib-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lz-thumb-placeholder {
+    opacity: 0.25;
+    font-size: 1.2em;
+}
+
+/* --- Background Lightbox --- */
+.lz-bg-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+}
+
+.lz-bg-lightbox img {
+    width: 100vw;
+    max-height: 100vh;
+    object-fit: contain;
+}
+
 /* --- Architect Layout --- */
 .lz-architect-fields {
     display: flex;

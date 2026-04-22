@@ -79,8 +79,12 @@ export function getBaseWorkshopHTML(sessionId) {
 
 /**
  * Generates the list of locations for the Library tab.
+ * @param {Array} drafts Entries from _draftLocations.
+ * @param {string|null} currentKey The currently active location key.
+ * @param {Set<string>} fileIndex Known background filenames on server.
+ * @param {string|null} sessionId Current session ID for filename construction.
  */
-export function getLibraryListHTML(drafts, currentKey) {
+export function getLibraryListHTML(drafts, currentKey, fileIndex = new Set(), sessionId = null) {
     if (drafts.length === 0) {
         return `
         <div style="text-align:center; padding:40px; opacity:0.5;">
@@ -91,8 +95,19 @@ export function getLibraryListHTML(drafts, currentKey) {
 
     return drafts.map(([key, loc]) => {
         const isCurrent = currentKey === key;
+        const filename = sessionId ? `vistalyze_${sessionId}_${key}.png` : null;
+        const hasImage = filename && fileIndex.has(filename);
+        const thumbUrl = hasImage ? `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}` : null;
+
+        const thumbHTML = thumbUrl
+            ? `<img src="${thumbUrl}" alt="" />`
+            : `<i class="fa-solid fa-image lz-thumb-placeholder"></i>`;
+
         return `
         <div class="lz-library-item ${isCurrent ? 'lz-active-loc' : ''}" data-key="${escapeHtml(key)}">
+            <div class="lz-lib-thumb" data-filename="${escapeHtml(filename || '')}" title="View background">
+                ${thumbHTML}
+            </div>
             <div class="lz-lib-text">
                 <strong style="color: ${isCurrent ? 'var(--SmartThemeQuoteColor)' : 'inherit'};">
                     ${isCurrent ? '<i class="fa-solid fa-location-dot"></i> ' : ''}${escapeHtml(loc.name)}
