@@ -170,6 +170,8 @@
 /* --- Library Thumbnails --- */
 .lz-lib-thumb {
     width: 80px;
+    min-width: 80px;
+    max-width: 80px;
     height: 45px;
     flex-shrink: 0;
     border-radius: 4px;
