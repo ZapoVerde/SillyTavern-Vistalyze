@@ -30,6 +30,7 @@
  *     external_io: [POST /api/characters/chats, POST /api/chats/get]
  */
 import { characters, getRequestHeaders } from '../../../../script.js'
+import { getMetaSettings } from './settings/data.js'
 
 export function fastDiff(allImages, knownSessions) {
     const knownSet = new Set(knownSessions)
@@ -42,7 +43,7 @@ export function fastDiff(allImages, knownSessions) {
 }
 
 export async function runFullAudit(allImages) {
-    const knownSessions = new Set()
+    const knownSessions = new Set(getMetaSettings()?.knownSessions ?? [])
 
     for (const character of characters) {
         if (!character.avatar) continue
@@ -80,6 +81,8 @@ export async function runFullAudit(allImages) {
                     const sessionId =
                         element?.vistalyze?.sessionId ??
                         element?.extra?.vistalyze?.sessionId ??
+                        element?.localyze?.sessionId ??
+                        element?.extra?.localyze?.sessionId ??
                         null
                     if (sessionId) knownSessions.add(sessionId)
                 }
