@@ -205,23 +205,25 @@
 /* --- Background Lightbox --- */
 .lz-bg-lightbox {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: 2100;
     background: rgba(0, 0, 0, 0.92);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     cursor: zoom-out;
 }
 
 .lz-bg-lightbox img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     max-width: 100vw;
     max-height: 100dvh;
     width: auto;
     height: auto;
     object-fit: contain;
-    display: block;
-    margin: auto;
 }
 
 /* --- Architect Layout --- */
