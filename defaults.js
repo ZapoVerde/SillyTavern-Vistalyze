@@ -62,7 +62,7 @@ Style: Concept Art for Video Games, in the style of Frank Cho, comic book style.
 export const DEFAULT_DEV_MODE = false
 
 /** Verbose logging — set to true to enable informational log/warn output. Errors always surface. */
-export const DEFAULT_VERBOSE_LOGGING = false
+export const DEFAULT_VERBOSE_LOGGING = true
 
 /** Parallax — horizontal panning effect on wide background images. Off by default. */
 export const DEFAULT_PARALLAX_ENABLED = false
