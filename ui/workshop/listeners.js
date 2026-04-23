@@ -60,13 +60,37 @@ export function bindWorkshopEvents(handlers) {
         if (!filename) return;
 
         const url = `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}`;
-        const $lightbox = $(`
-            <div class="lz-bg-lightbox">
-                <img src="${url}" alt="${filename}" />
-            </div>
-        `);
-        $lightbox.on('click', () => $lightbox.remove());
-        $('body').append($lightbox);
+
+        const $backdrop = $('<div>').css({
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.92)',
+            zIndex: '99999',
+            cursor: 'zoom-out'
+        });
+
+        const $img = $('<img>').attr({ src: url, alt: filename }).css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '100vw',
+            maxHeight: '100vh',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            zIndex: '100000',
+            cursor: 'zoom-out'
+        });
+
+        const cleanup = () => { $backdrop.remove(); $img.remove(); };
+        $backdrop.on('click', cleanup);
+        $img.on('click', cleanup);
+
+        $('body').append($backdrop).append($img);
     });
 
     // Navigate from Library to Architect
