@@ -47,7 +47,7 @@ export function escapeHtml(str) {
  * @param {string} i18nBase Base key for translation.
  * @returns {string} HTML string.
  */
-export function buildCallRow(id, label, promptKey, profileKey, historyKey = null, guidance = '', i18nBase = '') {
+export function buildCallRow(id, label, promptKey, profileKey, historyKey = null, guidance = '', i18nBase = '', extraContent = '') {
     const safeId = escapeHtml(id);
     const safePromptKey = escapeHtml(promptKey);
     const safeProfileKey = escapeHtml(profileKey);
@@ -82,6 +82,7 @@ export function buildCallRow(id, label, promptKey, profileKey, historyKey = null
             <select id="lz-profile-${safeId}" class="text_pole lz-step-profile-select" data-profile-key="${safeProfileKey}" style="flex:1;"></select>
         </div>
         ${historyRow}
+        ${extraContent}
     </div>`;
 }
 
@@ -131,7 +132,14 @@ export function buildPanelHTML(meta, availableModels) {
                 </p>
 
                 <!-- Detection & Discovery Steps -->
-                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory', step1Guidance, 'vistalyze.settings.step1')}
+                ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory', step1Guidance, 'vistalyze.settings.step1', `
+                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
+                        <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
+                            <input type="checkbox" id="lz-auto-detect-enabled" />
+                            <span data-i18n="vistalyze.settings.step1.auto_detect_label">Enable Automated Detection</span>
+                        </label>
+                        <span style="display:block;font-size:0.78em;opacity:0.55;margin-top:2px;" data-i18n="vistalyze.settings.step1.auto_detect_hint">When off, all automatic background transitions are disabled. Manual workshop edits still work normally.</span>
+                    </div>`)}
                 ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory', creativeGuidance, 'vistalyze.settings.step2')}
                 ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory', creativeGuidance, 'vistalyze.settings.step3')}
                 

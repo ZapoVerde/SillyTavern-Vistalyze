@@ -107,6 +107,9 @@ function populateInputs() {
     $('#lz-dev-mode').prop('checked', s.devMode ?? false);
     $('#lz-parallax-enabled').prop('checked', meta.parallaxEnabled ?? false);
 
+    // Auto-Detect toggle
+    $('#lz-auto-detect-enabled').prop('checked', s.autoDetectEnabled ?? true);
+
     // Auto-Accept bypasses
     $('#lz-auto-accept-location').prop('checked', s.autoAcceptLocation ?? false);
     $('#lz-auto-accept-description').prop('checked', s.autoAcceptDescription ?? false);
@@ -202,6 +205,11 @@ function bindHandlers() {
         
         // Protected Update: Update numeric setting
         updateActiveSetting(key, val);
+        updateDirtyIndicator(meta);
+    });
+
+    $('#lz-settings').on('change', '#lz-auto-detect-enabled', function () {
+        updateActiveSetting('autoDetectEnabled', $(this).prop('checked'));
         updateDirtyIndicator(meta);
     });
 

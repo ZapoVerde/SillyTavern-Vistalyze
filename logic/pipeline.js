@@ -51,8 +51,10 @@ export async function runPipeline(messageId) {
     
     if (!message || message.is_user) return;
 
-    const locationKeys = Object.keys(state.locations);
     const s = getSettings();
+    if (!(s.autoDetectEnabled ?? true)) return;
+
+    const locationKeys = Object.keys(state.locations);
 
     // Step 1: Boolean Gate
     if (state.currentLocation !== null) {

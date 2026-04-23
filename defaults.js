@@ -67,6 +67,9 @@ export const DEFAULT_VERBOSE_LOGGING = false
 /** Parallax — horizontal panning effect on wide background images. Off by default. */
 export const DEFAULT_PARALLAX_ENABLED = false
 
+/** Auto-Detect — when false, the pipeline does not run on incoming messages. */
+export const DEFAULT_AUTO_DETECT_ENABLED = true
+
 /** Auto-Accept Bypasses — allows the pipeline to skip manual confirmation gates. */
 export const DEFAULT_AUTO_ACCEPT_LOCATION = false
 export const DEFAULT_AUTO_ACCEPT_DESCRIPTION = false

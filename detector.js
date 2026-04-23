@@ -58,14 +58,17 @@ function extractMarkerData(raw) {
  * Dispatches the prompt to the LLM with Verbose Raw Logging.
  */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
-    log(label, `--- PROMPT SENT ---\n${prompt}`);
+    const connectionNote = (profileId)
+        ? `Routing via Connection Manager → profile: "${profileId}"`
+        : `No custom connection specified — defaulting to main SillyTavern chat LLM`;
+    log(label, `--- PROMPT SENT --- (${connectionNote})\n${prompt}`);
 
     let result;
     if (profileId) {
         try {
             result = await ConnectionManagerRequestService.sendRequest(profileId, prompt, null, extraOptions);
         } catch (err) {
-            warn(label, 'ConnectionManager failed, falling back:', err);
+            warn(label, `ConnectionManager failed for profile "${profileId}" — falling back to main chat LLM:`, err);
         }
     }
 
