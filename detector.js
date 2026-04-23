@@ -58,9 +58,17 @@ function extractMarkerData(raw) {
  * Dispatches the prompt to the LLM with Verbose Raw Logging.
  */
 async function dispatch(prompt, profileId, label, extraOptions = {}) {
-    const connectionNote = (profileId)
-        ? `Routing via Connection Manager → profile: "${profileId}"`
-        : `No custom connection specified — defaulting to main SillyTavern chat LLM`;
+    let connectionNote;
+    if (profileId) {
+        try {
+            const profile = ConnectionManagerRequestService.getProfile(profileId);
+            connectionNote = `Routing via Connection Manager → "${profile.name}"`;
+        } catch {
+            connectionNote = `Routing via Connection Manager → profile: "${profileId}"`;
+        }
+    } else {
+        connectionNote = `No custom connection specified — defaulting to main SillyTavern chat LLM`;
+    }
     log(label, `--- PROMPT SENT --- (${connectionNote})\n${prompt}`);
 
     let result;
