@@ -133,27 +133,25 @@ export function buildPanelHTML(meta, availableModels) {
 
                 <!-- Detection & Discovery Steps -->
                 ${buildCallRow('boolean',    'Step 1 — Location Changed? (Boolean)',   'booleanPrompt',    'booleanProfileId',    'booleanHistory', step1Guidance, 'vistalyze.settings.step1', `
-                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
+                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--SmartThemeBorderColor,#444);display:flex;flex-direction:column;gap:4px;">
                         <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
                             <input type="checkbox" id="lz-auto-detect-enabled" />
                             <span data-i18n="vistalyze.settings.step1.auto_detect_label">Enable Automated Detection</span>
                         </label>
                         <span style="display:block;font-size:0.78em;opacity:0.55;margin-top:2px;" data-i18n="vistalyze.settings.step1.auto_detect_hint">When off, all automatic background transitions are disabled. Manual workshop edits still work normally.</span>
+                        <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;margin-top:4px;">
+                            <input type="checkbox" id="lz-auto-accept-location" />
+                            <span data-i18n="vistalyze.settings.step3.auto_accept_location">Auto-Accept Location (Skip popup)</span>
+                        </label>
                     </div>`)}
                 ${buildCallRow('classifier', 'Step 2 — Which Location? (Classifier)', 'classifierPrompt', 'classifierProfileId', 'classifierHistory', creativeGuidance, 'vistalyze.settings.step2')}
-                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory', creativeGuidance, 'vistalyze.settings.step3')}
-                
-                <!-- Step 3 Auto-Accept Toggles -->
-                <div style="margin: -8px 0 16px 12px; display: flex; flex-direction: column; gap: 4px;">
-                    <label class="checkbox_label" style="font-size: 0.82em; cursor: pointer; opacity: 0.85;">
-                        <input type="checkbox" id="lz-auto-accept-location" />
-                        <span data-i18n="vistalyze.settings.step3.auto_accept_location">Auto-Accept Location (Skip popup)</span>
-                    </label>
-                    <label class="checkbox_label" style="font-size: 0.82em; cursor: pointer; opacity: 0.85;">
-                        <input type="checkbox" id="lz-auto-accept-description" />
-                        <span data-i18n="vistalyze.settings.step3.auto_accept_description">Auto-Accept Description (Skip Architect review)</span>
-                    </label>
-                </div>
+                ${buildCallRow('describer',  'Step 3 — Describe New Location',        'describerPrompt',  'describerProfileId',  'describerHistory', creativeGuidance, 'vistalyze.settings.step3', `
+                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--SmartThemeBorderColor,#444);">
+                        <label class="checkbox_label" style="font-size:0.85em;cursor:pointer;">
+                            <input type="checkbox" id="lz-auto-accept-description" />
+                            <span data-i18n="vistalyze.settings.step3.auto_accept_description">Auto-Accept Description (Skip Architect review)</span>
+                        </label>
+                    </div>`)}
 
                 ${buildCallRow('discovery',  'Step 4 — Targeted Discovery',            'discoveryPrompt',  'discoveryProfileId',  'discoveryHistory', creativeGuidance, 'vistalyze.settings.step4')}
                 
