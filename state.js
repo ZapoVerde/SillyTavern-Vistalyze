@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/vistalyze/state.js
- * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
+ * @stamp {"utc":"2026-05-03T14:00:00.000Z"}
  * @architectural-role Stateful Owner (Runtime State)
  * @description
  * Single source of truth for all Vistalyze in-memory runtime state. 
@@ -10,6 +10,12 @@
  * 2. External modules MUST use the provided Setter API for all updates.
  * 3. External modules may READ from the exported 'state' object directly.
  * 4. All objects passed into setters are structured-cloned to prevent reference leaks.
+ *
+ * @updates
+ * - Added customBg to locations and _draftLocations schema to support manual 
+ *   background selection.
+ * - Updated updateDraftField to invalidate AI-generated blobs when customBg 
+ *   is modified.
  *
  * @api-declaration
  * state                          — Read-only access to runtime data.
@@ -35,7 +41,7 @@ export const state = {
     sessionId: null,
 
     // Live Library & Scene
-    locations: {},         // key -> { name, description, imagePrompt, ... }
+    locations: {},         // key -> { name, description, imagePrompt, customBg, ... }
     currentLocation: null, // key
     currentImage: null,    // filename
 
@@ -48,7 +54,7 @@ export const state = {
 
     // Workshop (Temporary UI State)
     _activeWorkshopKey: null,
-    _draftLocations: {},   // key -> { name, description, imagePrompt }
+    _draftLocations: {},   // key -> { name, description, imagePrompt, customBg }
     _proposedImageBlob: null,
     _proposedFullBlob: null,
 }
@@ -162,15 +168,16 @@ export function stageDiscovery(def) {
 /**
  * Updates a specific field for a location in the draft library.
  * @param {string} key The location key in the draft.
- * @param {string} field 'name', 'description', or 'imagePrompt'.
+ * @param {string} field 'name', 'description', 'imagePrompt', or 'customBg'.
  * @param {string} value The new text value.
  */
 export function updateDraftField(key, field, value) {
     if (state._draftLocations[key]) {
         state._draftLocations[key][field] = value;
         
-        // If visuals change, any existing pre-generated blobs are now invalid.
-        if (field === 'imagePrompt') {
+        // If visuals change (prompt or manual file selection), any existing 
+        // pre-generated AI blobs are now invalid.
+        if (field === 'imagePrompt' || field === 'customBg') {
             state._proposedImageBlob = null;
             state._proposedFullBlob = null;
         }

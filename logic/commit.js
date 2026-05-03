@@ -1,7 +1,7 @@
 /**
  * @file data/default-user/extensions/vistalyze/logic/commit.js
- * @stamp {"utc":"2026-04-04T12:30:00.000Z"}
- * @version 1.2.1
+ * @stamp {"utc":"2026-05-03T14:45:00.000Z"}
+ * @version 1.3.0
  * @architectural-role IO Executor / Finalizer
  * @description
  * Handles the "Commit Phase" of the Location Workshop. Responsible for 
@@ -9,10 +9,9 @@
  * the chat history and filesystem.
  *
  * @updates
- * - Migration: Replaced all direct state mutations with upsertLocation, 
- *   removeLocation, addToFileIndex, and clearWorkshop setters.
- * - Maintained Two-Write Pattern: Transition intent is written before asset generation.
- * - Integrated translation-ready t and translate wrappers for user-facing strings.
+ * - Integrated customBg support: If a location has a manual background selection, 
+ *   the system bypasses image generation and applies the chosen file directly.
+ * - Updated needsGeneration logic to respect the customBg override.
  *
  * @api-declaration
  * handleFinalizeWorkshop(targetKey) — Persists a draft and applies it as the active scene.
@@ -59,7 +58,8 @@ async function commitDraftLibrary() {
         const isModified = original && (
             original.name !== draftDef.name ||
             original.description !== draftDef.description ||
-            original.imagePrompt !== draftDef.imagePrompt
+            original.imagePrompt !== draftDef.imagePrompt ||
+            original.customBg !== draftDef.customBg
         );
 
         if (isNew || isModified) {
@@ -100,11 +100,18 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
     const draftDef = state._draftLocations[targetKey];
     const original = state.locations[targetKey];
 
-    // Detect if the visual prompt changed (requires overwriting the current image)
-    const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
-    const filename = `vistalyze_${state.sessionId}_${targetKey}.png`;
+    // Determine target filename: custom override or session-keyed AI file
+    const targetFilename = draftDef.customBg || `vistalyze_${state.sessionId}_${targetKey}.png`;
+
+    // Detect if the visual state changed
+    const visualsModified = original && (
+        original.imagePrompt !== draftDef.imagePrompt || 
+        original.customBg !== draftDef.customBg
+    );
+
+    // Generation is only needed if we don't have a customBg AND (forced, modified, or missing)
     const hasPregeneratedBlob = state._proposedFullBlob !== null;
-    const needsGeneration = hasPregeneratedBlob || forceRegen || visualsModified || !state.fileIndex.has(filename);
+    const needsGeneration = !draftDef.customBg && (hasPregeneratedBlob || forceRegen || visualsModified || !state.fileIndex.has(targetFilename));
 
     // 1. Sync the library (Metadata definitions)
     await commitDraftLibrary();
@@ -126,7 +133,7 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
         try {
             // 3. IO: Async Asset Creation/Transfer
             const newFile = hasPregeneratedBlob
-                ? await uploadBlob(state._proposedFullBlob, filename)
+                ? await uploadBlob(state._proposedFullBlob, targetFilename)
                 : await generate(targetKey, draftDef, state.sessionId);
 
             // Protected Update: Record server file existence
@@ -146,10 +153,10 @@ export async function handleFinalizeWorkshop(targetKey, forceRegen = false) {
             if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Vistalyze');
         }
     } else {
-        // Immediate transition (Asset already exists)
-        await lockedPatchSceneImage(lastMsgId, filename);
-        updateState(targetKey, filename);
-        setBg(filename);
+        // Immediate transition: Either using customBg or AI file already exists
+        await lockedPatchSceneImage(lastMsgId, targetFilename);
+        updateState(targetKey, targetFilename);
+        setBg(targetFilename);
         if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Vistalyze');
     }
 
@@ -187,13 +194,16 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
     });
 
     if (isCurrentMessage) {
-        // Active scene path — same image generation logic as handleFinalizeWorkshop
+        // Active scene path — same logic as handleFinalizeWorkshop
         updateState(targetKey, null);
 
         const original = state.locations[targetKey];
-        const visualsModified = original && original.imagePrompt !== draftDef.imagePrompt;
-        const filename = `vistalyze_${state.sessionId}_${targetKey}.png`;
-        const needsGeneration = visualsModified || !state.fileIndex.has(filename);
+        const targetFilename = draftDef.customBg || `vistalyze_${state.sessionId}_${targetKey}.png`;
+        const visualsModified = original && (
+            original.imagePrompt !== draftDef.imagePrompt || 
+            original.customBg !== draftDef.customBg
+        );
+        const needsGeneration = !draftDef.customBg && (visualsModified || !state.fileIndex.has(targetFilename));
 
         if (needsGeneration) {
             clearBg();
@@ -209,9 +219,9 @@ export async function handleFinalizeWorkshopAtMessage(targetKey, msgId) {
                 if (window.toastr) window.toastr.error(t`Transition saved, but image failed: ${err.message}`, 'Vistalyze');
             }
         } else {
-            await lockedPatchSceneImage(msgId, filename);
-            updateState(targetKey, filename);
-            setBg(filename);
+            await lockedPatchSceneImage(msgId, targetFilename);
+            updateState(targetKey, targetFilename);
+            setBg(targetFilename);
             if (window.toastr) window.toastr.success(t`Location switched to: ${draftDef.name}`, 'Vistalyze');
         }
     } else {

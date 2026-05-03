@@ -1,16 +1,14 @@
 /**
  * @file data/default-user/extensions/vistalyze/reconstruction.js
- * @stamp {"utc":"2026-04-03T20:00:00.000Z"}
+ * @stamp {"utc":"2026-05-03T14:20:00.000Z"}
  * @architectural-role State Derivation (Pure)
  * @description
  * Derives all Vistalyze runtime state from a single forward pass over the chat
  * log.
  *
  * @updates
- * - Added support for the "Array Pattern" in message.extra.vistalyze.
- * - Handles both single-object (legacy) and array-based (current) records.
- * - This allows a single message to define a location AND trigger a scene shift.
- * - Added transitionsMap and newFromMap derivation for Dynamic Markov Injection.
+ * - Acknowledged customBg in location_def records. The forward pass naturally 
+ *   carries this property into the runtime state as part of the record object.
  *
  * @api-declaration
  * reconstruct(chat) → { locations, transitions, currentLocation, currentImage, transitionsMap, newFromMap }
@@ -42,6 +40,7 @@ export function reconstruct(chat) {
 
             if (rec.type === 'location_def') {
                 // Last write for a given key wins (edit support)
+                // This carries name, description, imagePrompt, and customBg.
                 locations[rec.key] = rec
             } else if (rec.type === 'scene') {
                 transitions.push(rec)

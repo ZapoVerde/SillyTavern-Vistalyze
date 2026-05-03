@@ -1,15 +1,15 @@
 /**
  * @file data/default-user/extensions/vistalyze/ui/workshop/listeners.js
- * @stamp {"utc":"2026-04-04T13:05:00.000Z"}
+ * @stamp {"utc":"2026-05-03T13:05:00.000Z"}
  * @architectural-role UI Event Listeners
  * @description
  * Centralizes all DOM event bindings for the Location Workshop modal.
  *
  * @updates
- * - Migration: Replaced direct state mutations with setWorkshopKey, 
- *   setProposedBlob, and updateDraftField setters.
- * - Optimized Syncing: UI input now flows through state.js gatekeepers.
- * - Integrated translation-ready t and translate wrappers for user-facing strings.
+ * - Integrated Hijack Pattern: Added listener for #lz-arch-hijack-btn to 
+ *   trigger the ST gallery picker.
+ * - Updated state management to handle manual background selection and 
+ *   subsequent UI disabling.
  *
  * @api-declaration
  * bindWorkshopEvents(handlers) -> void
@@ -18,12 +18,13 @@
  *   assertions:
  *     purity: IO
  *     state_ownership: [state (mutates via setters)]
- *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js, i18n]
+ *     external_io: [JQuery DOM Events (read/write), maintenance.js, commit.js, bgHijacker.js, i18n]
  */
 
 import { t, translate } from '../../../../../i18n.js';
 import { state, setWorkshopKey, setProposedBlob, updateDraftField } from '../../state.js';
 import { error } from '../../utils/logger.js';
+import { pickNativeBackground } from '../bgHijacker.js';
 import {
     regenField,
     discoverySearch,
@@ -118,17 +119,28 @@ export function bindWorkshopEvents(handlers) {
         }
     });
 
-    // Immediate Apply from Library
-    $overlay.on('click', '.lz-lib-apply', async function(e) {
-        e.stopPropagation();
+    // Text area click: apply directly and close
+    $overlay.on('click', '.lz-lib-text', async function() {
         const key = $(this).closest('.lz-library-item').data('key');
         const { handleFinalizeWorkshop } = await import('../../logic/commit.js');
-        
+
         try {
             await handleFinalizeWorkshop(key);
             $overlay.addClass('lz-hidden');
         } catch (err) {
             error('Workshop', 'Apply failed:', err);
+        }
+    });
+
+    // Folder icon: pick an existing ST background and update this location's draft
+    $overlay.on('click', '.lz-lib-pick-bg', async function(e) {
+        e.stopPropagation();
+        const key = $(this).closest('.lz-library-item').data('key');
+
+        const filename = await pickNativeBackground();
+        if (filename) {
+            updateDraftField(key, 'customBg', filename);
+            renderLibrary();
         }
     });
 
@@ -152,6 +164,29 @@ export function bindWorkshopEvents(handlers) {
         if (this.id === 'lz-arch-visuals') {
             $('#lz-preview-after').attr('src', '').hide();
         }
+    });
+
+    // Hijack Handler: Open ST Background Picker
+    $overlay.on('click', '#lz-arch-hijack-btn', async function() {
+        const key = state._activeWorkshopKey;
+        if (!key) return;
+
+        const filename = await pickNativeBackground();
+        if (filename) {
+            // Protected Update: Assign customBg. imagePrompt is preserved so the
+            // user can restore it if they later clear the custom selection.
+            updateDraftField(key, 'customBg', filename);
+            renderArchitect();
+        }
+    });
+
+    // Clear Handler: Remove custom background selection and re-enable AI prompt
+    $overlay.on('click', '#lz-arch-clear-bg-btn', function() {
+        const key = state._activeWorkshopKey;
+        if (!key) return;
+
+        updateDraftField(key, 'customBg', null);
+        renderArchitect();
     });
 
     // AI Refinement (The "Sparks"): Triggers targeted LLM extraction

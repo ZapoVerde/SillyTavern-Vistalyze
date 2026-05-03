@@ -1,14 +1,14 @@
 /**
  * @file data/default-user/extensions/vistalyze/ui/workshop/templates.js
- * @stamp {"utc":"2026-04-04T13:00:00.000Z"}
+ * @stamp {"utc":"2026-05-03T15:45:00.000Z"}
  * @architectural-role Pure UI Templates
  * @description
  * Pure functions for generating the Location Workshop HTML. 
  * Includes data-i18n attributes for native SillyTavern translation support.
  *
  * @updates
- * - Integrated data-i18n attributes for all text-bearing elements.
- * - Updated icon titles with bracket notation translation hooks.
+ * - Added "Select Existing" button to the Architect tab to trigger the ST background hijack.
+ * - Updated getArchitectGridHTML to include the hijack trigger.
  *
  * @api-declaration
  * getBaseWorkshopHTML(sessionId) -> string
@@ -95,8 +95,11 @@ export function getLibraryListHTML(drafts, currentKey, fileIndex = new Set(), se
 
     return drafts.map(([key, loc]) => {
         const isCurrent = currentKey === key;
-        const filename = sessionId ? `vistalyze_${sessionId}_${key}.png` : null;
-        const hasImage = filename && fileIndex.has(filename);
+        const isCustom = !!loc.customBg;
+        const filename = loc.customBg || (sessionId ? `vistalyze_${sessionId}_${key}.png` : null);
+        // customBg files are native ST backgrounds and never appear in the Vistalyze-scoped
+        // fileIndex, so bypass that check and trust the filename directly.
+        const hasImage = filename && (isCustom || fileIndex.has(filename));
         const thumbUrl = hasImage ? `backgrounds/${encodeURIComponent(filename)}?v=${Date.now()}` : null;
 
         const thumbHTML = thumbUrl
@@ -108,16 +111,16 @@ export function getLibraryListHTML(drafts, currentKey, fileIndex = new Set(), se
             <div class="lz-lib-thumb" data-filename="${escapeHtml(filename || '')}" title="View background">
                 ${thumbHTML}
             </div>
-            <div class="lz-lib-text">
+            <div class="lz-lib-text" style="cursor:pointer;" title="Apply location">
                 <strong style="color: ${isCurrent ? 'var(--SmartThemeQuoteColor)' : 'inherit'};">
                     ${isCurrent ? '<i class="fa-solid fa-location-dot"></i> ' : ''}${escapeHtml(loc.name)}
                 </strong>
                 <small>${escapeHtml(loc.description)}</small>
             </div>
             <div class="lz-lib-actions">
-                <i class="fa-solid fa-location-arrow lz-lib-apply" data-i18n="[title]vistalyze.workshop.apply_title" title="Apply Location"></i>
-                <i class="fa-solid fa-pen-to-square lz-lib-edit" data-i18n="[title]vistalyze.workshop.edit_title" title="Edit in Architect"></i>
-                <i class="fa-solid fa-trash lz-lib-delete" data-i18n="[title]vistalyze.workshop.delete_title" title="Delete Location"></i>
+                <i class="fa-solid fa-folder-open lz-lib-pick-bg" style="font-size:1.2em;" data-i18n="[title]vistalyze.workshop.pick_bg_title" title="Select existing background"></i>
+                <i class="fa-solid fa-pen-to-square lz-lib-edit" style="font-size:1.2em;" data-i18n="[title]vistalyze.workshop.edit_title" title="Edit in Architect"></i>
+                <i class="fa-solid fa-trash lz-lib-delete" style="font-size:1.2em;" data-i18n="[title]vistalyze.workshop.delete_title" title="Delete Location"></i>
             </div>
         </div>`;
     }).join('');
@@ -142,6 +145,7 @@ function calcRows(text, charsPerRow = 65, minRows = 2) {
 export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, proposedLabel = 'Proposed') {
     const defRows = calcRows(draft.description, 65, 2);
     const visRows = calcRows(draft.imagePrompt, 65, 4);
+    const isManual = !!draft.customBg;
 
     return `
     <div class="lz-architect-fields">
@@ -151,11 +155,25 @@ export function getArchitectGridHTML(draft, currentImgUrl, proposedImgUrl, propo
         <label><span data-i18n="vistalyze.workshop.label_definition">Definition (Logic)</span> <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="description" data-i18n="[title]vistalyze.workshop.regen_logic_title" title="Regenerate logic from context"></i></label>
         <textarea id="lz-arch-definition" class="text_pole" rows="${defRows}" style="width:100%; resize:vertical;">${escapeHtml(draft.description)}</textarea>
 
-        <label><span data-i18n="vistalyze.workshop.label_visuals">Visuals (Image Prompt)</span> <i class="fa-solid fa-wand-sparkles lz-regen-spark" data-field="imagePrompt" data-i18n="[title]vistalyze.workshop.regen_prompt_title" title="Regenerate prompt from definition"></i></label>
-        <textarea id="lz-arch-visuals" class="text_pole" rows="${visRows}" style="width:100%; resize:vertical; font-family:monospace; font-size:0.9em;">${escapeHtml(draft.imagePrompt)}</textarea>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin: 12px 0 4px;">
+            <label data-i18n="vistalyze.workshop.label_visuals">Visuals (Image Prompt)</label>
+            <div style="display:flex; gap:4px;">
+                ${isManual ? `<button class="menu_button" id="lz-arch-clear-bg-btn" style="font-size:0.75em; padding: 2px 8px;" title="${escapeHtml(draft.customBg)}">
+                    <i class="fa-solid fa-xmark"></i> <span data-i18n="vistalyze.workshop.btn_clear_bg">Clear: ${escapeHtml(draft.customBg)}</span>
+                </button>` : ''}
+                <button class="menu_button" id="lz-arch-hijack-btn" style="font-size:0.75em; padding: 2px 8px;">
+                    <i class="fa-solid fa-folder-open"></i> <span data-i18n="vistalyze.workshop.btn_hijack">Select Existing</span>
+                </button>
+            </div>
+        </div>
+        <textarea id="lz-arch-visuals" class="text_pole" rows="${visRows}"
+                  ${isManual ? 'disabled' : ''}
+                  style="width:100%; resize:vertical; font-family:monospace; font-size:0.9em; opacity: ${isManual ? '0.5' : '1'};">
+            ${escapeHtml(draft.imagePrompt)}
+        </textarea>
 
         <div class="lz-architect-actions">
-            <button id="lz-arch-preview-btn" class="menu_button" data-i18n="vistalyze.workshop.btn_preview">Thumbnail Preview</button>
+            <button id="lz-arch-preview-btn" class="menu_button" ${isManual ? 'disabled' : ''} data-i18n="vistalyze.workshop.btn_preview">Thumbnail Preview</button>
             <span id="lz-preview-spinner" class="lz-hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
         </div>
     </div>

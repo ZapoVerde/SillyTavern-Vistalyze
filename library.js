@@ -1,15 +1,13 @@
 /**
  * @file data/default-user/extensions/vistalyze/library.js
- * @stamp {"utc":"2026-04-02T12:05:00.000Z"}
+ * @stamp {"utc":"2026-05-03T14:15:00.000Z"}
  * @architectural-role Chat DNA Writer
  * @description
  * Writes location_def records into message.extra.vistalyze as an array.
  * 
  * @updates
- * - Implemented the "Array Pattern" for storage.
- * - Migrated from single-object records to a list of records.
- * - This prevents the "Last Write Wins" bug where a scene transition 
- *   could delete a location definition on the same message.
+ * - Added support for customBg property to allow persistence of manually 
+ *   selected backgrounds in the chat DNA.
  *
  * @api-declaration
  * writeLocationDef(messageId, def, sessionId) → Promise<void>
@@ -26,7 +24,7 @@ import { saveChatConditional } from '../../../../script.js'
 /**
  * Writes a location definition into the chat DNA.
  * @param {number} messageId 
- * @param {object} def { key, name, description, imagePrompt }
+ * @param {object} def { key, name, description, imagePrompt, customBg }
  * @param {string} sessionId 
  */
 export async function writeLocationDef(messageId, def, sessionId) {
@@ -53,6 +51,7 @@ export async function writeLocationDef(messageId, def, sessionId) {
         name: def.name,
         description: def.description,
         imagePrompt: def.imagePrompt,
+        customBg: def.customBg, // Persist manual override if present
         sessionId,
     });
 

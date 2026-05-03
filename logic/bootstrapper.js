@@ -1,15 +1,15 @@
 /**
  * @file data/default-user/extensions/vistalyze/logic/bootstrapper.js
- * @stamp {"utc":"2026-04-03T15:30:00.000Z"}
- * @version 1.1.0
+ * @stamp {"utc":"2026-05-03T15:50:00.000Z"}
+ * @version 1.2.0
  * @architectural-role Orchestrator / Boot Sequence
  * @description
  * Manages the initialization of the Vistalyze environment for a specific chat.
  * 
  * @updates
- * - Migration: Replaced all direct state mutations with bulkInitState, 
- *   setFileIndex, addToFileIndex, and updateState setters.
- * - Standardized Metadata: Uses updateMetaSetting for global audit cache updates.
+ * - Integrated customBg awareness: The regeneration queue now skips any 
+ *   location that has a manual background selection, ensuring the AI never 
+ *   overwrites user choices.
  *
  * @api-declaration
  * runBoot() -> Promise<void>
@@ -77,6 +77,12 @@ export async function runBoot() {
 
     // Check every location in the library. If its image is missing, queue it.
     for (const key of Object.keys(state.locations)) {
+        const def = state.locations[key];
+        
+        // Skip regeneration if a custom background is explicitly set. 
+        // Vistalyze cannot "re-generate" a manual user selection.
+        if (def.customBg) continue;
+
         const filename = `vistalyze_${state.sessionId}_${key}.png`;
         if (!state.fileIndex.has(filename)) {
             warn('Boot', `Asset missing from server: ${filename}. Queuing regeneration.`);
@@ -84,8 +90,12 @@ export async function runBoot() {
         }
     }
 
-    // Identify if the CURRENT scene's image is missing
-    const isCurrentImageMissing = state.currentImage && !state.fileIndex.has(state.currentImage);
+    // Identify if the CURRENT scene's image is missing.
+    // customBg filenames are native ST files — they are never in the Vistalyze-scoped
+    // fileIndex, so skip the check for them entirely.
+    const currentDef = state.currentLocation ? state.locations[state.currentLocation] : null;
+    const isCurrentCustom = !!currentDef?.customBg;
+    const isCurrentImageMissing = !isCurrentCustom && state.currentImage && !state.fileIndex.has(state.currentImage);
 
     // 4. UI Restoration
     if (state.currentImage && !isCurrentImageMissing) {
