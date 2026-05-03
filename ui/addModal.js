@@ -1,15 +1,15 @@
 /**
  * @file data/default-user/extensions/vistalyze/ui/addModal.js
- * @stamp {"utc":"2026-05-03T15:10:00.000Z"}
+ * @stamp {"utc":"2026-05-03T16:30:00.000Z"}
  * @architectural-role New Location Review UI
  * @description
  * Modal for reviewing, editing, and approving a new location definition.
  * Includes data-i18n attributes for native SillyTavern translation support.
  *
  * @updates
- * - Integrated Hijack Pattern: Added "Select Existing Background" button.
- * - Added support for customBg property to bypass AI generation if a manual 
- *   file is picked from the ST gallery.
+ * - "Use Existing Background" button moved to dialogue_popup_controls (next to Yes/Cancel).
+ * - Selecting an image now bypasses the modal entirely — the popup is dismissed
+ *   immediately and the result is returned directly without returning to the form.
  *
  * @api-declaration
  * openAddModal(def) → Promise<{ name, key, description, imagePrompt, customBg } | null>
@@ -32,6 +32,11 @@ import { error } from '../utils/logger.js'
  * @param {object} def Initial definition from the AI detector.
  */
 export async function openAddModal(def) {
+    // Clean up any stale button from a previous call that was interrupted.
+    $('#lz-add-use-existing').remove();
+
+    let earlyResult = null;
+
     const popupPromise = callPopup(
         `<h3 data-i18n="vistalyze.add_modal.title">Add Location to Library</h3>
 
@@ -44,14 +49,8 @@ export async function openAddModal(def) {
         <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;" data-i18n="vistalyze.add_modal.label_definition">Definition (Logical Identity)</label>
         <input type="text" id="lz-add-definition" class="text_pole" value="${escapeHtml(def.description ?? '')}" style="width:100%;" />
 
-        <div style="display:flex; align-items:center; justify-content:space-between; margin: 12px 0 4px;">
-            <label style="font-size:0.88em;opacity:0.75;" data-i18n="vistalyze.add_modal.label_visuals">Visuals (Image Prompt)</label>
-            <button class="menu_button" id="lz-add-hijack-btn" style="font-size:0.75em; padding: 2px 8px;">
-                <i class="fa-solid fa-folder-open"></i> ${translate('Select Existing')}
-            </button>
-        </div>
+        <label style="display:block;margin:8px 0 3px;font-size:0.88em;opacity:0.75;" data-i18n="vistalyze.add_modal.label_visuals">Visuals (Image Prompt)</label>
         <textarea id="lz-add-visuals" class="text_pole" rows="3" style="width:100%; font-family:monospace; font-size:0.9em;">${escapeHtml(def.imagePrompt ?? '')}</textarea>
-        <input type="hidden" id="lz-add-custom-bg" value="" />
 
         <div style="margin-top:10px;">
             <button class="menu_button" id="lz-add-preview-btn" data-i18n="vistalyze.add_modal.btn_preview">Generate Preview</button>
@@ -63,37 +62,55 @@ export async function openAddModal(def) {
         'confirm',
     )
 
+    // Inject "Use Existing Background" into the popup controls, before Yes/Cancel.
+    const $useExistingBtn = $(`<div id="lz-add-use-existing" class="menu_button">
+        <i class="fa-solid fa-folder-open"></i> ${translate('Use Existing BG')}
+    </div>`);
+    $('#dialogue_popup_controls').prepend($useExistingBtn);
+
     // Bind slugification handler: name -> key
     $('#lz-add-name').on('input', function () {
         $('#lz-add-key').val(slugify(this.value))
     })
 
-    // Bind hijack handler
-    $('#lz-add-hijack-btn').on('click', async function () {
+    // "Use Existing BG": open picker, capture result, dismiss popup immediately.
+    $useExistingBtn.on('click', async function () {
         const filename = await pickNativeBackground();
-        if (filename) {
-            $('#lz-add-custom-bg').val(filename);
-            $('#lz-add-visuals').val('').prop('disabled', true).css('opacity', 0.5);
-            $('#lz-preview-container').show();
-            $('#lz-preview-img').attr('src', `backgrounds/${encodeURIComponent(filename)}`);
-            $('#lz-preview-status').text(translate('Manual background selected'));
-            $('#lz-add-preview-btn').prop('disabled', true);
+        if (!filename) return;
+
+        const name = $('#lz-add-name').val().trim();
+        const key  = $('#lz-add-key').val().trim();
+
+        if (!name || !key) {
+            if (window.toastr) window.toastr.warning(t`Fill in Name first, then select a background.`, 'Vistalyze');
+            return;
         }
+
+        earlyResult = {
+            name,
+            key,
+            description: $('#lz-add-definition').val().trim(),
+            imagePrompt: '',
+            customBg: filename,
+        };
+
+        // Dismiss the modal — popupPromise will resolve to false.
+        $('#dialogue_popup_cancel').trigger('click');
     });
 
-    // Bind preview handler using the 'visuals' field
+    // Bind preview handler
     $('#lz-add-preview-btn').on('click', async function () {
         const visuals = $('#lz-add-visuals').val().trim()
-        if (!visuals) { 
-            if (window.toastr) window.toastr.warning(t`Enter visuals description first.`, 'Vistalyze'); 
-            return; 
+        if (!visuals) {
+            if (window.toastr) window.toastr.warning(t`Enter visuals description first.`, 'Vistalyze');
+            return;
         }
-        
+
         const btn = $(this)
         const status = $('#lz-preview-status')
         btn.prop('disabled', true).text(translate('Fetching...'))
         status.text('')
-        
+
         try {
             const objectUrl = await fetchPreviewBlob(visuals)
             $('#lz-preview-container').show()
@@ -108,16 +125,24 @@ export async function openAddModal(def) {
         }
     })
 
-    const confirmed = await popupPromise
+    const confirmed = await popupPromise;
 
-    if (!confirmed) return null
+    // Clean up our injected button regardless of path.
+    $useExistingBtn.remove();
 
-    const name = $('#lz-add-name').val().trim()
-    const key  = $('#lz-add-key').val().trim()
-    
+    // Early-exit path: user picked an existing background — bypass everything.
+    if (earlyResult) return earlyResult;
+
+    // Normal cancel.
+    if (!confirmed) return null;
+
+    // Normal Yes path: validate and return the AI-gen def.
+    const name = $('#lz-add-name').val().trim();
+    const key  = $('#lz-add-key').val().trim();
+
     if (!name || !key) {
-        if (window.toastr) window.toastr.warning(t`Name and Key are required.`, 'Vistalyze')
-        return null
+        if (window.toastr) window.toastr.warning(t`Name and Key are required.`, 'Vistalyze');
+        return null;
     }
 
     return {
@@ -125,6 +150,6 @@ export async function openAddModal(def) {
         key,
         description: $('#lz-add-definition').val().trim(),
         imagePrompt: $('#lz-add-visuals').val().trim(),
-        customBg: $('#lz-add-custom-bg').val().trim() || null
-    }
+        customBg: null,
+    };
 }
