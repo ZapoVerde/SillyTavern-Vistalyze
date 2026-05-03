@@ -1,12 +1,18 @@
 /**
  * @file data/default-user/extensions/vistalyze/ui/bgHijacker.js
- * @stamp {"utc":"2026-05-03T13:45:00.000Z"}
+ * @stamp {"utc":"2026-05-03T17:15:00.000Z"}
  * @architectural-role UI Utility / Hijack Controller
  * @description
  * Orchestrates the "Hijack Pattern" for the native SillyTavern Background drawer.
  * Temporarily hides the Vistalyze UI, opens the native ST gallery, and intercepts 
  * thumbnail clicks to capture filenames without triggering ST's native background 
  * change logic.
+ *
+ * @updates
+ * - Fixed Workshop Popup Logic: The hijacker now tracks the initial visibility state 
+ *   of the workshop overlay. It only restores the overlay if it was visible 
+ *   when the hijack started, preventing the Library from appearing 
+ *   unexpectedly during the discovery flow.
  *
  * @api-declaration
  * pickNativeBackground() → Promise<string | null>
@@ -31,6 +37,7 @@ export async function pickNativeBackground() {
     const $toggle = $('#backgrounds-drawer-toggle');
     const $overlay = $('#lz-workshop-overlay');
     const wasDrawerClosed = $drawer.hasClass('closedDrawer');
+    const wasOverlayHidden = $overlay.hasClass('lz-hidden');
 
     // 1. Enter Hijack State
     $overlay.addClass('lz-hidden'); // Hide Vistalyze modal
@@ -103,7 +110,13 @@ export async function pickNativeBackground() {
             // Restore popup, backdrop, and Vistalyze overlay
             $shadow.show();
             $popup.show();
-            $overlay.removeClass('lz-hidden');
+
+            // Restore the overlay ONLY if it was visible when we started.
+            // This prevents the Library from appearing during the Discovery/Add flow.
+            if (!wasOverlayHidden) {
+                $overlay.removeClass('lz-hidden');
+            }
+            
             resolve(result);
         };
 

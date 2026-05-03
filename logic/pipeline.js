@@ -1,17 +1,16 @@
 /**
  * @file data/default-user/extensions/vistalyze/logic/pipeline.js
- * @stamp {"utc":"2026-04-04T12:25:00.000Z"}
+ * @stamp {"utc":"2026-05-03T17:20:00.000Z"}
  * @architectural-role Orchestrator / Narrative Logic
  * @description
  * Implements the "Falling Water" detection pipeline.
  * 
  * @updates
- * - Migration: Replaced all direct state mutations with upsertLocation, 
- *   addToFileIndex, and updateState setters.
- * - Standardized Visual Change Detection: Aligned with commit.js to ensure 
- *   consistency between automated detection and manual workshop edits.
- * - Added independent auto-accept bypasses for Location and Description gates.
- * - Integrated translation-ready t and translate wrappers for user-facing strings.
+ * - Fixed User-Selected Background Discovery: Added a logic branch in 
+ *   handleUnknownLocation to handle customBg. When a user selects an 
+ *   existing background during discovery, the system now skips AI 
+ *   generation, immediately applies the chosen file, and records the 
+ *   transaction in the chat DNA.
  *
  * @api-declaration
  * runPipeline(messageId) -> Promise<void>
@@ -226,29 +225,35 @@ async function handleUnknownLocation(messageId, context) {
     // Protected Update: Persist the new definition to live memory
     upsertLocation(approved);
     
-    clearBg();
-    
-    if (defMsgId !== messageId) {
+    if (approved.customBg) {
+        // Path A: User selected an existing background from the ST gallery
+        await lockedWriteSceneRecord(messageId, { location: approved.key, image: approved.customBg, bg_declined: false });
+        updateState(approved.key, approved.customBg);
+        setBg(approved.customBg);
+        document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
+    } else {
+        // Path B: AI Generation (Standard Two-Write Pattern)
+        clearBg();
         await lockedWriteSceneRecord(messageId, { location: approved.key, image: null, bg_declined: false });
-    }
-    
-    // Protected Update: Set scene intent
-    updateState(approved.key, null);
-    document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
+        
+        // Protected Update: Set scene intent
+        updateState(approved.key, null);
+        document.dispatchEvent(new CustomEvent('vistalyze:location-changed', { detail: { messageId } }));
 
-    const capturedId = messageId;
-    generate(approved.key, approved, state.sessionId)
-        .then(async newFile => {
-            // Protected Update: Record asset creation
-            addToFileIndex(newFile);
-            await lockedPatchSceneImage(capturedId, newFile);
-            
-            // Protected Update: Apply final visual state
-            updateState(approved.key, newFile);
-            setBg(newFile);
-        })
-        .catch(err => {
-            error('Pipeline', 'Generate failed after approve:', err);
-            if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Vistalyze');
-        });
+        const capturedId = messageId;
+        generate(approved.key, approved, state.sessionId)
+            .then(async newFile => {
+                // Protected Update: Record asset creation
+                addToFileIndex(newFile);
+                await lockedPatchSceneImage(capturedId, newFile);
+                
+                // Protected Update: Apply final visual state
+                updateState(approved.key, newFile);
+                setBg(newFile);
+            })
+            .catch(err => {
+                error('Pipeline', 'Generate failed after approve:', err);
+                if (window.toastr) window.toastr.error(t`Generation failed: ${err.message}`, 'Vistalyze');
+            });
+    }
 }
