@@ -1,6 +1,6 @@
 /**
  * @file data/default-user/extensions/vistalyze/ui/bgHijacker.js
- * @stamp {"utc":"2026-05-03T17:15:00.000Z"}
+ * @stamp {"utc":"2026-05-03T17:35:00.000Z"}
  * @architectural-role UI Utility / Hijack Controller
  * @description
  * Orchestrates the "Hijack Pattern" for the native SillyTavern Background drawer.
@@ -9,10 +9,10 @@
  * change logic.
  *
  * @updates
- * - Fixed Workshop Popup Logic: The hijacker now tracks the initial visibility state 
- *   of the workshop overlay. It only restores the overlay if it was visible 
- *   when the hijack started, preventing the Library from appearing 
- *   unexpectedly during the discovery flow.
+ * - Fixed Interaction Lockup: Added visibility checks for the native SillyTavern 
+ *   popup and shadow elements. The hijacker now only restores these elements if 
+ *   they were visible when the hijack started, preventing an "invisible wall" 
+ *   (the shadow) from blocking the UI when picking backgrounds from the Library.
  *
  * @api-declaration
  * pickNativeBackground() → Promise<string | null>
@@ -36,18 +36,23 @@ export async function pickNativeBackground() {
     const $drawer = $('#Backgrounds');
     const $toggle = $('#backgrounds-drawer-toggle');
     const $overlay = $('#lz-workshop-overlay');
+    
     const wasDrawerClosed = $drawer.hasClass('closedDrawer');
     const wasOverlayHidden = $overlay.hasClass('lz-hidden');
 
     // 1. Enter Hijack State
     $overlay.addClass('lz-hidden'); // Hide Vistalyze modal
 
-    // Hide the ST callPopup modal AND its backdrop so the background drawer is
-    // fully unobstructed. Both are restored in cleanup.
+    // Track visibility of ST's native popup system to prevent the "Invisible Wall" bug.
+    // If we blindly call .show() on the shadow later when no popup is open, 
+    // interaction with the entire page will be blocked.
     const $popup = $('#dialogue_popup');
     const $shadow = $('#shadow_popup');
-    $popup.hide();
-    $shadow.hide();
+    const wasPopupVisible = $popup.is(':visible');
+    const wasShadowVisible = $shadow.is(':visible');
+
+    if (wasPopupVisible) $popup.hide();
+    if (wasShadowVisible) $shadow.hide();
 
     // 2. Open native drawer if needed
     if (wasDrawerClosed) {
@@ -107,12 +112,11 @@ export async function pickNativeBackground() {
                 $toggle.trigger('click');
             }
 
-            // Restore popup, backdrop, and Vistalyze overlay
-            $shadow.show();
-            $popup.show();
+            // Restore native popups ONLY if they were active when we started.
+            if (wasShadowVisible) $shadow.show();
+            if (wasPopupVisible) $popup.show();
 
             // Restore the overlay ONLY if it was visible when we started.
-            // This prevents the Library from appearing during the Discovery/Add flow.
             if (!wasOverlayHidden) {
                 $overlay.removeClass('lz-hidden');
             }
@@ -122,7 +126,6 @@ export async function pickNativeBackground() {
 
         // 4. The Intercept
         // We bind a delegated listener to the drawer.
-        // Using namespaces (.lzHijack) ensures we don't accidentally remove ST's own events.
         $drawer.on('click.lzHijack', '.bg_example', function (e) {
             // STOP! We don't want ST to process this click and save metadata yet.
             e.preventDefault();
