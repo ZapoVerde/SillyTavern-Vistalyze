@@ -63,7 +63,7 @@ export async function openAddModal(def) {
     )
 
     // Inject "Use Existing Background" into the popup controls, before Yes/Cancel.
-    const $useExistingBtn = $(`<div id="lz-add-use-existing" class="menu_button">
+    const $useExistingBtn = $(`<div id="lz-add-use-existing" class="menu_button" style="white-space:nowrap;">
         <i class="fa-solid fa-folder-open"></i> ${translate('Use Existing BG')}
     </div>`);
     $('#dialogue_popup_controls').prepend($useExistingBtn);
