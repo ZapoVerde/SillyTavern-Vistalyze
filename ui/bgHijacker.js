@@ -35,10 +35,12 @@ export async function pickNativeBackground() {
     // 1. Enter Hijack State
     $overlay.addClass('lz-hidden'); // Hide Vistalyze modal
 
-    // Hide the ST callPopup modal so the background drawer is fully unobstructed.
-    // Restored in cleanup.
+    // Hide the ST callPopup modal AND its backdrop so the background drawer is
+    // fully unobstructed. Both are restored in cleanup.
     const $popup = $('#dialogue_popup');
+    const $shadow = $('#shadow_popup');
     $popup.hide();
+    $shadow.hide();
 
     // 2. Open native drawer if needed
     if (wasDrawerClosed) {
@@ -98,7 +100,8 @@ export async function pickNativeBackground() {
                 $toggle.trigger('click');
             }
 
-            // Restore popup and Vistalyze overlay
+            // Restore popup, backdrop, and Vistalyze overlay
+            $shadow.show();
             $popup.show();
             $overlay.removeClass('lz-hidden');
             resolve(result);
